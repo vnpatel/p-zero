@@ -268,11 +268,11 @@
                     </div>
                     <div>
                         <label class="block text-[11px] text-slate-400 mb-1">HSA</label>
-                        <input type="text" inputmode="decimal" data-money="true" id="poolHsa" value="130000" class="mini-input">
+                        <input type="text" inputmode="decimal" data-money="true" id="poolHsa" value="150000" class="mini-input">
                     </div>
                     <div>
                         <label class="block text-[11px] text-slate-400 mb-1">529</label>
-                        <input type="text" inputmode="decimal" data-money="true" id="pool529" value="260000" class="mini-input">
+                        <input type="text" inputmode="decimal" data-money="true" id="pool529" value="250000" class="mini-input">
                     </div>
                 </div>
                 <div>
@@ -344,7 +344,7 @@
                     </div>
                     <div id="wrapperFixedDist">
                         <label class="block text-[11px] text-slate-400 mb-1">Annual Living Target — Excl. Healthcare ($, today's $)</label>
-                        <input type="text" inputmode="decimal" data-money="true" id="netDistribution" value="149000" class="mini-input">
+                        <input type="text" inputmode="decimal" data-money="true" id="netDistribution" value="150000" class="mini-input">
                         <p class="text-[10px] text-slate-500 mt-1">Healthcare/Medicare cost is tracked separately below and added on top automatically.</p>
                     </div>
                     <div id="wrapperPctDist" class="hidden">
@@ -3419,7 +3419,7 @@
                         <div>
                             <h3 class="font-semibold text-base mb-1">Asset Pool Balances &amp; Brokerage Basis</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li>Defaults: Traditional $1,000,000 &bull; Roth $500,000 &bull; Brokerage $1,000,000 &bull; HSA $130,000 &bull; 529 $260,000 (2026 starting values).</li>
+                                <li>Defaults: Traditional $1,000,000 &bull; Roth $500,000 &bull; Brokerage $1,000,000 &bull; HSA $150,000 &bull; 529 $250,000 (2026 starting values).</li>
                                 <li><strong style="color:var(--text-primary)">Brokerage Basis % (default 60%):</strong> the share of the brokerage balance that is original after-tax principal. Only the remaining gain portion of each brokerage withdrawal is taxed (at LTCG rates). The basis ratio is tracked and updated every year as contributions add basis and withdrawals consume it proportionally.</li>
                                 <li><strong style="color:var(--text-primary)">Brokerage Dividend Yield (default 2%) &amp; % Qualified (default 85%):</strong> the annual dividend the taxable account throws off, and what share of it is "qualified" — the long-held-stock kind taxed at the lower long-term capital-gains rates, versus ordinary dividends (REITs, bond/money-market funds) taxed at regular income rates. See Section 12.</li>
                             </ul>
@@ -3427,7 +3427,7 @@
                         <div>
                             <h3 class="font-semibold text-base mb-1">Distribution Strategy</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li><strong style="color:var(--text-primary)">Annual Living Target — Excl. Healthcare (default $149,000, today's $):</strong> the <em>net, after-tax</em> amount you want available for non-healthcare living expenses each retirement year. Taxes do NOT come out of this number — the engine grosses up the portfolio withdrawal so that taxes are paid <em>on top</em> and the full target lands in your pocket (Section 8). Healthcare, gifting, and tuition are also tracked separately on top.</li>
+                                <li><strong style="color:var(--text-primary)">Annual Living Target — Excl. Healthcare (default $150,000, today's $):</strong> the <em>net, after-tax</em> amount you want available for non-healthcare living expenses each retirement year. Taxes do NOT come out of this number — the engine grosses up the portfolio withdrawal so that taxes are paid <em>on top</em> and the full target lands in your pocket (Section 8). Healthcare, gifting, and tuition are also tracked separately on top.</li>
                                 <li><strong style="color:var(--text-primary)">Distribution model:</strong> fixed dollar target (above) or a percentage of the portfolio.</li>
                                 <li><strong style="color:var(--text-primary)">Withdrawal Order:</strong> Sequential (Brokerage &rarr; Traditional &rarr; Roth) or Pro-Rata. See Section 9.</li>
                                 <li><strong style="color:var(--text-primary)">Healthcare (Pre-65) $36,000 / Post-65 Medicare $18,000:</strong> combined household annual costs, today's $. See Section 14 for the split-age transition, the ACA subsidy inputs (toggle, $28K benchmark premium, household size, preserve-subsidy cap) and the IRMAA toggle.</li>
@@ -3496,7 +3496,7 @@
                     </table></div>
                     <div class="rounded-lg p-4 mt-4 border border-slate-300" style="background:var(--bg-base);">
                         <p class="font-semibold mb-1" style="color:var(--text-primary)">Worked reconciliation (2034 — first drawdown year, default inputs, today's $):</p>
-                        <p style="color:var(--text-secondary)">Portfolio W/D = $149,000 (Planned) + $0 (healthcare — HSA covered all $36,000) + $0 (gifts) + $35,752 (taxes) &minus; $125,000 (income, both 1099s active) &minus; $0 (SS) = $59,751 — matching the 2034 row exactly. Ending = Starting + Growth &minus; Portfolio W/D &minus; $36,000 (HSA draw) &minus; tuition paid by 529 (reflected only in the full-net-worth view). Every row reconciles this way at that row's price level.</p>
+                        <p style="color:var(--text-secondary)">Portfolio W/D = $150,000 (Planned) + $0 (healthcare — HSA covered all $36,000) + $0 (gifts) + $35,752 (taxes) &minus; $125,000 (income, both 1099s active) &minus; $0 (SS) = $59,751 — matching the 2034 row exactly. Ending = Starting + Growth &minus; Portfolio W/D &minus; $36,000 (HSA draw) &minus; tuition paid by 529 (reflected only in the full-net-worth view). Every row reconciles this way at that row's price level.</p>
                     </div>
                 </section>
 
