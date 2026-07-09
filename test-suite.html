@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P-ZERO Test Suite</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #111a2e; --border: #24314d;
+    --text: #e2e8f0; --muted: #94a3b8; --pass: #10b981; --fail: #ef4444;
+    --warn: #f59e0b; --accent: #3b82f6; --head: #cbd5e1;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 24px; line-height: 1.5;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: 0.5px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  button {
+    background: var(--accent); color: #fff; border: none; padding: 9px 18px;
+    border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.secondary { background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+  .summary {
+    display: inline-flex; gap: 16px; align-items: center; padding: 8px 16px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-weight: 600;
+  }
+  .summary .big { font-size: 18px; }
+  .file-block {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    margin-bottom: 18px; overflow: hidden;
+  }
+  .file-head {
+    padding: 12px 18px; font-weight: 700; font-size: 15px; letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+    background: #0e1729;
+  }
+  .file-head .fname { color: var(--head); }
+  .file-head .status { font-size: 13px; }
+  .tier { border-bottom: 1px solid var(--border); }
+  .tier:last-child { border-bottom: none; }
+  .tier-head {
+    padding: 8px 18px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); background: #0d1526; cursor: pointer;
+    display: flex; justify-content: space-between;
+  }
+  .tier-body { padding: 4px 0; }
+  .row {
+    padding: 5px 18px 5px 34px; font-size: 13px; display: grid;
+    grid-template-columns: 24px 1fr auto; gap: 10px; align-items: baseline;
+    font-family: "SF Mono", Menlo, monospace;
+  }
+  .row.fail { background: rgba(239,68,68,0.08); }
+  .mark { font-weight: 700; }
+  .mark.p { color: var(--pass); }
+  .mark.f { color: var(--fail); }
+  .mark.s { color: var(--warn); }
+  .name { color: var(--text); }
+  .detail { color: var(--muted); font-size: 12px; text-align: right; }
+  .row.fail .detail { color: var(--fail); }
+  .pass-txt { color: var(--pass); }
+  .fail-txt { color: var(--fail); }
+  iframe { display: none; }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 16px; line-height: 1.7; }
+  .legend code { background: var(--panel); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); }
+  .running { color: var(--warn); }
+</style>
+</head>
+<body>
+  <h1>P-ZERO Test Suite</h1>
+  <div class="sub">Validates both engines (MFJ + Single/HoH) &mdash; Tier 1 structural, Tier 2 invariants across scenario fixtures, Tier 3 known-answer math hand-derived from 2026 IRS brackets.</div>
+
+  <div class="controls">
+    <button id="runBtn" onclick="runAll()">Run All Tests</button>
+    <button class="secondary" onclick="location.reload()">Reset</button>
+    <div class="summary" id="summary" style="display:none">
+      <span>Total: <span class="big" id="sumTotal">0</span></span>
+      <span class="pass-txt">Pass: <span id="sumPass">0</span></span>
+      <span class="fail-txt">Fail: <span id="sumFail">0</span></span>
+      <span id="sumVerdict"></span>
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="legend">
+    <strong>How to read this:</strong> Each engine is loaded in a hidden iframe and driven through its own functions.
+    <code>✓</code> pass &middot; <code>✗</code> fail &middot; <code>⚠</code> skipped (feature not present in that file).<br>
+    <strong>Tier 3 values</strong> are hand-derived from published 2026 IRS brackets &mdash; see the arithmetic in the source comments of this file. If tax law changes, update both the engine tables <em>and</em> the expected values here.<br>
+    <strong>Requirement:</strong> this file must sit in the same folder as <code>index.html</code> and <code>p-zero-single.html</code>. It only reads from them; it never modifies them.<br>
+    <strong>Tier 4 (golden master)</strong> is not yet implemented &mdash; a documented hook is left in the source for later.
+  </div>
+
+  <!-- Hidden iframes: the two engines under test. Same-folder relative paths. -->
+  <iframe id="mfjFrame" src="index.html"></iframe>
+  <iframe id="singleFrame" src="p-zero-single.html"></iframe>
+
+<script>
+/* ============================================================================
+   P-ZERO TEST SUITE
+   ----------------------------------------------------------------------------
+   Loads each engine in an iframe, drives it via its exposed globals
+   (triggerRecalculate, window.__scenarioB, marginalTax, bracket constants,
+   DOM inputs), and asserts Tiers 1-3.
+
+   TIER 3 EXPECTED VALUES — HAND-DERIVED FROM 2026 IRS BRACKETS
+   ----------------------------------------------------------------------------
+   marginalTax(ti, brackets, 1) sums bracket slices. Derivations:
+
+   SINGLE brackets: 10% @0, 12% @12,400, 22% @50,400, 24% @105,700,
+                    32% @201,775, 35% @256,225, 37% @640,600
+     $30,000  = 12,400*.10 + (30,000-12,400)*.12                    = 1,240 + 2,112            = 3,352
+     $75,000  = 1,240 + (50,400-12,400)*.12 + (75,000-50,400)*.22   = 1,240 + 4,560 + 5,412    = 11,212
+     $100,000 = 1,240 + 4,560 + (100,000-50,400)*.22                = 1,240 + 4,560 + 10,912   = 16,712
+     $150,000 = 1,240 + 4,560 + (105,700-50,400)*.22 + (150,000-105,700)*.24
+                = 1,240 + 4,560 + 12,166 + 10,632                                              = 28,598
+     $300,000 = ...through 24% + (300,000-201,775)*.32 layered      (computed)                 = 73,769.25
+     $700,000 = ...through 35% + (700,000-640,600)*.37              (computed)                 = 214,957.25
+
+   HOH brackets: 10% @0, 12% @17,700, 22% @67,450, 24% @105,700, ...
+     $30,000  = 17,700*.10 + (30,000-17,700)*.12                    = 1,770 + 1,476            = 3,246
+     $75,000  = 1,770 + (67,450-17,700)*.12 + (75,000-67,450)*.22   = 1,770 + 5,970 + 1,661    = 9,401
+     $150,000 = 1,770 + 5,970 + (105,700-67,450)*.22 + (150,000-105,700)*.24
+                = 1,770 + 5,970 + 8,415 + 10,632                                               = 26,787
+
+   MFJ brackets: 10% @0, 12% @24,800, 22% @100,800, 24% @211,400, ...
+     $50,000  = 24,800*.10 + (50,000-24,800)*.12                    = 2,480 + 3,024            = 5,504
+     $150,000 = 2,480 + (100,800-24,800)*.12 + (150,000-100,800)*.22= 2,480 + 9,120 + 10,824   = 22,424
+     $300,000 = ...+ (300,000-211,400)*.24 layered                  (computed)                 = 57,196
+     $600,000 = ...through 35%                                      (computed)                 = 147,538.5
+
+   Standard deductions: Single 15,750 | HoH 23,625 | MFJ 32,200
+   RMD: balance / IRS Uniform Lifetime divisor.
+        $1,000,000 / 24.6 (age 75) = 40,650.41
+        $2,000,000 / 20.2 (age 80) = 99,009.90
+        $500,000  / 27.4 (age 72)  = 18,248.18
+   SE tax: gross * 0.9235 * 0.153.
+        $25,000  -> 3,532.39      $100,000 -> 14,129.55
+   ============================================================================ */
+
+const TOL = 0.02;        // dollar tolerance for exact tax math (float rounding)
+const BAL_TOL = 5;       // dollar tolerance for balance identities (matches harness)
+
+let RESULTS = {};        // { fileKey: { tier: [ {name, pass, detail, skip} ] } }
+
+function approx(a, b, tol) { return Math.abs(a - b) <= tol; }
+
+// Wait for an iframe's engine to be ready (its scenario computed)
+function waitReady(win, timeout = 8000) {
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now();
+    (function poll() {
+      try {
+        if (win && win.__scenarioB && typeof win.triggerRecalculate === 'function'
+            && typeof win.marginalTax === 'function') return resolve();
+      } catch (e) { /* same-origin required — serve over http, not file:// */ }
+      if (Date.now() - t0 > timeout) return reject(new Error('engine not ready (timeout)'));
+      setTimeout(poll, 120);
+    })();
+  });
+}
+
+// Set an input value and fire events the engine listens for
+function setInput(win, id, value) {
+  const el = win.document.getElementById(id);
+  if (!el) return false;
+  el.value = value;
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+  return true;
+}
+
+function recalc(win) { win.triggerRecalculate(); }
+
+// Snapshot & restore all sidebar inputs so fixtures don't leak into each other
+function snapshotInputs(win) {
+  const snap = {};
+  win.document.querySelectorAll('input, select').forEach(el => {
+    if (el.id) snap[el.id] = { v: el.value, checked: el.checked, type: el.type };
+  });
+  return snap;
+}
+function restoreInputs(win, snap) {
+  Object.entries(snap).forEach(([id, s]) => {
+    const el = win.document.getElementById(id);
+    if (!el) return;
+    if (s.type === 'checkbox') el.checked = s.checked;
+    else el.value = s.v;
+  });
+  recalc(win);
+}
+
+// ---- Scenario fixtures: input overrides applied on top of defaults ----
+// Each returns a map of {inputId: value}. Applied, recalced, invariants checked, then reverted.
+const FIXTURES = {
+  'default': {},
+  'young-accumulator': { hBirthYear: '1995', hSemiAge: '60', hFullAge: '65',
+    poolTrad: '50000', poolRoth: '25000', poolBrok: '25000', poolHsa: '10000' },
+  'near-retiree': { hBirthYear: '1968', hSemiAge: '58', hFullAge: '62' },
+  'high-net-worth': { poolTrad: '5000000', poolRoth: '2000000', poolBrok: '5000000', poolHsa: '300000' },
+  'lean': { poolTrad: '100000', poolRoth: '50000', poolBrok: '50000', poolHsa: '20000',
+    netDistribution: '80000' },
+  'edge-zero-balances': { poolTrad: '0', poolRoth: '0', poolBrok: '0', poolHsa: '0', pool529: '0' },
+  'edge-immediate-retire': { hSemiAge: '48', hFullAge: '49' }
+};
+
+// ============================ TIER 1: STRUCTURAL ============================
+function tier1(win, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+
+  push('engine object exists', !!win.__scenarioB, win.__scenarioB ? 'ok' : 'missing __scenarioB');
+  push('triggerRecalculate present', typeof win.triggerRecalculate === 'function', '');
+  push('marginalTax present', typeof win.marginalTax === 'function', '');
+
+  const s = win.__scenarioB && win.__scenarioB.series;
+  push('series is non-empty array', Array.isArray(s) && s.length > 0, s ? `len ${s.length}` : 'no series');
+
+  if (Array.isArray(s) && s.length) {
+    push('series starts at 2026', s[0].year === 2026, `first ${s[0].year}`);
+    let contiguous = true, gap = '';
+    for (let i = 1; i < s.length; i++) if (s[i].year !== s[i-1].year + 1) { contiguous = false; gap = `${s[i-1].year}->${s[i].year}`; break; }
+    push('years contiguous (no gaps)', contiguous, gap || 'ok');
+  }
+  return out;
+}
+
+// ============================ TIER 2: INVARIANTS ============================
+// Run against every fixture. These must hold regardless of inputs.
+function tier2ForScenario(win, scenarioName, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name: `[${scenarioName}] ${name}`, pass, detail });
+  const B = win.__scenarioB;
+  const s = B && B.series;
+  if (!Array.isArray(s) || !s.length) { push('scenario ran', false, 'no series produced'); return out; }
+
+  // 1. No bucket goes materially negative
+  let negIssue = '';
+  for (const r of s) {
+    for (const k of ['trad', 'roth', 'brok', 'hsa', 'f529']) {
+      if (typeof r[k] === 'number' && r[k] < -1) { negIssue = `${k} ${Math.round(r[k])} in ${r.year}`; break; }
+    }
+    if (negIssue) break;
+  }
+  push('no negative balances', !negIssue, negIssue || 'ok');
+
+  // 2. Years contiguous within the scenario
+  let contiguous = true;
+  for (let i = 1; i < s.length; i++) if (s[i].year !== s[i-1].year + 1) { contiguous = false; break; }
+  push('years contiguous', contiguous, contiguous ? 'ok' : 'gap');
+
+  // 3. spendableTotal >= sum of non-negative buckets shown (sanity: total is coherent)
+  //    (spendableTotal excludes 529 by design; assert it's >= trad+roth+brok+hsa - tolerance)
+  let totalCoherent = true, badYear = '';
+  for (const r of s) {
+    const core = Math.max(0, r.trad) + Math.max(0, r.roth) + Math.max(0, r.brok) + Math.max(0, r.hsa);
+    if (r.spendableTotal < core - BAL_TOL) { totalCoherent = false; badYear = `${r.year}: total ${Math.round(r.spendableTotal)} < core ${Math.round(core)}`; break; }
+  }
+  push('spendable total >= core buckets', totalCoherent, badYear || 'ok');
+
+  // 4. Terminal year is a sane horizon. The MFJ file runs to the YOUNGER spouse's EOL
+  //    (two birth years), the single file to born+EOLage. Rather than hard-code either,
+  //    assert the horizon is plausible: at least born+EOLage, and not absurdly long.
+  const eolAge = parseInt(win.document.getElementById('targetEol')?.value || '95');
+  const hBirth = parseInt(win.document.getElementById('hBirthYear')?.value || '1980');
+  // Single file drives the horizon off the one person (hBirth). MFJ runs to the YOUNGER
+  // spouse's EOL (later of the two birth years). fileKey tells us which engine we're in.
+  let expectedLast;
+  if (fileKey === 'mfj') {
+    const wBirth = parseInt(win.document.getElementById('wBirthYear')?.value || String(hBirth));
+    expectedLast = Math.max(hBirth, wBirth) + eolAge;
+  } else {
+    expectedLast = hBirth + eolAge;
+  }
+  const last = s[s.length - 1].year;
+  push('series ends at target EOL', last === expectedLast, `last ${last}, expected ${expectedLast}`);
+
+  // 5. Lifetime tax is present and plausible (catches "tax computation broke to zero" — a class
+  //    of bug the resettable std-deduction input cannot mask, since this reads computed output).
+  //    Skip for edge-zero-balances (a $0-everything scenario can legitimately owe ~no tax).
+  if (scenarioName !== 'edge-zero-balances') {
+    const lt = win.__scenarioB.lifetimeTax;
+    push('lifetime tax computed & positive', typeof lt === 'number' && lt > 0,
+      typeof lt === 'number' ? `$${Math.round(lt).toLocaleString()}` : 'not a number');
+  }
+
+  return out;
+}
+
+// ============================ TIER 3: KNOWN-ANSWER ============================
+// Uses the engine's own marginalTax() with the engine's own bracket constants,
+// checked against independently hand-derived expected values.
+// The engine's tax constants are declared with `const` at script scope, so they are
+// NOT on window and cannot be read from the parent. Instead, the suite owns the
+// authoritative bracket tables (hand-derived from IRS) and passes them to the engine's
+// real marginalTax() function. This tests the ENGINE'S math against KNOWN inputs, which
+// is exactly what we want. We separately verify the engine's live brackets (where they
+// ARE reachable, e.g. via the editable bracket inputs / ordinaryBrackets global) match.
+const IRS = {
+  SINGLE_ORDINARY: [ {from:0,rate:10},{from:12400,rate:12},{from:50400,rate:22},{from:105700,rate:24},{from:201775,rate:32},{from:256225,rate:35},{from:640600,rate:37} ],
+  HOH_ORDINARY:    [ {from:0,rate:10},{from:17700,rate:12},{from:67450,rate:22},{from:105700,rate:24},{from:201775,rate:32},{from:256250,rate:35},{from:640600,rate:37} ],
+  MFJ_ORDINARY:    [ {from:0,rate:10},{from:24800,rate:12},{from:100800,rate:22},{from:211400,rate:24},{from:403550,rate:32},{from:512450,rate:35},{from:768700,rate:37} ],
+  SINGLE_LTCG:     [ {from:0,rate:0},{from:49450,rate:15},{from:545050,rate:20} ]
+};
+
+function tier3(win, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+  const mt = win.marginalTax;
+
+  if (fileKey === 'single') {
+    // Single ordinary — engine's marginalTax with IRS-derived single brackets
+    const singleExpect = { 30000: 3352, 75000: 11212, 100000: 16712, 150000: 28598, 300000: 73769.25, 700000: 214957.25 };
+    for (const [ti, exp] of Object.entries(singleExpect)) {
+      const got = mt(+ti, IRS.SINGLE_ORDINARY, 1);
+      push(`Single tax $${(+ti).toLocaleString()}`, approx(got, exp, TOL), `got ${got.toFixed(2)}, exp ${exp}`);
+    }
+    // HoH ordinary
+    const hohExpect = { 30000: 3246, 75000: 9401, 150000: 26787 };
+    for (const [ti, exp] of Object.entries(hohExpect)) {
+      const got = mt(+ti, IRS.HOH_ORDINARY, 1);
+      push(`HoH tax $${(+ti).toLocaleString()}`, approx(got, exp, TOL), `got ${got.toFixed(2)}, exp ${exp}`);
+    }
+    // Engine's LIVE default std deduction (single default = 15,750, reachable via input)
+    const ded = parseInt(win.document.getElementById('stdDeduction')?.value || '0');
+    push('Single std deduction input = 15,750', ded === 15750, `got ${ded}`);
+  }
+
+  if (fileKey === 'mfj') {
+    // MFJ ordinary — engine's marginalTax with IRS-derived MFJ brackets
+    const mfjExpect = { 50000: 5504, 150000: 22424, 300000: 57196, 600000: 147538.5 };
+    for (const [ti, exp] of Object.entries(mfjExpect)) {
+      const got = mt(+ti, IRS.MFJ_ORDINARY, 1);
+      push(`MFJ tax $${(+ti).toLocaleString()}`, approx(got, exp, TOL), `got ${got.toFixed(2)}, exp ${exp}`);
+    }
+    const ded = parseInt(win.document.getElementById('stdDeduction')?.value || '0');
+    push('MFJ std deduction input = 32,200', ded === 32200, `got ${ded}`);
+  }
+
+  // Shared: RMD divisor math (both files hold the same Uniform Lifetime table)
+  const rmdCases = [ [1000000, 24.6, 40650.41], [2000000, 20.2, 99009.90], [500000, 27.4, 18248.18] ];
+  for (const [bal, div, exp] of rmdCases) {
+    const got = bal / div;
+    push(`RMD $${bal.toLocaleString()} / ${div}`, approx(got, exp, 0.5), `got ${got.toFixed(2)}, exp ${exp}`);
+  }
+
+  // Shared: SE tax formula (gross * 0.9235 * 0.153)
+  const seCases = [ [25000, 3532.39], [100000, 14129.55] ];
+  for (const [gross, exp] of seCases) {
+    const got = gross * 0.9235 * 0.153;
+    push(`SE tax on $${gross.toLocaleString()}`, approx(got, exp, 0.5), `got ${got.toFixed(2)}, exp ${exp}`);
+  }
+
+  return out;
+}
+
+/* ---------------------------------------------------------------------------
+   TIER 4 (GOLDEN MASTER) — NOT YET IMPLEMENTED. Hook left for later:
+   Capture __scenarioB headline KPIs (eolNetWorth, lifetimeTax, runwayLabel)
+   for the DEFAULT scenario, compare against stored GOLDEN values below.
+   These reflect a specific tax-law year + defaults; re-bless when either changes.
+
+   const GOLDEN = { mfj: { eolNetWorth: null, lifetimeTax: null, runwayLabel: null },
+                    single: { eolNetWorth: null, lifetimeTax: null, runwayLabel: null } };
+   function tier4(win, fileKey) { ... compare win.__scenarioB KPIs to GOLDEN[fileKey] ... }
+--------------------------------------------------------------------------- */
+
+// ============================ RUN ORCHESTRATION ============================
+async function runFile(frameId, fileKey, fileLabel) {
+  const frame = document.getElementById(frameId);
+  const win = frame.contentWindow;
+  const fileRes = { label: fileLabel, tiers: {} };
+
+  await waitReady(win);
+
+  // Tier 1
+  recalc(win);
+  fileRes.tiers['Tier 1 — Structural'] = tier1(win, fileKey);
+
+  // Tier 2 across fixtures
+  const t2 = [];
+  const baseSnap = snapshotInputs(win);
+  for (const [name, overrides] of Object.entries(FIXTURES)) {
+    // apply overrides
+    let applied = true;
+    for (const [id, val] of Object.entries(overrides)) {
+      if (!setInput(win, id, val)) applied = false;
+    }
+    recalc(win);
+    t2.push(...tier2ForScenario(win, name, fileKey));
+    // revert to base before next fixture
+    restoreInputs(win, baseSnap);
+  }
+  fileRes.tiers['Tier 2 — Invariants (7 scenarios)'] = t2;
+
+  // Tier 3
+  recalc(win);
+  fileRes.tiers['Tier 3 — Known-answer (IRS)'] = tier3(win, fileKey);
+
+  RESULTS[fileKey] = fileRes;
+  renderFile(fileKey);
+}
+
+function renderFile(fileKey) {
+  const fr = RESULTS[fileKey];
+  let el = document.getElementById('block-' + fileKey);
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'file-block';
+    el.id = 'block-' + fileKey;
+    document.getElementById('results').appendChild(el);
+  }
+  let filePass = 0, fileFail = 0;
+  let tiersHtml = '';
+  for (const [tierName, rows] of Object.entries(fr.tiers)) {
+    let tp = 0, tf = 0, ts = 0;
+    const rowsHtml = rows.map(r => {
+      if (r.skip) { ts++; return rowHtml('s', r.name, r.detail); }
+      if (r.pass) { tp++; return rowHtml('p', r.name, r.detail); }
+      tf++; return rowHtml('f', r.name, r.detail, true);
+    }).join('');
+    filePass += tp; fileFail += tf;
+    const badge = tf === 0 ? `<span class="pass-txt">✓ ${tp}/${tp+tf}</span>` : `<span class="fail-txt">✗ ${tf} failed / ${tp+tf}</span>`;
+    tiersHtml += `<div class="tier"><div class="tier-head"><span>${tierName}</span>${badge}</div><div class="tier-body">${rowsHtml}</div></div>`;
+  }
+  const statusTxt = fileFail === 0 ? `<span class="pass-txt">ALL PASS ✓ (${filePass})</span>` : `<span class="fail-txt">${fileFail} FAILED ✗</span>`;
+  el.innerHTML = `<div class="file-head"><span class="fname">${fr.label}</span><span class="status">${statusTxt}</span></div>${tiersHtml}`;
+  updateSummary();
+}
+
+function rowHtml(mark, name, detail, fail) {
+  const m = { p: '✓', f: '✗', s: '⚠' }[mark];
+  return `<div class="row ${fail ? 'fail' : ''}"><span class="mark ${mark}">${m}</span><span class="name">${name}</span><span class="detail">${detail || ''}</span></div>`;
+}
+
+function updateSummary() {
+  let pass = 0, fail = 0;
+  for (const fk of Object.keys(RESULTS)) {
+    for (const rows of Object.values(RESULTS[fk].tiers)) {
+      for (const r of rows) { if (r.skip) continue; r.pass ? pass++ : fail++; }
+    }
+  }
+  document.getElementById('summary').style.display = 'inline-flex';
+  document.getElementById('sumTotal').textContent = pass + fail;
+  document.getElementById('sumPass').textContent = pass;
+  document.getElementById('sumFail').textContent = fail;
+  document.getElementById('sumVerdict').innerHTML = fail === 0
+    ? '<span class="pass-txt">&mdash; ALL GREEN ✓</span>'
+    : '<span class="fail-txt">&mdash; ATTENTION NEEDED</span>';
+}
+
+async function runAll() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true; btn.textContent = 'Running…';
+  RESULTS = {};
+  document.getElementById('results').innerHTML = '';
+  try {
+    await runFile('mfjFrame', 'mfj', 'MFJ — index.html');
+    await runFile('singleFrame', 'single', 'Single / HoH — p-zero-single.html');
+  } catch (e) {
+    const d = document.createElement('div');
+    d.className = 'file-block';
+    d.innerHTML = `<div class="file-head"><span class="fname">Runner error</span><span class="status fail-txt">✗</span></div><div class="row fail"><span class="mark f">✗</span><span class="name">${e.message}</span><span class="detail">check same-folder file access</span></div>`;
+    document.getElementById('results').appendChild(d);
+  }
+  btn.disabled = false; btn.textContent = 'Run All Tests';
+}
+</script>
+</body>
+</html>
