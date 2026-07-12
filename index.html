@@ -139,9 +139,14 @@
         [data-theme="light"] #ledgerHeaderRow1 > th.bg-purple-950\/20 { background-color: #e9def9 !important; }
         [data-theme="light"] #ledgerHeaderRow1 > th.bg-emerald-950\/20 { background-color: #d5f0e3 !important; }
         [data-theme="light"] #ledgerHeaderRow1 > th.bg-cyan-950\/20 { background-color: #d3eef0 !important; }
+@keyframes pzBannerIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .pz-help-glow { box-shadow:0 0 0 3px rgba(59,130,246,.4), 0 0 16px rgba(59,130,246,.45) !important; animation:pzHelpPulse 1.7s infinite; }
+    @keyframes pzHelpPulse { 0%,100% { box-shadow:0 0 0 3px rgba(59,130,246,.4), 0 0 14px rgba(59,130,246,.4); } 50% { box-shadow:0 0 0 5px rgba(59,130,246,.18), 0 0 22px rgba(59,130,246,.55); } }
     </style>
 </head>
 <body class="h-screen flex flex-col antialiased overflow-hidden">
+<!-- Profile import/export banner host (top-center overlay) -->
+<div id="profileBannerHost" style="position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:min(92vw,560px);"></div>
 
     <!-- Premium Navbar -->
     <header class="glass-panel sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between border-b border-slate-800">
@@ -157,9 +162,20 @@
             <button onclick="toggleColorTheme()" class="text-slate-400 hover:text-white p-2 bg-slate-900 rounded-lg border border-slate-800 cursor-pointer transition" title="Toggle light/dark theme">
                 <i id="themeIcon" class="fa-solid fa-sun text-sm"></i>
             </button>
-            <button onclick="openHelp()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-2 rounded-lg border border-slate-800 transition cursor-pointer">
+            <div style="position:relative;display:inline-block" id="helpCoachWrap">
+            <button id="helpNavBtn" onclick="openHelp()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-2 rounded-lg border border-slate-800 transition cursor-pointer">
                 <i class="fa-solid fa-circle-question mr-1.5 text-blue-400"></i> Help
             </button>
+            <div id="helpCoach" style="display:none;position:absolute;top:44px;left:0;width:300px;background:var(--bg-elevated,#0f172a);border:1px solid #3b82f6;border-radius:12px;padding:14px 16px;box-shadow:0 14px 44px rgba(0,0,0,.6);z-index:9998;animation:pzBannerIn .28s ease;text-align:left">
+                <div style="position:absolute;top:-8px;left:22px;width:14px;height:14px;background:var(--bg-elevated,#0f172a);border-left:1px solid #3b82f6;border-top:1px solid #3b82f6;transform:rotate(45deg)"></div>
+                <p style="font-weight:700;color:var(--text-primary,#f3f4f6);margin:0 0 6px;font-size:14px"><i class="fa-solid fa-hand-spock" style="color:#3b82f6;margin-right:6px"></i>Whoa, that's a lot of numbers.</p>
+                <p style="color:var(--text-secondary,#cbd5e1);font-size:12.5px;line-height:1.55;margin:0 0 12px">This planner has more assumptions than a first date. The Help guide explains every one &mdash; the concepts, the worked examples, the fine print. Peek anytime.</p>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <button onclick="dismissHelpCoach(true)" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Got it</button>
+                    <button onclick="dismissHelpCoach(true)" style="background:none;border:none;color:#93c5fd;font-size:12px;cursor:pointer">Don't show again</button>
+                </div>
+            </div>
+            </div>
             <button id="compareNavBtn" onclick="toggleCompareMode()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-2 rounded-lg border border-slate-800 transition cursor-pointer" title="Compare two plans side by side">
                 <i class="fa-solid fa-code-compare mr-1.5 text-blue-400"></i> Compare
             </button>
@@ -325,11 +341,15 @@
                     </div>
                 </div>
                 <div class="mb-2">
-                    <label class="block text-[11px] text-slate-400 mb-1">529 (per year, while saving)</label>
+                    <label class="block text-[11px] text-slate-400 mb-1">529 (per year, until fully funded)</label>
                     <input type="text" inputmode="decimal" data-money="true" id="cont529" value="24000" class="mini-input">
                 </div>
+                <button onclick="fillMaxContributions()" class="w-full mb-2 text-[11px] font-semibold py-2 rounded-lg border transition" style="background:rgba(16,185,129,0.12);border-color:rgba(5,150,105,0.5);color:#059669" title="Fill both spouses' 401(k) + mega-backdoor Roth + backdoor IRA + family HSA to this year's base IRS limits">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Fill Max Contributions (<span id="maxContribYear">2026</span>)
+                </button>
+                <p class="text-[10px] text-slate-500 mb-2 leading-snug">Fills both spouses' 401(k) + mega-backdoor Roth + backdoor IRA and the family HSA to the base IRS limits. Leaves Brokerage &amp; 529 alone. Turn on Catch-Up below to add each spouse's 50+/55+ (and 60&ndash;63 super) amounts automatically.</p>
                 <div class="flex items-center justify-between bg-slate-900/40 p-2.5 rounded-lg border border-slate-900">
-                    <span class="text-[11px] text-slate-300">Catch-Up Contributions (50+/55+ HSA) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Adds the IRS catch-up amounts once eligible: extra 401k/IRA at 50+, extra HSA at 55+. <a onclick="openHelp('sec-inputs')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §3 &rarr;</a></span></span></span>
+                    <span class="text-[11px] text-slate-300">Catch-Up Contributions (50+/55+ HSA) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span id="catchupTipContent" class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Adds the IRS catch-up amounts once eligible: extra 401k/IRA at 50+, extra HSA at 55+. <a onclick="openHelp('sec-inputs')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §3 &rarr;</a></span></span></span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="catchUpToggle" class="sr-only peer" onchange="triggerRecalculate()">
                         <div class="toggle-track"></div>
@@ -493,6 +513,27 @@
                 </div>
             </div>
 
+            <!-- State & Local Tax -->
+            <div class="border-t border-slate-900 pt-4">
+                <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-building-columns mr-2 text-emerald-400"></i>State &amp; Local Tax</h2>
+                <div class="space-y-2">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">State Tax (%)</label>
+                            <input type="number" id="stateRate" value="2.90" step="0.01" class="mini-input w-full text-right">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">County/Local Tax (%)</label>
+                            <input type="number" id="countyRate" value="1.5" step="0.01" class="mini-input w-full text-right">
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px] text-slate-300">
+                        <span>State Exempts Social Security <span class="text-[10px] text-slate-500">(many states: yes)</span> <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Whether your state taxes Social Security. Many states don't, in which case SS is removed from the state/local tax base. <a onclick="openHelp('sec-tax')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §12 &rarr;</a></span></span></span>
+                        <input type="checkbox" id="stateExemptsSS" checked class="w-4 h-4 accent-blue-500">
+                    </div>
+                </div>
+            </div>
+
             <!-- Survivor Scenario -->
             <div class="border-t border-slate-900 pt-4">
                 <div class="flex items-center justify-between mb-3">
@@ -524,6 +565,21 @@
                 </div>
             </div>
 
+            <!-- Legacy / Heir Assumptions -->
+            <div class="border-t border-slate-900 pt-4">
+                <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-dove mr-2 text-purple-400"></i>Legacy / Heir Assumptions</h2>
+                <div class="space-y-2">
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">Heir's Tax Rate on Inherited Traditional (%) <span class="text-[10px] text-slate-500">(for After-Tax Legacy)</span> <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">The ordinary tax rate your heirs pay draining an inherited Traditional account (SECURE Act 10-year rule). Drives the After-Tax Legacy KPI. <a onclick="openHelp('sec-kpis')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §4 &rarr;</a></span></span></label>
+                        <input type="number" id="heirTaxRate" value="28" min="0" max="60" class="mini-input w-full text-right">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">Heir's Tax Rate on Inherited HSA (%)</label>
+                        <input type="number" id="heirHsaTaxRate" value="28" min="0" max="60" class="mini-input w-full text-right">
+                    </div>
+                </div>
+            </div>
+
             <!-- Children -->
             <div class="border-t border-slate-900 pt-4">
                 <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-children mr-2 text-amber-400"></i>Children</h2>
@@ -545,7 +601,7 @@
                 <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-chart-line mr-2 text-indigo-400"></i>Macro Inputs</h2>
                 <div class="grid grid-cols-2 gap-3 mb-2">
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Nominal Return</label>
+                        <label class="block text-[11px] text-slate-400 mb-1">Nominal Return <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Annual growth rate applied to the whole portfolio (all five buckets, every year). If you keep a low-yield cash/short-term reserve, consider entering a slightly lower rate to reflect the blended return. <a onclick="openHelp('sec-assumptions')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §19 &rarr;</a></span></span></label>
                         <input type="number" id="roiNominal" value="6" step="0.1" class="mini-input">
                     </div>
                     <div>
@@ -701,7 +757,7 @@
                         <i class="fa-solid fa-table-cells mr-1.5"></i> Projections
                     </button>
                     <button id="btnTabSys" onclick="switchTab('sys')" class="pb-2 cursor-pointer text-slate-400 hover:text-white transition">
-                        <i class="fa-solid fa-gears mr-1.5"></i> Tax & Other Details
+                        <i class="fa-solid fa-gears mr-1.5"></i> Federal Tax Details
                     </button>
                 </div>
 
@@ -709,6 +765,7 @@
                 <div class="flex items-center flex-wrap gap-x-2 gap-y-2 grow justify-start lg:justify-end">
                     <div class="flex items-center gap-1.5">
                     <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1"><i class="fa-solid fa-table-columns mr-1"></i> Show Detail:</span>
+                    <button onclick="toggleColumnGroup('grpCombined')" id="btnHide_grpCombined" class="bg-blue-600 border border-blue-500 text-white font-medium px-2.5 py-1 rounded text-[11px] cursor-pointer transition" title="Show or hide the Household Summary columns. Hide it to focus on a single detail bucket without scrolling.">Household</button>
                     <button onclick="toggleColumnGroup('grpTrad')" id="btnHide_grpTrad" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer">Traditional</button>
                     <button onclick="toggleColumnGroup('grpRoth')" id="btnHide_grpRoth" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer">Roth</button>
                     <button onclick="toggleColumnGroup('grpBrok')" id="btnHide_grpBrok" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer">Brokerage</button>
@@ -724,9 +781,8 @@
                     </div>
                     </div>
 
-                    <div id="horizonToggleContainer" class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800">
-                        <button id="btnViewCondensed" onclick="setViewMode('condensed')" class="text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition">Condensed</button>
-                        <button id="btnViewFull" onclick="setViewMode('full')" class="text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition">Full View</button>
+                    <div id="horizonToggleContainer" class="flex items-center">
+                        <button id="btnViewToggle" onclick="toggleViewMode()" title="Toggle between showing every year and condensing to every 5th year after age 65" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer inline-flex items-center gap-1.5"><i id="btnViewIcon" class="fa-solid fa-list"></i><span id="btnViewLabel">All years</span></button>
                     </div>
                 </div>
             </div>
@@ -816,23 +872,11 @@
 
                 <div class="glass-panel p-5 rounded-xl border border-slate-800">
                     <h3 class="text-xs font-bold text-white heading-font border-b border-slate-800 pb-2 mb-3 uppercase tracking-wider">
-                        <i class="fa-solid fa-percent text-emerald-400 mr-2"></i>LTCG and Local Taxes
+                        <i class="fa-solid fa-percent text-emerald-400 mr-2"></i>LTCG Brackets
                     </h3>
                     <p class="text-[10px] text-slate-500 mb-2">Stacked on top of ordinary income (taxable income determines bracket).</p>
                     <div id="ltcgRows" class="space-y-1.5 text-xs text-slate-400 mb-3"></div>
                     <div class="pt-3 border-t border-slate-900 space-y-2">
-                        <div>
-                            <label class="block mb-1">State Tax (%)</label>
-                            <input type="number" id="stateRate" value="2.90" step="0.01" class="mini-input w-full text-right">
-                        </div>
-                        <div>
-                            <label class="block mb-1">County/Local Tax (%)</label>
-                            <input type="number" id="countyRate" value="1.5" step="0.01" class="mini-input w-full text-right">
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>State Exempts Social Security <span class="text-[10px] text-slate-500">(many states: yes) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Whether your state taxes Social Security. Many states don't, in which case SS is removed from the state/local tax base. <a onclick="openHelp('sec-tax')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §12 &rarr;</a></span></span></span></span>
-                            <input type="checkbox" id="stateExemptsSS" checked class="w-4 h-4 accent-blue-500">
-                        </div>
                         <div>
                             <label class="block mb-1">Federal Poverty Level — 1st Person <span class="text-[10px] text-slate-500">(prior-yr FPL, for ACA)</span></label>
                             <input type="text" inputmode="decimal" data-money="true" id="fplFirstPerson" value="15650" class="mini-input w-full text-right">
@@ -840,14 +884,6 @@
                         <div>
                             <label class="block mb-1">FPL — Each Additional Person</label>
                             <input type="text" inputmode="decimal" data-money="true" id="fplAddlPerson" value="5500" class="mini-input w-full text-right">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Heir's Tax Rate on Inherited Traditional (%) <span class="text-[10px] text-slate-500">(for After-Tax Legacy)</span> <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">The ordinary tax rate your heirs pay draining an inherited Traditional account (SECURE Act 10-year rule). Drives the After-Tax Legacy KPI. <a onclick="openHelp('sec-kpis')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §4 &rarr;</a></span></span></label>
-                            <input type="number" id="heirTaxRate" value="28" min="0" max="60" class="mini-input w-full text-right">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Heir's Tax Rate on Inherited HSA (%)</label>
-                            <input type="number" id="heirHsaTaxRate" value="28" min="0" max="60" class="mini-input w-full text-right">
                         </div>
                     </div>
                 </div>
@@ -869,18 +905,74 @@
     </div>
 
     <script>
-        let viewMode = 'condensed';
+        let viewMode = 'full';   // default to showing all years
         let dollarMode = 'today'; // default to today's (inflation-adjusted) dollars
         let sidebarHidden = false;
-        let visibleGroups = {};
+        let visibleGroups = { grpCombined: true };   // Combined/Household defaults ON (hideable)
 
         // ---------- Editable defaults (rendered into inputs at load) ----------
-        let rmdTable = {
-            72: 27.4, 73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1, 80: 20.2,
-            81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4, 88: 13.7, 89: 12.9,
-            90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5, 95: 8.9, 96: 8.4, 97: 7.8, 98: 7.3,
-            99: 6.8, 100: 6.4
+        // ============================================================================
+        //  IRS_2026 — CENTRALIZED STATUTORY CONSTANTS (single source of truth)  [MFJ build]
+        // ----------------------------------------------------------------------------
+        //  Every figure the IRS sets annually lives here. To update for a new tax year:
+        //    1. Change the values below and bump `taxYear`.
+        //    2. Update the matching expected values in test-suite.html (Tier 3).
+        //    3. Re-run the test suite; all green = safe.
+        //  User-specific inputs (state/county tax %, cost basis, dividend yield, ROI,
+        //  inflation) are NOT here — those vary by person, not by IRS rule.
+        //  Editable Tax-tab tables (brackets, LTCG, RMD divisors) initialize FROM this block
+        //  but remain user-editable; IRS_2026 is their default source.
+        // ============================================================================
+        const IRS_2026 = {
+            taxYear: 2026,
+
+            // --- MFJ ordinary income brackets ("from" = lower edge of each marginal rate) ---
+            mfjOrdinary: [
+                { from: 0, rate: 10 }, { from: 24800, rate: 12 }, { from: 100800, rate: 22 },
+                { from: 211400, rate: 24 }, { from: 403550, rate: 32 }, { from: 512450, rate: 35 },
+                { from: 768700, rate: 37 }
+            ],
+            // --- MFJ long-term capital gains breakpoints ---
+            mfjLtcg: [ { from: 0, rate: 0 }, { from: 98900, rate: 15 }, { from: 613700, rate: 20 } ],
+
+            // --- Standard deduction (MFJ) ---
+            stdDedMfj: 32200,
+
+            // --- IRMAA tiers (MFJ MAGI thresholds; per-person annual Part B + Part D surcharge) ---
+            irmaaTiers: [
+                { from: 218000, annual: 1148 }, { from: 274000, annual: 2885 },
+                { from: 342000, annual: 4620 }, { from: 410000, annual: 6355 },
+                { from: 750000, annual: 6936 }
+            ],
+
+            // --- Contribution limits (base, before catch-ups) — PER PERSON ---
+            elective401k: 24500,      // employee elective deferral (Traditional or Roth 401k)
+            totalAddition: 72000,     // total 401(k) addition limit; after-tax headroom funds mega-backdoor
+            iraLimit: 7500,           // Traditional/Roth IRA base (2026); backdoor Roth for high earners
+            iraCatchup: 1100,         // extra IRA at age 50+ (2026)
+            hsaFamily: 8750,          // HSA family-coverage max (couple under one family plan)
+
+            // --- 401(k) catch-up (per person; added by the engine when the toggle is on AND old
+            //     enough). SECURE 2.0 "super catch-up" (ages 60-63) REPLACES the standard $8,000. ---
+            catchup401k: 8000,        // standard, age 50+
+            catchupHsa: 1000,         // extra HSA at age 55+
+            catchupAge401k: 50,
+            catchupAgeHsa: 55,
+            superCatchup401k: 11250,  // ages 60-63 (replaces standard)
+            superCatchupAgeStart: 60,
+            superCatchupAgeEnd: 63,
+
+            // --- RMD Uniform Lifetime divisors (RMD = Traditional balance / divisor) ---
+            rmdDivisors: {
+                72: 27.4, 73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1, 80: 20.2,
+                81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4, 88: 13.7, 89: 12.9,
+                90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5, 95: 8.9, 96: 8.4, 97: 7.8, 98: 7.3,
+                99: 6.8, 100: 6.4
+            }
         };
+        window.IRS_2026 = IRS_2026;   // expose for the test suite (read-only validation)
+
+        let rmdTable = Object.assign({}, IRS_2026.rmdDivisors);
 
         // 2026 ACA applicable percentages (post-ARPA statutory schedule): share of MAGI a
         // household contributes toward the benchmark plan, by FPL-ratio band, linearly
@@ -907,29 +999,12 @@
         // 2026 IRMAA tiers (MFJ MAGI thresholds; per-person ANNUAL Part B + Part D surcharge).
         // Thresholds and surcharges are inflation-indexed in the engine; Single filing uses
         // half the MFJ thresholds (applied via the survivor filing scale).
-        const IRMAA_TIERS = [
-            { from: 218000, annual: 1148 },
-            { from: 274000, annual: 2885 },
-            { from: 342000, annual: 4620 },
-            { from: 410000, annual: 6355 },
-            { from: 750000, annual: 6936 }
-        ];
+        const IRMAA_TIERS = IRS_2026.irmaaTiers;
 
-        let ordinaryBrackets = [
-            { from: 0, rate: 10 },
-            { from: 24800, rate: 12 },
-            { from: 100800, rate: 22 },
-            { from: 211400, rate: 24 },
-            { from: 403550, rate: 32 },
-            { from: 512450, rate: 35 },
-            { from: 768700, rate: 37 }
-        ];
+        // Editable in the Tax tab; initialized from IRS_2026 (single source of truth).
+        let ordinaryBrackets = JSON.parse(JSON.stringify(IRS_2026.mfjOrdinary));
 
-        let ltcgBrackets = [
-            { from: 0, rate: 0 },
-            { from: 98900, rate: 15 },
-            { from: 613700, rate: 20 }
-        ];
+        let ltcgBrackets = JSON.parse(JSON.stringify(IRS_2026.mfjLtcg));
 
         let childGiftingProfile = {
             2038: 100000, 2039: 200000, 2040: 250000, 2041: 100000, 2042: 200000, 2043: 250000
@@ -954,13 +1029,37 @@
             'hFullAge', 'wFullAge', 'hSemiInc1099', 'wSemiInc1099', 'contTrad', 'contRoth', 'contBrok', 'contHsa', 'cont529',
             'catchUpToggle', 'coveredContribPct', 'poolTrad', 'poolRoth', 'poolBrok', 'poolHsa', 'pool529', 'brokBasisPct', 'brokDivYield', 'brokDivQualifiedPct',
             'withdrawalSeq', 'netDistribution', 'pctDistribution', 'distModel', 'healthcareCost', 'medicareCost',
-            'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle', 'fplFirstPerson', 'fplAddlPerson', 'heirTaxRate', 'heirHsaTaxRate',
+            'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle',
             'rmdAge', 'rothConvToggle', 'rothConvStartAge', 'rothConvMethod', 'rothConvBracketCap', 'rothConvFixedAmt',
             'ssToggle', 'hSsAge', 'wSsAge', 'hSsAmount', 'wSsAmount', 'ssCola', 'ssTaxablePct',
-            'roiNominal', 'inflationRate', 'stdDeduction', 'stateRate', 'countyRate', 'stateExemptsSS',
+            'roiNominal', 'inflationRate', 'stateRate', 'countyRate', 'stateExemptsSS', 'heirTaxRate', 'heirHsaTaxRate',
             'survivorToggle', 'survivorFirstToDie', 'survivorDeathAge', 'survivorSpendPct',
             'chartIncludeHsa', 'chartInclude529', 'growthConvention'
         ];
+
+        // DEV-TIME SAFETY CHECK: warns (console only) if any profile input isn't registered in
+        // inputIds, so newly-added left-panel fields can't silently fall out of Export/Import.
+        // Tool parameters that are intentionally NOT part of a saved profile (they describe how to
+        // RUN an analysis, not the financial setup) are excluded here so the check doesn't cry wolf.
+        const EXPORT_CHECK_IGNORE = new Set([
+            'importFileInput', 'helpSearch',
+            'scenarioAName', 'scenarioBName',                                   // A/B compare labels
+            'mcMethod', 'mcRuns', 'mcVol', 'mcStressMode',                      // Monte Carlo run params
+            'solveTarget', 'solveScaleScope', 'solveCushionOn', 'solveCushion', // Solve-For tool params
+            'stdDeduction', 'fplFirstPerson', 'fplAddlPerson'                   // federal law (Federal Tax Details tab) — comes from IRS_2026, never a saved profile
+        ]);
+        function checkExportCoverage() {
+            const registered = new Set(inputIds);
+            const missing = [];
+            document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+                if (el.type === 'file') return;
+                if (EXPORT_CHECK_IGNORE.has(el.id)) return;
+                if (!registered.has(el.id)) missing.push(el.id);
+            });
+            if (missing.length) {
+                console.warn('[Export coverage] These inputs are NOT saved by Export Profile. Add them to inputIds, or to EXPORT_CHECK_IGNORE if intentional:', missing);
+            }
+        }
 
         // ---------- Bootstrapping editable tables ----------
         function renderBracketRows() {
@@ -1245,6 +1344,17 @@
             el.addEventListener('change', triggerRecalculate);
         });
 
+        // Federal statutory scalar fields (Standard Deduction, FPL) are deliberately kept OUT of
+        // inputIds so they're never written to an exported profile — federal law comes from IRS_2026.
+        // But they ARE editable and feed the engine, so they still need to live-recalculate when
+        // edited. Wire recalc listeners here (without adding them to the export set).
+        ['stdDeduction', 'fplFirstPerson', 'fplAddlPerson'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', triggerRecalculate);
+            el.addEventListener('change', triggerRecalculate);
+        });
+
         let colorTheme = 'light';
         function toggleColorTheme() {
             colorTheme = (colorTheme === 'dark') ? 'light' : 'dark';
@@ -1290,10 +1400,14 @@
         }
 
         function applyColumnGroupVisibility() {
-            // Combined group is always visible (not user-toggleable); detail groups default OFF unless explicitly shown
-            ['grpTrad', 'grpRoth', 'grpBrok', 'grpHsa'].forEach(groupKey => {
+            // Combined/Household defaults ON but is now user-toggleable; detail groups default OFF.
+            ['grpCombined', 'grpTrad', 'grpRoth', 'grpBrok', 'grpHsa'].forEach(groupKey => {
                 const cells = document.querySelectorAll(`[data-group="${groupKey}"]`);
                 cells.forEach(c => { c.style.display = visibleGroups[groupKey] ? '' : 'none'; });
+                const btn = document.getElementById('btnHide_' + groupKey);
+                if (btn) btn.className = visibleGroups[groupKey]
+                    ? 'bg-blue-600 border border-blue-500 text-white font-medium px-2.5 py-1 rounded text-[11px] cursor-pointer transition'
+                    : 'bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 cursor-pointer transition';
             });
         }
 
@@ -1334,9 +1448,18 @@
 
         function setViewMode(mode) {
             viewMode = mode;
-            document.getElementById('btnViewCondensed').className = mode === 'condensed' ? 'text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition' : 'text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition';
-            document.getElementById('btnViewFull').className = mode === 'full' ? 'text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition' : 'text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition';
+            const label = document.getElementById('btnViewLabel');
+            const icon = document.getElementById('btnViewIcon');
+            if (label && icon) {
+                // The button shows the CURRENT state so it doubles as a status indicator.
+                if (mode === 'full') { label.textContent = 'All years'; icon.className = 'fa-solid fa-list'; }
+                else { label.textContent = 'Every 5 yrs (65+)'; icon.className = 'fa-solid fa-list-ul'; }
+            }
             triggerRecalculate();
+        }
+
+        function toggleViewMode() {
+            setViewMode(viewMode === 'full' ? 'condensed' : 'full');
         }
 
         function setDollarMode(mode) {
@@ -1376,8 +1499,82 @@
         }
 
         // ---------- MAIN ENGINE ----------
+        // Fill the combined-household contribution inputs to this year's BASE IRS limits (no catch-ups
+        // — the Catch-Up toggle adds those per spouse by age during the projection, so including them
+        // here would double-count). MFJ: 401(k) and IRA limits are PER PERSON, so doubled for two
+        // spouses; the mega-backdoor headroom is also per person. HSA uses the FAMILY-coverage max
+        // (one family plan covers both spouses — NOT doubled). Brokerage and 529 are left untouched.
+        function fillMaxContributions() {
+            const trad = 2 * IRS_2026.elective401k;                                    // both spouses' elective
+            const rothPerSpouse = (IRS_2026.totalAddition - IRS_2026.elective401k)      // mega-backdoor headroom
+                                  + IRS_2026.iraLimit;                                  // + backdoor Roth IRA
+            const roth = 2 * rothPerSpouse;                                            // both spouses
+            const hsa = IRS_2026.hsaFamily;                                            // family coverage (not doubled)
+            const setVal = (id, v) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.value = String(v);
+                if (typeof formatMoneyInput === 'function') formatMoneyInput(el);
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            };
+            setVal('contTrad', trad);
+            setVal('contRoth', roth);
+            setVal('contHsa', hsa);
+            triggerRecalculate();
+        }
+
+        // Populate the Catch-Up tooltip bubble with a live per-spouse breakdown. Shows each spouse's
+        // 401(k) + IRA catch-up (all -> Roth per the 2026 high-earner rule) and HSA catch-up, based on
+        // each spouse's CURRENT age (this year), plus the resulting Roth/HSA totals. Amounts shift as
+        // spouses cross the 50 / 55 / 60-63 / 64 bands over the projection; the bubble reflects "now".
+        function updateCatchupTip() {
+            const el = document.getElementById('catchupTipContent');
+            if (!el) return;
+            const on = document.getElementById('catchUpToggle')?.checked;
+            const helpLink = '<a onclick="openHelp(\'sec-inputs\')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §3 &rarr;</a>';
+            if (!on) {
+                el.innerHTML = 'Adds each spouse\'s IRS catch-up once eligible: extra 401k/IRA at 50+ (all to Roth under the 2026 high-earner rule), extra HSA at 55+. Toggle on to see the live per-spouse amounts. ' + helpLink;
+                return;
+            }
+            const nowYear = 2026;
+            const hAge = nowYear - (parseInt(document.getElementById('hBirthYear').value) || 1980);
+            const wAge = nowYear - (parseInt(document.getElementById('wBirthYear').value) || 1983);
+            const c401k = (age) => age < IRS_2026.catchupAge401k ? 0 : (age >= IRS_2026.superCatchupAgeStart && age <= IRS_2026.superCatchupAgeEnd ? IRS_2026.superCatchup401k : IRS_2026.catchup401k);
+            const cIra = (age) => age >= IRS_2026.catchupAge401k ? IRS_2026.iraCatchup : 0;
+            const cHsa = (age) => age >= IRS_2026.catchupAgeHsa ? IRS_2026.catchupHsa : 0;
+            const fmt = (v) => '$' + Math.round(v).toLocaleString();
+            const band = (age) => age < 50 ? 'under 50' : (age <= 59 ? '50\u201359' : (age <= 63 ? '60\u201363 super' : '64+'));
+
+            const baseRoth = parseFloat(cleanNum(document.getElementById('contRoth').value)) || 0;
+            const baseHsa = parseFloat(cleanNum(document.getElementById('contHsa').value)) || 0;
+
+            const spouseLine = (label, age) => {
+                const k = c401k(age), ira = cIra(age), sum = k + ira;
+                if (sum === 0) return `&bull; ${label} (age ${age}, ${band(age)}): no retirement catch-up yet`;
+                return `&bull; ${label} (age ${age}, ${band(age)}): ${fmt(k)} 401k + ${fmt(ira)} IRA = ${fmt(sum)}`;
+            };
+            const rothAdd = c401k(hAge) + cIra(hAge) + c401k(wAge) + cIra(wAge);
+            const hsaAdd = cHsa(hAge) + cHsa(wAge);
+            const rothFunded = baseRoth > 0;
+            const hsaFunded = baseHsa > 0;
+
+            let html = `<div class="font-semibold mb-1" style="color:var(--text-primary)">Catch-up now &mdash; H age ${hAge} / W age ${wAge}</div>`;
+            html += `<div class="mb-1"><span style="color:var(--text-primary)">Roth</span> (401k + IRA catch-up, per 2026 high-earner rule):</div>`;
+            html += `<div>${spouseLine('H', hAge)}</div><div>${spouseLine('W', wAge)}</div>`;
+            if (rothAdd > 0 && !rothFunded) html += `<div class="mt-0.5" style="color:var(--text-muted)">Roth base is $0 &mdash; no retirement catch-up applies (nothing being funded to Roth).</div>`;
+            else if (rothAdd > 0) html += `<div class="mt-0.5" style="color:#059669">Added: +${fmt(rothAdd)} &rarr; Roth total ${fmt(baseRoth + rothAdd)}</div>`;
+            else html += `<div class="mt-0.5">No Roth catch-up yet (neither spouse 50+).</div>`;
+            // HSA
+            if (hsaAdd > 0 && !hsaFunded) html += `<div class="mt-1"><span style="color:var(--text-primary)">HSA</span>: base is $0 &mdash; no HSA catch-up applies (HSA not being funded).</div>`;
+            else if (hsaAdd > 0) html += `<div class="mt-1"><span style="color:var(--text-primary)">HSA</span>: +${fmt(hsaAdd)} (${cHsa(hAge)>0?'H':''}${cHsa(hAge)>0&&cHsa(wAge)>0?' &amp; ':''}${cHsa(wAge)>0?'W':''} 55+) &rarr; HSA total ${fmt(baseHsa + hsaAdd)}</div>`;
+            else html += `<div class="mt-1"><span style="color:var(--text-primary)">HSA</span>: no catch-up (neither spouse 55+).</div>`;
+            html += `<div class="mt-1 text-slate-500" style="font-style:italic">Amounts shift as each spouse crosses the 50 / 55 / 60&ndash;63 / 64 bands. ${helpLink}</div>`;
+            el.innerHTML = html;
+        }
+
         function triggerRecalculate() {
             if (typeof refreshAutoRothConvLabel === 'function') refreshAutoRothConvLabel();
+            if (typeof updateCatchupTip === 'function') updateCatchupTip();
             const hBirthYear = parseInt(document.getElementById('hBirthYear').value) || 1979;
             const wBirthYear = parseInt(document.getElementById('wBirthYear').value) || 1982;
             const targetEol = parseInt(document.getElementById('targetEol').value) || 95;
@@ -1393,6 +1590,29 @@
             const baseContBrok = parseFloat(cleanNum(document.getElementById('contBrok').value)) || 0;
             const baseContHsa = parseFloat(cleanNum(document.getElementById('contHsa').value)) || 0;
             const baseCont529 = parseFloat(cleanNum(document.getElementById('cont529').value)) || 0;
+            // 529 "smart stop": contribute each year only while the current 529 balance is still short
+            // of the TOTAL REMAINING tuition (all children, undergrad + grad, from a given year
+            // forward, each future year's cost inflated to that year — mirroring the tuition-burn
+            // billing below exactly). Once the balance covers everything left, contributions stop.
+            // With no children modeled, remaining tuition is 0, so contributions never flow.
+            const remainingTuitionFrom = (fromYear) => {
+                let total = 0;
+                childrenProfiles.forEach(child => {
+                    const ugStart = child.birthYear + 18;
+                    const ugEnd = ugStart + child.undergradYears;
+                    for (let y = Math.max(fromYear, ugStart); y < ugEnd; y++) {
+                        total += child.undergradCost * Math.pow(1 + inf, y - startYear);
+                    }
+                    if (child.gradEnabled) {
+                        const gStart = ugEnd;
+                        const gEnd = gStart + child.gradYears;
+                        for (let y = Math.max(fromYear, gStart); y < gEnd; y++) {
+                            total += child.gradCost * Math.pow(1 + inf, y - startYear);
+                        }
+                    }
+                });
+                return total;
+            };
             const catchUpOn = document.getElementById('catchUpToggle').checked;
             const coveredContribFactor = Math.min(1, Math.max(0, (parseFloat(document.getElementById('coveredContribPct').value) || 0) / 100));
 
@@ -1491,10 +1711,30 @@
             let brokDepletedYear = null;
             let kpi529Underfunded = false;
             let chartSeries = [];
-            const startYear = 2026;
+            // Projection starts in the actual current calendar year (was hard-coded to 2026).
+            const startYear = new Date().getFullYear();
+            // Current-year contribution proration: the balances the user enters are "as of today",
+            // so they already contain this year's year-to-date contributions. To avoid double-counting,
+            // the FIRST projection year adds only the fraction of annual contributions still remaining.
+            // Fraction excludes the current month (conservative, and the current month's contribution is
+            // assumed already partly in the entered balance). Full years thereafter are unaffected.
+            const currentMonth = new Date().getMonth() + 1;                 // 1-12
+            const currentYearContribFraction = Math.max(0, (12 - currentMonth) / 12);
 
-            const CATCHUP_TRAD_ROTH = 8000;
-            const CATCHUP_HSA = 1000;
+            const CATCHUP_TRAD_ROTH = IRS_2026.catchup401k;
+            const CATCHUP_HSA = IRS_2026.catchupHsa;
+
+            // Per-person 401(k) catch-up by age: SECURE 2.0 super catch-up ($11,250) replaces the
+            // standard ($8,000) for ages 60-63, reverting to standard at 64; $0 below 50.
+            const catchup401kForAge = (age) => {
+                if (age < IRS_2026.catchupAge401k) return 0;
+                if (age >= IRS_2026.superCatchupAgeStart && age <= IRS_2026.superCatchupAgeEnd) return IRS_2026.superCatchup401k;
+                return IRS_2026.catchup401k;
+            };
+            // Per-person IRA catch-up by age: flat extra at 50+ (2026 = $1,100), else $0.
+            const catchupIraForAge = (age) => (age >= IRS_2026.catchupAge401k ? IRS_2026.iraCatchup : 0);
+            // Per-person HSA catch-up by age: flat extra at 55+ ($1,000), else $0.
+            const catchupHsaForAge = (age) => (age >= IRS_2026.catchupAgeHsa ? IRS_2026.catchupHsa : 0);
 
             for (let i = 0; i <= 80; i++) {
                 let currentYear = startYear + i;
@@ -1557,14 +1797,35 @@
                 // ---- Contributions (accumulation phase only) ----
                 let tradCont = 0, rothCont = 0, brokCont = 0, hsaCont = 0, f529Cont = 0;
                 if (isSaving || isCovered) {
-                    const contribFactor = isCovered ? coveredContribFactor : 1;
-                    let catchupTradRoth = (catchUpOn && (hAge >= 50 || wAge >= 50)) ? CATCHUP_TRAD_ROTH * infScale : 0;
-                    let catchupHsa = (catchUpOn && (hAge >= 55 || wAge >= 55)) ? CATCHUP_HSA * infScale : 0;
-                    tradCont = (baseContTrad * infScale + catchupTradRoth * 0.5) * contribFactor;
-                    rothCont = (baseContRoth * infScale + catchupTradRoth * 0.5) * contribFactor;
+                    // In the first projection year (the current calendar year), scale contributions by
+                    // the fraction of the year still remaining — the entered balances already include
+                    // this year's contributions-to-date, so only the remainder is added. Full years
+                    // (i > 0) are unaffected. Only applies while contributions flow (accumulation/covered).
+                    const yearFraction = (i === 0) ? currentYearContribFraction : 1;
+                    const contribFactor = (isCovered ? coveredContribFactor : 1) * yearFraction;
+                    // Per-spouse catch-ups, each by that spouse's OWN age, summed across both spouses.
+                    // Per the 2026 high-earner rule, 401(k) catch-up must be Roth — so BOTH the 401(k)
+                    // catch-up and the IRA catch-up land in the Roth bucket (Traditional gets no
+                    // catch-up). HSA catch-up ($1,000/person at 55+) stays in the HSA bucket.
+                    // A catch-up only applies if the account it funds is actually being funded: the
+                    // retirement (401k+IRA) catch-up requires a Roth base > 0 (that's where it lands),
+                    // and the HSA catch-up requires an HSA base > 0. Zeroing a base means you're not
+                    // using that account, so no catch-up rides on it.
+                    const rothFunded = baseContRoth > 0;
+                    const hsaFunded = baseContHsa > 0;
+                    let catchup401k = (catchUpOn && rothFunded) ? (catchup401kForAge(hAge) + catchup401kForAge(wAge)) * infScale : 0;
+                    let catchupIra = (catchUpOn && rothFunded) ? (catchupIraForAge(hAge) + catchupIraForAge(wAge)) * infScale : 0;
+                    let catchupHsa = (catchUpOn && hsaFunded) ? (catchupHsaForAge(hAge) + catchupHsaForAge(wAge)) * infScale : 0;
+                    let rothCatchup = catchup401k + catchupIra;   // all catch-up retirement $ -> Roth
+                    tradCont = (baseContTrad * infScale) * contribFactor;
+                    rothCont = (baseContRoth * infScale + rothCatchup) * contribFactor;
                     brokCont = (baseContBrok * infScale) * contribFactor;
                     hsaCont = (baseContHsa * infScale + catchupHsa) * contribFactor;
-                    f529Cont = (baseCont529 * infScale) * contribFactor;
+                    // 529 smart-stop: contribute only while the current balance is short of the total
+                    // remaining tuition (undergrad+grad, all kids, from this year forward). f529 here
+                    // is the balance BEFORE this year's contribution/growth — the conservative check.
+                    const remainingTuition = remainingTuitionFrom(currentYear);
+                    f529Cont = (f529 < remainingTuition) ? (baseCont529 * infScale) * contribFactor : 0;
                 }
                 brokBasis += brokCont;
 
@@ -1981,7 +2242,7 @@
                             ${currentYear} <span class="text-slate-400 text-[9px] block">${ageLabel}</span>
                         </td>
                         <td class="p-2 text-slate-400 font-semibold font-mono bg-slate-900/10" data-group="grpCombined">${c(combStart)}</td>
-                        <td class="p-2 text-emerald-500 font-mono" data-group="grpCombined">${c(combCont)}</td>
+                        <td class="p-2 text-emerald-500 font-mono" data-group="grpCombined">${c(combCont)}${(i === 0 && currentYearContribFraction < 1 && combCont > 0) ? `<span class="block text-[9px] text-amber-500 font-sans cursor-help" title="Partial first year: contributions are prorated to the ${Math.round(currentYearContribFraction*12)} month(s) left in ${currentYear}, since the balances you entered are assumed to already include this year's contributions-to-date. Full years follow.">◐ prorated ${Math.round(currentYearContribFraction*100)}%</span>` : ''}</td>
                         <td class="p-2 text-blue-400 font-mono" data-group="grpCombined">${c(combGrow)}</td>
                         <td class="p-2 text-cyan-400 font-semibold font-mono" data-group="grpCombined">${c(plannedTargetDraw)}</td>
                         <td class="p-2 text-red-400 font-mono" data-group="grpCombined">${c(totalHealthcareCost)}${acaSubsidyFinal > 0.5 ? `<span class="block text-[9px] text-emerald-500">−${c(acaSubsidyFinal)} ACA</span>` : ''}${irmaaSurcharge > 0.5 ? `<span class="block text-[9px] text-red-500">+${c(irmaaSurcharge)} IRMAA</span>` : ''}</td>
@@ -2284,8 +2545,57 @@
             if (tip) tip.classList.add('hidden');
         }
 
+        // Styled in-app banner for profile import/export feedback.
+        // kind: 'error' (red, stays until dismissed) | 'success' (green, self-dismisses)
+        // First-visit Help coach-mark. Persists dismissal in localStorage (works on the real
+        // deployed site). Shown once; never nags a returning user who dismissed it.
+        function dismissHelpCoach(persist) {
+            const c = document.getElementById('helpCoach');
+            if (c) c.style.display = 'none';
+            const btn = document.getElementById('helpNavBtn');
+            if (btn) btn.classList.remove('pz-help-glow');
+            if (persist) { try { localStorage.setItem('pzHelpCoachSeen', '1'); } catch (e) {} }
+        }
+        function maybeShowHelpCoach() {
+            let seen = false;
+            try { seen = localStorage.getItem('pzHelpCoachSeen') === '1'; } catch (e) {}
+            if (seen) return;
+            const c = document.getElementById('helpCoach');
+            const btn = document.getElementById('helpNavBtn');
+            if (c) c.style.display = 'block';
+            if (btn) btn.classList.add('pz-help-glow');
+        }
+        // If the user opens Help directly, treat the nudge as satisfied.
+        (function(){ const orig = window.openHelp; if (typeof orig === 'function') { window.openHelp = function(){ dismissHelpCoach(true); return orig.apply(this, arguments); }; } })();
+
+        function showProfileBanner(kind, titleHtml, bodyHtml) {
+            const host = document.getElementById('profileBannerHost');
+            if (!host) return;
+            const isErr = kind === 'error';
+            const el = document.createElement('div');
+            // Solid, opaque, high-contrast card (no transparency/blur bleed-through) so it stays
+            // readable over any content behind it, in both light and dark themes.
+            el.style.cssText = `pointer-events:auto;border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;`
+                + `background:${isErr ? '#7f1d1d' : '#14532d'};`
+                + `border:1px solid ${isErr ? '#b91c1c' : '#16a34a'};`
+                + `box-shadow:0 12px 40px rgba(0,0,0,.5);`
+                + `animation:pzBannerIn .22s ease;font-size:13px;line-height:1.55;`;
+            const icon = isErr ? 'fa-triangle-exclamation' : 'fa-circle-check';
+            const iconColor = isErr ? '#fca5a5' : '#86efac';
+            el.innerHTML = `<i class="fa-solid ${icon}" style="color:${iconColor};font-size:18px;margin-top:1px;flex:none"></i>`
+                + `<div style="flex:1;min-width:0">`
+                + (titleHtml ? `<p style="font-weight:700;margin:0 0 4px;color:#ffffff;font-size:14px">${titleHtml}</p>` : '')
+                + `<p style="margin:0;color:${isErr ? '#fee2e2' : '#dcfce7'}">${bodyHtml}</p></div>`
+                + (isErr ? `<button aria-label="Dismiss" style="flex:none;background:none;border:none;color:#fca5a5;cursor:pointer;font-size:16px;padding:0 2px;line-height:1" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>` : '');
+            host.appendChild(el);
+            if (!isErr) {
+                setTimeout(() => { el.style.transition = 'opacity .4s, transform .4s'; el.style.opacity = '0'; el.style.transform = 'translateY(-6px)'; setTimeout(() => el.remove(), 400); }, 3200);
+            }
+            return el;
+        }
+
         function exportConfig() {
-            const snapshot = { __type: 'retirement-simulation-profile', __version: 1, exportedAt: new Date().toISOString() };
+            const snapshot = { __type: 'retirement-simulation-profile', __filingStatus: 'mfj', __version: 1, exportedAt: new Date().toISOString() };
 
             // All sidebar/tab field values
             snapshot.inputs = {};
@@ -2295,12 +2605,13 @@
                 snapshot.inputs[id] = el.type === 'checkbox' ? el.checked : cleanNum(el.value);
             });
 
-            // Editable JS-side tables
+            // Editable JS-side tables. NOTE: the federal statutory tables (ordinary brackets, LTCG
+            // brackets, RMD divisors) are deliberately NOT exported — they are current tax law from
+            // IRS_2026, not personal profile data. Exporting them would let an old profile silently
+            // overwrite newer tax figures on import. On import they always come from the app's current
+            // IRS_2026. Only personal, non-statutory tables travel with the profile.
             snapshot.childGiftingProfile = childGiftingProfile;
             snapshot.childrenProfiles = childrenProfiles;
-            snapshot.rmdTable = rmdTable;
-            snapshot.ordinaryBrackets = ordinaryBrackets;
-            snapshot.ltcgBrackets = ltcgBrackets;
 
             // Display preferences, so the imported profile looks the same as when it was saved
             snapshot.preferences = { colorTheme, viewMode, dollarMode, visibleGroups };
@@ -2309,7 +2620,11 @@
             const blob = new Blob([configText], { type: 'text/plain' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'retirement_simulation_profile.txt';
+            // Timestamped filename (local time), e.g. p-zero-mfj-profile-2026-12-31-10-15.txt
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+            link.download = `p-zero-mfj-profile-${stamp}.txt`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -3035,12 +3350,21 @@
                 try {
                     snapshot = JSON.parse(e.target.result);
                 } catch (err) {
-                    alert('This file isn\'t a valid P-ZERO profile (could not parse).');
+                    showProfileBanner('error', "Can't import this file", "It isn't a valid P-ZERO profile (couldn't read it). Your current plan hasn't been changed.");
                     event.target.value = '';
                     return;
                 }
                 if (!snapshot || snapshot.__type !== 'retirement-simulation-profile') {
-                    alert('This file isn\'t a valid P-ZERO profile.');
+                    showProfileBanner('error', "Can't import this file", "It isn't a recognized P-ZERO profile. Your current plan hasn't been changed.");
+                    event.target.value = '';
+                    return;
+                }
+                // Filing-status guard: this is the MFJ app; reject Single/HoH (and flag-less) profiles.
+                if (snapshot.__filingStatus !== 'mfj') {
+                    const other = snapshot.__filingStatus === 'single-hoh'
+                        ? "This looks like a <strong style='color:#fff'>Single / HoH</strong> profile, but you're in the <strong style='color:#fff'>Married (MFJ)</strong> app. Open it in the Single / HoH version instead."
+                        : "This profile doesn't identify which app it's from, so it can't be safely loaded into the <strong style='color:#fff'>Married (MFJ)</strong> app. Re-export it from the app you created it in.";
+                    showProfileBanner('error', "Can't import this profile", other + " <span style='color:#fecaca'>Your current plan hasn't been changed.</span>");
                     event.target.value = '';
                     return;
                 }
@@ -3070,9 +3394,10 @@
                 // Restore editable JS-side tables, falling back to current state if the file is missing a section
                 if (snapshot.childGiftingProfile) childGiftingProfile = snapshot.childGiftingProfile;
                 if (snapshot.childrenProfiles) childrenProfiles = snapshot.childrenProfiles;
-                if (snapshot.rmdTable) rmdTable = snapshot.rmdTable;
-                if (snapshot.ordinaryBrackets) ordinaryBrackets = snapshot.ordinaryBrackets;
-                if (snapshot.ltcgBrackets) ltcgBrackets = snapshot.ltcgBrackets;
+                // Federal statutory tables (rmdTable, ordinaryBrackets, ltcgBrackets) are intentionally
+                // NOT restored from the imported file — the app's current IRS_2026 always wins, so an
+                // old profile can never silently downgrade the tax figures. (Older exports may still
+                // contain these keys; we deliberately ignore them.)
 
                 // Restore display preferences
                 if (snapshot.preferences) {
@@ -3085,7 +3410,7 @@
                     if (snapshot.preferences.viewMode) setViewMode(snapshot.preferences.viewMode);
                     if (snapshot.preferences.dollarMode) setDollarMode(snapshot.preferences.dollarMode);
                     if (snapshot.preferences.visibleGroups) {
-                        visibleGroups = {};
+                        visibleGroups = { grpCombined: true };
                         Object.keys(snapshot.preferences.visibleGroups).forEach(groupKey => {
                             if (snapshot.preferences.visibleGroups[groupKey]) toggleColumnGroup(groupKey);
                         });
@@ -3107,10 +3432,12 @@
                 syncStickyHeaderOffset();
 
                 event.target.value = ''; // reset file input so the same file can be re-imported later if needed
-                alert('Profile imported successfully.');
+                let savedWhen = '';
+                try { if (snapshot.exportedAt) { const d = new Date(snapshot.exportedAt); savedWhen = ' &mdash; <span style="color:#bbf7d0">saved ' + d.toLocaleString() + '</span>'; } } catch (e) {}
+                showProfileBanner('success', '', 'Profile loaded' + savedWhen + '. All inputs updated.');
             };
             reader.onerror = function() {
-                alert('Could not read that file.');
+                showProfileBanner('error', "Couldn't read that file", "Something went wrong opening it. Your current plan hasn't been changed.");
                 event.target.value = '';
             };
             reader.readAsText(file);
@@ -3144,7 +3471,7 @@
             childrenProfiles = JSON.parse(JSON.stringify(DEFAULT_CHILDREN_PROFILES));
 
             // Reset column detail visibility back to default (all detail groups hidden, Combined-only view)
-            visibleGroups = {};
+            visibleGroups = { grpCombined: true };
             ['grpTrad', 'grpRoth', 'grpBrok', 'grpHsa'].forEach(groupKey => {
                 const btn = document.getElementById('btnHide_' + groupKey);
                 if (btn) btn.className = "bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 cursor-pointer transition";
@@ -3152,7 +3479,7 @@
 
             // Reset dollar mode and view mode to defaults
             setDollarMode('today');
-            setViewMode('condensed');
+            setViewMode('full');
 
             // Re-render dynamic rows that mirror those tables
             renderBracketRows();
@@ -3194,6 +3521,9 @@
         }
 
         window.onload = function() {
+            const yrEl = document.getElementById('maxContribYear');
+            if (yrEl) yrEl.textContent = IRS_2026.taxYear;
+            if (typeof updateCatchupTip === 'function') updateCatchupTip();
             populateDropdownSelects();
             initMoneyInputFormatting();
             renderBracketRows();
@@ -3204,6 +3534,8 @@
             toggleRothConvInputs();
             triggerRecalculate();
             applyColumnGroupVisibility();
+            checkExportCoverage();   // dev-time warning if any input escapes Export Profile
+            maybeShowHelpCoach();    // first-visit nudge toward the Help docs
             syncStickyHeaderOffset();
             // Web fonts can shift header row height after the initial paint; re-measure once fonts are ready
             if (document.fonts && document.fonts.ready) {
@@ -3372,13 +3704,20 @@
                 <!-- 1. Overview -->
                 <section id="sec-overview">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-house mr-2"></i>1. Overview &amp; Purpose</h2>
-                    <p>P-ZERO is a <strong>deterministic, year-by-year retirement simulation engine</strong> for a married couple planning a phased early retirement. Starting from 2026, it projects the growth, drawdown, tax liability, and longevity of five asset pools — Traditional (pre-tax), Roth, Taxable Brokerage, HSA, and 529 — across a multi-decade horizon, through four life phases: full-time accumulation, a "covered" bridge when only one spouse has stepped down, semi-retirement (both on consulting income), and full retirement.</p>
+                    <p>P-ZERO is a <strong>deterministic, year-by-year retirement simulation engine</strong> for a married couple planning a phased early retirement. Starting from 2026, it projects the growth, drawdown, tax liability, and longevity of five asset pools — Traditional (pre-tax), Roth, Taxable Brokerage, HSA, and 529 — across a multi-decade horizon, through several life phases: full-time accumulation, a "covered" bridge when only one spouse has stepped down, semi-retirement (both on consulting income), full retirement, and an optional survivor scenario.</p>
                     <p class="mt-3">"Deterministic" means one fixed path: every year uses the same nominal return (default 6%) and the same inflation rate (default 3%). This makes each year's math fully traceable — you can pick any row and reconcile every dollar — which is the tool's core strength. The deterministic core does <em>not</em> model market volatility; a good year and a crash year look identical. To test that risk directly, the <strong>Monte Carlo</strong> tool (top nav) re-runs the whole plan hundreds of times over random return sequences — see Section 18.</p>
-                    <p class="mt-3">The engine runs each year through a consistent pipeline: determine life phase from each spouse's age &rarr; apply contributions (accumulation only) &rarr; compute forced RMDs &rarr; compute Roth conversions (bracket-filling) &rarr; pay tuition from 529 &rarr; pay healthcare from HSA &rarr; iteratively solve the tax-and-withdrawal loop (Section 8) &rarr; apply investment growth per your chosen timing convention (Section 17) &rarr; record the row.</p>
+                    <p class="mt-3">The engine runs each year through a consistent pipeline: determine life phase from each spouse's age &rarr; apply contributions (accumulation and, at a reduced rate, the covered phase) &rarr; compute forced RMDs &rarr; compute Roth conversions (bracket-filling) &rarr; pay tuition from 529 &rarr; pay healthcare from HSA &rarr; iteratively solve the tax-and-withdrawal loop (Section 8) &rarr; apply investment growth per your chosen timing convention (Section 17) &rarr; record the row.</p>
                     <p class="mt-3">Beyond the projection, four tools (top nav) help you act on it: <strong>Compare</strong> pins two plans side by side; <strong>Solve For</strong> inverts the model to find max spend, earliest retirement, or required portfolio; <strong>Monte Carlo</strong> stress-tests against random return sequences; and the seven KPI cards surface horizon, end wealth, after-tax legacy to heirs, lifetime tax, ACA subsidy, and 529 status. All are documented below.</p>
                     <p class="mt-3">The simulation runs entirely in your browser. No data is sent to any server; all calculations happen locally in JavaScript.</p>
-                    <div class="mt-4 rounded-lg p-4 border" style="background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.4)">
-                        <p class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation mt-1" style="color:#f59e0b"></i> <span><strong style="color:var(--text-primary)">Important — for illustration and educational purposes only.</strong> P-ZERO is a personal planning sandbox. It is <strong style="color:var(--text-primary)">not financial, tax, investment, or legal advice</strong>, and nothing here is a recommendation to take (or not take) any action. Every projection rests on simplified assumptions — a single fixed return, approximated tax tables, hand-entered historical data, and many modeling shortcuts documented in Sections 19 and 20 — so real-world outcomes <em>will</em> differ, potentially by a lot. Do not make financial decisions based on this tool. Consult a qualified financial advisor, CPA, or attorney about your individual circumstances before acting.</span></p>
+                    <div class="mt-4 rounded-lg p-4 border" style="background:rgba(59,130,246,0.07);border-color:rgba(59,130,246,0.35)">
+                        <p class="font-semibold mb-2" style="color:var(--text-primary)"><i class="fa-solid fa-user-group mr-2" style="color:#3b82f6"></i>About the examples in this guide</p>
+                        <p class="text-sm mb-2" style="color:var(--text-secondary)">Where a concrete example helps, this guide uses one hypothetical household. Unless noted, its figures are:</p>
+                        <ul class="text-sm space-y-1 list-disc pl-5" style="color:var(--text-secondary)">
+                            <li><strong style="color:var(--text-primary)">Husband</strong> born 1980, <strong style="color:var(--text-primary)">Wife</strong> born 1983</li>
+                            <li>Semi-retirement at <strong style="color:var(--text-primary)">55 / 52</strong>, full retirement at <strong style="color:var(--text-primary)">57 / 60</strong>, plan to age <strong style="color:var(--text-primary)">95</strong></li>
+                            <li>Contributions to all five buckets; two children in college later on</li>
+                        </ul>
+                        <p class="text-sm mt-2" style="color:var(--text-secondary)">These match the app's out-of-the-box settings, so with nothing changed the examples line up with what's on screen. They're only an illustration &mdash; <strong style="color:var(--text-primary)">your inputs may differ, and the explanations apply regardless of the numbers.</strong></p>
                     </div>
                 </section>
 
@@ -3393,7 +3732,7 @@
                     <div class="rounded-lg p-4 mt-4 border border-amber-300" style="background:var(--bg-base);">
                         <p class="font-semibold text-amber-600 mb-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Important: in Today's $ mode, a year's Ending balance will NOT equal the next year's Starting balance. This is correct behavior, not a bug.</p>
                         <p style="color:var(--text-secondary)">Internally the balances flow with perfect continuity: the nominal Ending balance of year N is <em>exactly</em> the nominal Starting balance of year N+1 (you can verify this by switching to Future $ mode, where the numbers match to the penny). But in Today's $ mode, year N's row is deflated by year N's inflation factor, while year N+1's row is deflated by year N+1's (larger) factor. The same nominal balance is therefore shown about 3% smaller in the next row — because a year of inflation has genuinely eroded its purchasing power.</p>
-                        <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Worked example (default inputs):</strong> 2026 ends with a nominal spendable balance of $3,030,623. In Future $ mode, 2027's Starting shows exactly $3,030,623. In Today's $ mode, 2027's Starting shows $2,942,352 — which is $3,030,623 &divide; 1.03. Nothing was lost; that money simply buys 3% less than it would have a year earlier.</p>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Say a year ends with a nominal spendable balance of $3,000,000. The next year's Starting balance is the same pile of money, so in Future $ mode it still shows $3,000,000. In Today's $ mode that identical figure instead shows $3,000,000 &divide; 1.03 &asymp; $2,912,621 (at 3% inflation). Nothing was lost &mdash; that money simply buys 3% less than a year earlier. Toggle Dollars on any row to watch the same balance convert by exactly one year of inflation.</div>
                         <p class="mt-2" style="color:var(--text-secondary)">This is an unavoidable property of real-dollar display: you can have <em>within-row</em> reconciliation (Starting + Contribs + Growth &minus; outflows = Ending, all at one year's price level) or <em>across-row</em> continuity, but not both. This tool preserves within-row reconciliation, which is what makes each year's math auditable.</p>
                     </div>
                     <p class="mt-3">Sidebar <em>inputs</em> (balances, contributions, spending targets, healthcare costs, gift amounts, tuition costs) are always entered in <strong>today's dollars</strong> and are inflated internally to the nominal amount for the year they apply. The one exception is starting balances, which are 2026 dollars by definition (today = 2026 in this model).</p>
@@ -3406,23 +3745,23 @@
                         <div>
                             <h3 class="font-semibold text-base mb-1">Household Core</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li><strong style="color:var(--text-primary)">Birth month/year (H &amp; W):</strong> Defaults: Husband Oct 1979, Wife Aug 1982. Ages are computed per calendar year (age = year &minus; birth year) and drive every age-based trigger: retirement phases, catch-up eligibility, penalty thresholds, Medicare at 65, RMD age, and Social Security claiming.</li>
+                                <li><strong style="color:var(--text-primary)">Birth month/year (H &amp; W):</strong> Each spouse's birth month and year. Ages are computed per calendar year (age = year &minus; birth year) and drive every age-based trigger: retirement phases, catch-up eligibility, penalty thresholds, Medicare at 65, the RMD age, and Social Security claiming.</li>
                                 <li><strong style="color:var(--text-primary)">Target EOL (default 95):</strong> The simulation runs until both spouses exceed this age. It also defines the "Portfolio Horizon" success test and the year used for the Net Worth at EOL KPI.</li>
                             </ul>
                         </div>
                         <div>
                             <h3 class="font-semibold text-base mb-1">Age Milestones</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li><strong style="color:var(--text-primary)">Semi-retirement ages (H 55 / W 52 &rarr; both step down in 2034):</strong> Household drawdown begins only when the <em>last</em> full-time worker steps down — if one spouse steps down first, the gap years are the "Covered" phase (Section 7, Phase 1.5) with contributions at the configurable covered-% (default 50%). Once both have stepped down, all contributions stop, per-spouse 1099 consulting income begins (H $25K / W $100K by default; each spouse’s income runs from their <em>own</em> semi age to their <em>own</em> full age), healthcare costs begin, and portfolio withdrawals start covering any shortfall.</li>
-                                <li><strong style="color:var(--text-primary)">Full-retirement ages (H 57 / W 60 &rarr; 2042):</strong> Full retirement begins only when <em>both</em> spouses have reached their full age. 1099 income (and its SE tax) ends.</li>
+                                <li><strong style="color:var(--text-primary)">Semi-Retirement Age (H &amp; W):</strong> The age at which each spouse leaves full-time work. Household drawdown begins only when the <em>last</em> full-time worker steps down &mdash; if one spouse steps down first, the gap years are the &ldquo;Covered&rdquo; phase (Section 7, Phase 1.5) with contributions at the configurable covered-% (default 50%). Once both have stepped down, all contributions stop, per-spouse 1099 consulting income begins (each spouse’s income runs from their <em>own</em> semi-retirement age to their <em>own</em> full-retirement age), healthcare costs begin, and portfolio withdrawals start covering any shortfall.</li>
+                                <li><strong style="color:var(--text-primary)">Full Retirement Age (H &amp; W):</strong> Full retirement begins only when <em>both</em> spouses have reached their full-retirement age. Each spouse's 1099 income (and its SE tax) ends at their own full-retirement age.</li>
                                 <li><strong style="color:var(--text-primary)">RMD age (default 75):</strong> When the older spouse reaches this age, forced minimum distributions from the Traditional bucket begin (Section 11).</li>
                             </ul>
                         </div>
                         <div>
                             <h3 class="font-semibold text-base mb-1">Annual Contributions (accumulation years only)</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li>Defaults: Traditional $70,000 &bull; Roth $70,000 &bull; Brokerage $70,000 &bull; HSA $8,750 &bull; 529 $24,000 — all entered in today's dollars and inflated each year. These are household combined figures (both spouses), not per-person IRS limits; adjust them to match your actual savings plan.</li>
-                                <li><strong style="color:var(--text-primary)">Catch-up toggle:</strong> when on, adds $8,000/yr to Traditional+Roth once either spouse is 50+, and $1,000/yr to HSA once either spouse is 55+ (inflation-scaled).</li>
+                                <li>Defaults: Traditional $70,000 &bull; Roth $70,000 &bull; Brokerage $70,000 &bull; HSA $8,750 &bull; 529 $24,000 — all entered in today's dollars and inflated each year. These are household combined figures (both spouses), not per-person IRS limits; adjust them to match your actual savings plan. The <strong style="color:var(--text-primary)">Fill Max Contributions</strong> button sets Traditional, Roth, and HSA to the household base IRS maximum in one click: Traditional $49,000 (2 &times; $24,500 elective), Roth $110,000 (2 &times; [$47,500 mega-backdoor + $7,500 backdoor IRA]), and HSA $8,750 (family coverage — one plan covers both spouses, so this is not doubled). It fills base limits only; the Catch-Up toggle adds each spouse's age-based amounts on top. Brokerage and 529 are left untouched.</li>
+                                <li><strong style="color:var(--text-primary)">Catch-up toggle:</strong> when on, adds each spouse's IRS catch-up based on that spouse's own age, summed across both spouses (inflation-scaled). Per spouse: a 401(k) catch-up of $8,000 at ages 50&ndash;59, rising to the SECURE 2.0 &ldquo;super catch-up&rdquo; of $11,250 at ages 60&ndash;63, then back to $8,000 at 64+; plus an IRA catch-up of $1,100 at 50+. Under the 2026 high-earner rule, all of this retirement catch-up is directed to <strong style="color:var(--text-primary)">Roth</strong> (Traditional gets no catch-up). Separately, an HSA catch-up of $1,000 per spouse applies at 55+. Because each spouse is scored by their own age, a couple where both are 50+ gets two catch-ups, and the amounts step up and down as each spouse crosses the 50 / 55 / 60&ndash;63 / 64 boundaries. Hover the &#9432; next to the toggle for a live per-spouse breakdown at your current ages.</li>
                                 <li>Brokerage contributions increase the brokerage cost basis dollar-for-dollar.</li>
                             </ul>
                         </div>
@@ -3430,6 +3769,7 @@
                             <h3 class="font-semibold text-base mb-1">Asset Pool Balances &amp; Brokerage Basis</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                                 <li>Defaults: Traditional $1,000,000 &bull; Roth $500,000 &bull; Brokerage $1,000,000 &bull; HSA $130,000 &bull; 529 $260,000 (2026 starting values).</li>
+                                <li><strong style="color:var(--text-primary)">Enter balances &ldquo;as of today.&rdquo;</strong> These are your <em>current</em> balances at the moment you run the app, not January-1 values. Since a mid-year balance already contains the contributions you've made so far this year, the model adds only the <em>remaining</em> fraction of annual contributions in the first (current) projection year &mdash; avoiding double-counting. That first year's Contribs cell shows a &ldquo;prorated&rdquo; marker; every later year is a full year. (This means the projection's ending values shift slightly depending on what month you run it &mdash; that's expected.)</li>
                                 <li><strong style="color:var(--text-primary)">Brokerage Basis % (default 60%):</strong> the share of the brokerage balance that is original after-tax principal. Only the remaining gain portion of each brokerage withdrawal is taxed (at LTCG rates). The basis ratio is tracked and updated every year as contributions add basis and withdrawals consume it proportionally.</li>
                                 <li><strong style="color:var(--text-primary)">Brokerage Dividend Yield (default 2%) &amp; % Qualified (default 85%):</strong> the annual dividend the taxable account throws off, and what share of it is "qualified" — the long-held-stock kind taxed at the lower long-term capital-gains rates, versus ordinary dividends (REITs, bond/money-market funds) taxed at regular income rates. See Section 12.</li>
                             </ul>
@@ -3437,7 +3777,7 @@
                         <div>
                             <h3 class="font-semibold text-base mb-1">Distribution Strategy</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li><strong style="color:var(--text-primary)">Annual Living Target — Excl. Healthcare (default $149,000, today's $):</strong> the <em>net, after-tax</em> amount you want available for non-healthcare living expenses each retirement year. Taxes do NOT come out of this number — the engine grosses up the portfolio withdrawal so that taxes are paid <em>on top</em> and the full target lands in your pocket (Section 8). Healthcare, gifting, and tuition are also tracked separately on top.</li>
+                                <li><strong style="color:var(--text-primary)">Annual Living Target — Excl. Healthcare (default $150,000, today's $):</strong> the <em>net, after-tax</em> amount you want available for non-healthcare living expenses each retirement year. Taxes do NOT come out of this number — the engine grosses up the portfolio withdrawal so that taxes are paid <em>on top</em> and the full target lands in your pocket (Section 8). Healthcare, gifting, and tuition are also tracked separately on top.</li>
                                 <li><strong style="color:var(--text-primary)">Distribution model:</strong> fixed dollar target (above) or a percentage of the portfolio.</li>
                                 <li><strong style="color:var(--text-primary)">Withdrawal Order:</strong> Sequential (Brokerage &rarr; Traditional &rarr; Roth) or Pro-Rata. See Section 9.</li>
                                 <li><strong style="color:var(--text-primary)">Healthcare (Pre-65) $36,000 / Post-65 Medicare $18,000:</strong> combined household annual costs, today's $. See Section 14 for the split-age transition, the ACA subsidy inputs (toggle, $28K benchmark premium, household size, preserve-subsidy cap) and the IRMAA toggle.</li>
@@ -3458,7 +3798,7 @@
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                                 <li><strong style="color:var(--text-primary)">Nominal ROI (default 6%):</strong> applied identically to all five buckets every year.</li>
                                 <li><strong style="color:var(--text-primary)">Inflation (default 3%):</strong> inflates spending targets, healthcare, contributions, tax brackets, the standard deduction, and gift/tuition amounts; also drives the Today's $ deflator.</li>
-                                <li>Federal ordinary brackets, LTCG brackets, standard deduction ($32,200 MFJ), state tax (2.90%), county/local tax (1.5%), and the IRS Uniform Lifetime RMD divisors, and the heir tax rates that drive the After-Tax Legacy KPI, are all editable in the <strong style="color:var(--text-primary)">Tax &amp; Other Details</strong> tab and feed the engine directly. Bracket thresholds are inflation-indexed each simulated year.</li>
+                                <li>The <strong style="color:var(--text-primary)">Federal Tax Details</strong> tab holds the federal statutory values that update annually: ordinary income brackets, LTCG brackets, the standard deduction ($32,200 MFJ), the Federal Poverty Level figures, and the IRS Uniform Lifetime RMD divisors. These are all editable and feed the engine directly (bracket thresholds are inflation-indexed each simulated year), but they are <em>not</em> saved in an exported profile &mdash; they always come from the app's current tax-year data, so an old profile can never reintroduce stale tax law. Your <em>personal</em> tax settings &mdash; state tax, county/local tax, the &ldquo;State Exempts Social Security&rdquo; choice, and the heir tax rates for the After-Tax Legacy KPI &mdash; live in the left input panel (State &amp; Local Tax and Legacy / Heir Assumptions sections) and <em>are</em> saved with your profile.</li>
                             </ul>
                         </div>
                     </div>
@@ -3489,15 +3829,15 @@
                         <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">Column</th><th class="py-2">Definition</th></tr></thead>
                         <tbody style="color:var(--text-secondary)">
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Starting</td><td class="py-2">Combined spendable balance at the start of the year (= prior year's nominal Ending; see Section 2 for why the displayed Today's-$ values differ across rows).</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-emerald-600">Contribs</td><td class="py-2">Total contributions to Trad + Roth + Brokerage + HSA. Non-zero only during full-time accumulation years; drops to $0 the year either spouse semi-retires.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-emerald-600">Contribs</td><td class="py-2">Total contributions to Trad + Roth + Brokerage + HSA + 529. The Trad/Roth/Brokerage/HSA contributions flow while at least one spouse is working full-time (full during accumulation; scaled by the covered-% while only one spouse works), and stop once the last full-time worker steps down. The 529 follows education timing: it flows only while at least one spouse works full-time AND the 529 balance is still short of the remaining tuition (all children, undergrad + grad), stopping at the earlier of the two. With no children modeled, no 529 contribution flows. <strong style="color:var(--text-primary)">Partial first year:</strong> because the balances you enter are &ldquo;as of today,&rdquo; they already include this year's contributions-to-date &mdash; so the <em>first</em> (current) projection year adds only the fraction of annual contributions still remaining (the months left in the year), flagged with a &ldquo;prorated&rdquo; marker on that row. All catch-ups scale by the same fraction; every later year is a full year. Run the app in December and that fraction approaches zero (the year's contributions are essentially all in already); run it in January and it's nearly a full year.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-blue-600">Growth</td><td class="py-2">Investment growth on the four spendable buckets, per the selected growth timing convention (Section 17). Under the default half-year convention, the growth base is Starting + &frac12;Contributions &minus; &frac12;Withdrawals.</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-cyan-600">Planned Dist</td><td class="py-2">Your annual living target (default $149K, today's $, inflated). Pure lifestyle spending — excludes healthcare, gifting, Roth conversions, and taxes. This is a <em>need</em>, not a flow.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-cyan-600">Planned Dist</td><td class="py-2">Your annual living target (default $150K, today's $, inflated). Pure lifestyle spending — excludes healthcare, gifting, Roth conversions, and taxes. This is a <em>need</em>, not a flow.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-amber-600">Healthcare</td><td class="py-2">Total household healthcare cost for the year (pre-65 / split / Medicare tiers — Section 14). The HSA pays this first, tax-free; only the portion the HSA can't cover flows into the portfolio withdrawal.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-emerald-600">Income</td><td class="py-2">Gross 1099 consulting income (defaults H $25K / W $100K, today's $, inflated). Each spouse's income runs on their own window — from their semi-retirement age until their own full-retirement age — so this column steps down as each spouse individually stops consulting. Shown gross — SE tax is not netted out here; it appears in the Taxes column instead, so it is counted exactly once.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-purple-600">Roth Conv</td><td class="py-2">Amount converted Traditional &rarr; Roth this year (Section 10). Fully taxable as ordinary income, but it does <strong>not</strong> leave the portfolio — so it appears here and in Total Taxable, but never in Portfolio W/D.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Soc Sec</td><td class="py-2">Combined gross Social Security benefits received (per-spouse claim ages; COLA-indexed). $0 while the SS toggle is off (the default).</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-amber-600">Life Event</td><td class="py-2">One-off outflows from the gifting schedule (entered in today's $, inflated to the gift year so the real value you intended is what's actually gifted).</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Total Taxable</td><td class="py-2">The gross ordinary-income pool feeding the tax engine, <em>before</em> the standard deduction: (1099 income &minus; &frac12; SE-tax deduction) + RMDs + elective Traditional draws + Roth conversion + taxable share of SS. Note the &frac12; SE deduction is half of the SE <em>tax</em> (&asymp;$7K on $100K of income), not half of the income. LTCG from brokerage gains is taxed separately on top and is not in this column.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Total Taxable</td><td class="py-2">The gross ordinary-income pool feeding the tax engine, <em>before</em> the standard deduction: (1099 income &minus; &frac12; SE-tax deduction) + RMDs + elective Traditional draws + Roth conversion + taxable share of SS. Note the &frac12; SE deduction is half of the SE <em>tax</em>, not half of the income. LTCG from brokerage gains is taxed separately on top and is not in this column.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-amber-600">MAGI</td><td class="py-2">Modified Adjusted Gross Income for benefit-eligibility purposes: gross ordinary income + realized capital gains + full Social Security (taxed and untaxed portions). No deductions reduce it — which is why it differs from Total Taxable. Drives the ACA 400% FPL subsidy cliff in pre-65 years and the IRMAA tiers post-65 (via the two-year lookback). The column hides automatically when both the ACA and IRMAA toggles are off. Note how the same spending produces wildly different MAGI depending on the funding source: Traditional draws count fully, brokerage draws count only their gain portion, Roth draws count zero.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-red-600">Taxes</td><td class="py-2">Total tax drag for the year: federal ordinary + LTCG (federal and state/local on the gain) + SE tax + state + county + any 10% early-withdrawal penalty. Produced by the iterative solver (Section 8).</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-red-600">Portfolio W/D</td><td class="py-2">The net cash that actually left the portfolio: Planned Dist + healthcare not covered by HSA + gifts + taxes &minus; gross income &minus; Social Security (floored at zero). Reconciles exactly to the sum of the per-bucket Dists columns (Trad + Roth + Brokerage elective draws + RMD used for spending). Roth conversions are excluded.</td></tr>
@@ -3505,8 +3845,9 @@
                         </tbody>
                     </table></div>
                     <div class="rounded-lg p-4 mt-4 border border-slate-300" style="background:var(--bg-base);">
-                        <p class="font-semibold mb-1" style="color:var(--text-primary)">Worked reconciliation (2034 — first drawdown year, default inputs, today's $):</p>
-                        <p style="color:var(--text-secondary)">Portfolio W/D = $149,000 (Planned) + $0 (healthcare — HSA covered all $36,000) + $0 (gifts) + $35,752 (taxes) &minus; $125,000 (income, both 1099s active) &minus; $0 (SS) = $59,751 — matching the 2034 row exactly. Ending = Starting + Growth &minus; Portfolio W/D &minus; $36,000 (HSA draw) &minus; tuition paid by 529 (reflected only in the full-net-worth view). Every row reconciles this way at that row's price level.</p>
+                        <p class="font-semibold mb-1" style="color:var(--text-primary)">How a row reconciles:</p>
+                        <p style="color:var(--text-secondary)">Portfolio W/D = Planned distribution + healthcare not covered by HSA + gifts + taxes &minus; income &minus; Social Security. Ending = Starting + Growth &minus; Portfolio W/D &minus; HSA draw &minus; tuition paid by 529 (the last reflected only in the full-net-worth view). Every row reconciles this way at that row's price level.</p>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; In our household's first drawdown year (2035, both just semi-retired), today's $: $150,000 (Planned) + $0 (healthcare &mdash; the HSA covered all $36,000) + $0 (gifts) + $43,695 (taxes) &minus; $125,000 (income, both 1099s active) &minus; $0 (SS) = <strong style="color:var(--text-primary)">$68,695</strong>, matching that row exactly.</div>
                     </div>
                 </section>
 
@@ -3527,19 +3868,29 @@
                 <!-- 7. Life phases -->
                 <section id="sec-lifecycle">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-timeline mr-2"></i>7. Life Phase Logic</h2>
+                    <p class="mb-3" style="color:var(--text-secondary)">The model moves each household through up to five phases, driven entirely by when each spouse reaches their <strong style="color:var(--text-primary)">semi-retirement age</strong> (the &ldquo;Semi-Ret Age&rdquo; input) and <strong style="color:var(--text-primary)">full-retirement age</strong> (the &ldquo;Full Retirement&rdquo; input). Phases aren't tied to calendar dates &mdash; they're derived from the age inputs, so they shift automatically with whatever ages you enter.</p>
                     <div class="space-y-3">
-                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 1 — Accumulation (2026 &rarr; 2033 with defaults)</p>
-                        <p style="color:var(--text-secondary)">Both spouses working full-time. All five contribution streams flow (inflation-indexed, plus catch-ups when eligible). No withdrawals, no healthcare cost modeled (employer coverage assumed), no 1099 income.</p></div>
-                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 1.5 — Covered (only when semi ages differ; none with current defaults)</p>
-                        <p style="color:var(--text-secondary)">If one spouse steps down while the other still works full-time, the household enters a "Covered" bridge phase: the working spouse's W2 income (which the model does not simulate) is assumed to fund all living costs, and employer coverage handles healthcare — so there are <strong style="color:var(--text-primary)">no portfolio draws, no healthcare cost, and no living-target withdrawal</strong>. Contributions continue at the configurable "Contribution % While One Spouse Still Works" (default 50%, reflecting one earner's remaining savings capacity). The semi-retired spouse's 1099 income is ignored (assumed absorbed into household coverage), and Roth conversions are suppressed — bracket-fill sizing would be blind to the unmodeled W2 income occupying the same brackets. The one exception: <strong style="color:var(--text-primary)">scheduled gifts remain portfolio-funded</strong> — a one-off six-figure transfer isn't plausibly cash-flowed from a single salary, so the conservative treatment draws it (plus its capital-gains gross-up) from the portfolio. True drawdown begins only when the LAST full-time worker steps down.</p></div>
-                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 2 — Semi-Retirement (2034 &rarr; 2041 with defaults)</p>
-                        <p style="color:var(--text-secondary)">Begins the year <em>both</em> spouses have left full-time work — each past their own semi age (with defaults, both step down in 2034, so no Covered phase occurs). Contributions stop entirely. Per-spouse 1099 consulting income begins (H $25K / W $100K by default, today's $), subject to SE tax; each spouse's income runs from their own semi age to their own full age, so household income is $125K in 2034–2035, then $100K (W alone) from 2036 until her full retirement at 60 in 2042. Healthcare costs begin (pre-65 private rate). The living target, healthcare not covered by HSA, gifts, and all taxes are funded first by income, then by portfolio withdrawals. Roth conversions start per the Auto rule — the year after both spouses have stepped down (2035 with defaults) — sized to the bracket room left after 1099 income and any Traditional spending draws; a manual start age can override Auto, but conversions are always suppressed while any spouse still works full-time.</p></div>
-                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 3 — Full Retirement (2042+ with defaults)</p>
-                        <p style="color:var(--text-secondary)">Begins only when <em>both</em> spouses have reached their full-retirement ages (both 57 &rarr; 2039). By this point each spouse's 1099 income has already ended at their own full-retirement age, so SE tax is gone. The portfolio (plus Social Security, if enabled) funds everything. Medicare transition occurs per-spouse at 65; RMDs begin at the RMD age; conversions continue while bracket room and Traditional balance remain.</p></div>
-                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 4 — Survivor Scenario (optional, off by default)</p>
-                        <p style="color:var(--text-secondary)">When enabled in the sidebar, you choose which spouse passes first and at what age. The year of death itself still files MFJ (matching IRS rules) and is marked with a † in the ledger; from the following year onward the model captures the <strong style="color:var(--text-primary)">“widow’s penalty”</strong>: filing status flips to Single, which the engine <strong style="color:var(--text-primary)">approximates by halving the MFJ bracket thresholds and standard deduction</strong> rather than applying the true IRS single-filer tables. This is a deliberate simplification: the single standard deduction really is about half of MFJ, and the lower brackets are close to half, but the higher single brackets are <em>not</em> exactly half of MFJ, so the survivor's tax above roughly the 24% bracket is an approximation (generally slightly overstated). The effect is directionally right and captures the core of the penalty — roughly the same RMD and conversion income now faces twice the bracket pressure — but it is not a penny-exact single-filer calculation. Simultaneously: the survivor keeps the <em>larger</em> of the two Social Security benefits (from their own claim age) and the smaller one stops; the living target is scaled by the Survivor Spending % (default 75%); healthcare drops to one person (half the age-appropriate tier); only the survivor's own 1099 income continues (if still within their consulting window); RMD age, penalty age, and retirement-phase logic re-key to the survivor’s own age; the simulation runs to the survivor’s Target EOL; and a one-time <strong style="color:var(--text-primary)">step-up in basis</strong> is applied — the decedent’s half of the jointly-held brokerage’s unrealized gain becomes basis, materially reducing future LTCG and partially offsetting the bracket compression. This is a deterministic what-if, not a mortality forecast: use it to test whether your Roth conversion strategy leaves the survivor exposed to compressed Single brackets.</p></div>
+                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 1 &mdash; Accumulation</p>
+                        <p style="color:var(--text-secondary)">Both spouses work full-time, from the start of the projection until the <em>first</em> spouse reaches their semi-retirement age. All five contribution streams flow (inflation-indexed, plus catch-ups when eligible). No withdrawals, no healthcare cost modeled (employer coverage assumed), no 1099 income.</p>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; For our household, accumulation runs 2026&ndash;2034: both spouses step down in 2035, so every year before that is accumulation.</div></div>
+
+                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 1.5 &mdash; Covered (bridge, only when the two semi-retirement ages differ)</p>
+                        <p style="color:var(--text-secondary)">If one spouse reaches their semi-retirement age while the other still works full-time, the household enters a &ldquo;Covered&rdquo; bridge phase: the working spouse's W2 income (which the model does not simulate) is assumed to fund all living costs, and employer coverage handles healthcare &mdash; so there are <strong style="color:var(--text-primary)">no portfolio draws, no healthcare cost, and no living-target withdrawal</strong>. Contributions continue at the configurable &ldquo;Contribution % While One Spouse Still Works&rdquo; (default 50%, reflecting one earner's remaining savings capacity). The semi-retired spouse's 1099 income is ignored (assumed absorbed into household coverage), and Roth conversions are suppressed &mdash; bracket-fill sizing would be blind to the unmodeled W2 income occupying the same brackets. The one exception: <strong style="color:var(--text-primary)">scheduled gifts remain portfolio-funded</strong> &mdash; a one-off six-figure transfer isn't plausibly cash-flowed from a single salary, so the conservative treatment draws it (plus its capital-gains gross-up) from the portfolio. True drawdown begins only when the <em>last</em> full-time worker steps down.</p>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Our household skips this phase: both spouses share the same step-down year (2035), so there's no bridge. It would appear only if their semi-retirement ages produced different years.</div></div>
+
+                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 2 &mdash; Semi-Retirement</p>
+                        <p style="color:var(--text-secondary)">Begins once <em>both</em> spouses have passed their semi-retirement age. Contributions stop entirely. Each spouse earns 1099 consulting income (subject to SE tax) from their own semi-retirement age until their own full-retirement age, so household income steps down as each spouse individually reaches full retirement. Healthcare costs begin (pre-65 private rate). The living target, healthcare not covered by HSA, gifts, and all taxes are funded first by income, then by portfolio withdrawals. Roth conversions start per the Auto rule &mdash; the year after the last spouse steps down &mdash; sized to the bracket room left after 1099 income and any Traditional spending draws; a manual start age can override Auto, but conversions are always suppressed while any spouse still works full-time.</p>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Semi-retirement starts in 2035 with combined 1099 income of $125,000 (Husband $25K, Wife $100K). The Husband's income ends at his full-retirement age (57, in 2037); the Wife's continues until hers (60, in 2043). Conversions begin in 2036.</div></div>
+
+                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 3 &mdash; Full Retirement</p>
+                        <p style="color:var(--text-secondary)">Begins only when <em>both</em> spouses have reached their full-retirement age. By this point each spouse's 1099 income &mdash; and its SE tax &mdash; has ended, so the portfolio (plus Social Security, if enabled) funds everything. Medicare transition occurs per spouse at 65; RMDs begin at the RMD age (default 75); conversions continue while bracket room and Traditional balance remain.</p>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Full retirement begins in 2043 &mdash; the year the Wife, the later of the two to stop, reaches her full-retirement age of 60.</div></div>
+
+                        <div><p class="font-semibold" style="color:var(--text-primary)">Phase 4 &mdash; Survivor Scenario (optional, off by default)</p>
+                        <p style="color:var(--text-secondary)">When enabled in the sidebar, you choose which spouse passes first and at what age. The year of death itself still files MFJ (matching IRS rules) and is marked with a † in the ledger; from the following year onward the model captures the <strong style="color:var(--text-primary)">“widow’s penalty”</strong>: filing status flips to Single, which the engine <strong style="color:var(--text-primary)">approximates by halving the MFJ bracket thresholds and standard deduction</strong> rather than applying the true IRS single-filer tables. This is a deliberate simplification: the single standard deduction really is about half of MFJ, and the lower brackets are close to half, but the higher single brackets are <em>not</em> exactly half of MFJ, so the survivor's tax above roughly the 24% bracket is an approximation (generally slightly overstated). The effect is directionally right and captures the core of the penalty &mdash; roughly the same RMD and conversion income now faces twice the bracket pressure &mdash; but it is not a penny-exact single-filer calculation. Simultaneously: the survivor keeps the <em>larger</em> of the two Social Security benefits (from their own claim age) and the smaller one stops; the living target is scaled by the Survivor Spending % (default 75%); healthcare drops to one person (half the age-appropriate tier); only the survivor's own 1099 income continues (if still within their consulting window); RMD age, penalty age, and retirement-phase logic re-key to the survivor’s own age; the simulation runs to the survivor’s Target EOL; and a one-time <strong style="color:var(--text-primary)">step-up in basis</strong> is applied &mdash; the decedent’s half of the jointly-held brokerage’s unrealized gain becomes basis, materially reducing future LTCG and partially offsetting the bracket compression. This is a deterministic what-if, not a mortality forecast: use it to test whether your Roth conversion strategy leaves the survivor exposed to compressed Single brackets.</p></div>
                     </div>
                 </section>
+
 
                 <!-- 8. Solver -->
                 <section id="sec-solver">
@@ -3554,7 +3905,7 @@
                         <li>Compute the ACA subsidy from this iteration's MAGI (when enabled), net it against the marketplace premium, apply the HSA to the remaining healthcare, and fold the uncovered healthcare into the need — the subsidy is discontinuous at the 400% FPL cliff, so an oscillation guard settles on the conservative no-subsidy branch if the solve ping-pongs across it.</li>
                         <li>Set the new withdrawal = fixed needs + uncovered healthcare + that tax bill &minus; cash sources; repeat from step 2 until the withdrawal changes by less than $1 (typically 3–6 iterations, hard cap 14).</li>
                     </ol>
-                    <p class="mt-3"><strong>Consequence — the living target is truly net:</strong> your $149K is what you keep. Taxes are grossed up on top of it and drawn additionally from the portfolio. In heavy Roth-conversion or Traditional-heavy years the total drain can be substantially larger than the target itself.</p>
+                    <p class="mt-3"><strong>Consequence — the living target is truly net:</strong> your $150K is what you keep. Taxes are grossed up on top of it and drawn additionally from the portfolio. In heavy Roth-conversion or Traditional-heavy years the total drain can be substantially larger than the target itself.</p>
                     <p class="mt-2" style="color:var(--text-secondary)">If the portfolio cannot supply the converged withdrawal (all accounts exhausted), the unmet portion is recorded as a funding shortfall — this is what triggers the Portfolio Horizon failure state (Section 4), even though small residual balances may technically remain.</p>
                 </section>
 
@@ -3574,14 +3925,15 @@
                         <li><strong style="color:var(--text-primary)">Fill bracket to X% (default) — spending-aware:</strong> the conversion is sized <em>inside</em> the iterative tax solver, after that year’s elective Traditional spending draws are known. It fills only the room remaining between (existing ordinary income + Traditional spending draws) and the top of your chosen bracket, so combined ordinary income lands <em>at</em> the cap and never over it. Spending has priority over conversion for both bracket room and Traditional balance — in years where spending draws alone exceed the cap, the conversion is $0, exactly as a human advisor would size it. When "Cap Roth conversions to preserve subsidy" is on (the default) and a marketplace subsidy is live, the conversion is additionally capped so MAGI lands at the 400% FPL cliff rather than over it — unless spending alone already blew the cliff, in which case the subsidy is lost anyway and the bracket cap governs alone. Capped at the remaining Traditional balance; brackets are the actual editable, inflation-indexed table.</li>
                         <li><strong style="color:var(--text-primary)">Fixed amount:</strong> converts a set dollar amount per year regardless of bracket position.</li>
                     </ul>
-                    <p class="mt-3"><strong>Start timing:</strong> the default is <em>Auto — the year after the later-retiring spouse steps down</em> (2035 with defaults), avoiding bracket-filling on top of any unmodeled partial-year W2 income in the transition year; any manual age from the same dropdown overrides it. Either way, conversions are suppressed during accumulation and Covered years, since a still-working spouse's W2 income would invisibly occupy the same brackets. <strong>Worked example (defaults):</strong> in 2035, $125K of 1099 income occupies most of the lower brackets and the engine converts $127,431 to reach the 22% cap; in 2036, after H fully retires and income drops to $100K, the conversion grows to $150,665. The conversion appears in Roth Conv and Total Taxable, its tax lands in Taxes (and is grossed into the withdrawal), and the money itself moves Traditional &rarr; Roth without ever appearing in Portfolio W/D.</p>
+                    <p class="mt-3"><strong>Start timing:</strong> the default is <em>Auto &mdash; the year after the later-retiring spouse steps down</em>, avoiding bracket-filling on top of any unmodeled partial-year W2 income in the transition year; any manual age from the same dropdown overrides it. Either way, conversions are suppressed during accumulation and Covered years, since a still-working spouse's W2 income would invisibly occupy the same brackets. <strong>How the size responds to income:</strong> in a year where 1099 income already fills most of the lower brackets, the engine converts only the room left up to your chosen bracket cap; once a spouse fully retires and household income drops, the remaining room widens and the conversion grows to fill it. The conversion appears in Roth Conv and Total Taxable, its tax lands in Taxes (and is grossed into the withdrawal), and the money itself moves Traditional &rarr; Roth without ever appearing in Portfolio W/D.</p>
+                    <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; For our household, conversions begin in 2036 (the year after both spouses step down). While the Wife's $100K consulting income is still flowing, it occupies the lower brackets, so the engine converts only the room left up to the bracket cap; once she fully retires and household income falls, that room widens and the annual conversion grows to fill it.</div>
                     <p class="mt-2" style="color:var(--text-secondary)">Because the conversion and the withdrawal/tax solve are computed together, the conversion’s tax is grossed into the year’s withdrawal and its LTCG-stacking effect on brokerage gains is fully priced. Fixed-amount mode remains deliberately naive (converts the set amount regardless of bracket position or spending draws). The 5-year seasoning rule on converted funds is not enforced (see Limitations).</p>
                 </section>
 
                 <!-- 11. RMDs -->
                 <section id="sec-rmd">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-hourglass-half mr-2"></i>11. Required Minimum Distributions (RMDs)</h2>
-                    <p>Starting the year the <em>older</em> spouse reaches the RMD age (default 75), the engine forces a distribution of Traditional balance &divide; the IRS Uniform Lifetime divisor for that age (table editable in Tax &amp; Other Details). RMDs are always fully taxable ordinary income and are included in Total Taxable.</p>
+                    <p>Starting the year the <em>older</em> spouse reaches the RMD age (default 75), the engine forces a distribution of Traditional balance &divide; the IRS Uniform Lifetime divisor for that age (table editable in the Federal Tax Details tab). RMDs are always fully taxable ordinary income and are included in Total Taxable.</p>
                     <p class="mt-2" style="color:var(--text-secondary)">RMD cash is used to fund the year's spending need first; any excess beyond what spending required is reinvested into the Brokerage account (adding to cost basis) — it never disappears. Simplification: the model holds one shared Traditional bucket keyed to the older spouse's age; real RMDs are per-person, per-account, so households with large age gaps or unequal Traditional balances will see timing differences vs. reality.</p>
                 </section>
 
@@ -3593,16 +3945,16 @@
                     <h3 class="font-semibold mb-2 mt-4">Long-Term Capital Gains</h3>
                     <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income. It stacks on top of ordinary taxable income against the editable LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.</p>
                     <h3 class="font-semibold mb-2 mt-4">Self-Employment Tax</h3>
-                    <p style="color:var(--text-secondary)">15.3% on 92.35% of gross 1099 income during semi-retirement, summed across both spouses’ active incomes (&asymp;$14K on $100K combined; the Social Security wage-base cap is not modeled). Half of the SE tax (&asymp;$7K — <em>not</em> half the income) is deducted from ordinary taxable income. Income is displayed gross and SE tax sits in the Taxes column, so it is counted exactly once in the cash-flow math.</p>
+                    <p style="color:var(--text-secondary)">15.3% on 92.35% of gross 1099 income during semi-retirement, computed per spouse and summed across both spouses’ active incomes (the Social Security wage-base cap is not modeled). Half of the total SE tax &mdash; <em>not</em> half the income &mdash; is deducted from ordinary taxable income. Income is displayed gross and SE tax sits in the Taxes column, so it is counted exactly once in the cash-flow math.</p>
                     <h3 class="font-semibold mb-2 mt-4">State &amp; Local Tax</h3>
-                    <p style="color:var(--text-secondary)">A flat state rate (default 2.90%) plus a county/local rate (default 1.5%), both editable in the Tax &amp; Other Details tab — set them to your own jurisdiction's rates. As modeled, both apply to ordinary income <em>and</em> to realized capital gains (i.e. the defaults assume a state that taxes long-term gains as ordinary income with no preferential rate, and fully taxes IRA/401(k) withdrawals and Roth conversions — adjust if your state differs). The <strong style="color:var(--text-primary)">“State Exempts Social Security”</strong> checkbox (default on) removes the taxable-SS portion from the state/local base, reflecting the many states that don't tax Social Security. State-specific personal exemptions, credits, and pension deductions are not modeled; verify your state and local rates and rules against your official state tax authority.</p>
+                    <p style="color:var(--text-secondary)">A flat state rate (default 2.90%) plus a county/local rate (default 1.5%), both in the <strong style="color:var(--text-primary)">State &amp; Local Tax</strong> section of the left input panel — set them to your own jurisdiction's rates. As modeled, both apply to ordinary income <em>and</em> to realized capital gains (i.e. the defaults assume a state that taxes long-term gains as ordinary income with no preferential rate, and fully taxes IRA/401(k) withdrawals and Roth conversions — adjust if your state differs). The <strong style="color:var(--text-primary)">“State Exempts Social Security”</strong> checkbox (default on) removes the taxable-SS portion from the state/local base, reflecting the many states that don't tax Social Security. State-specific personal exemptions, credits, and pension deductions are not modeled; verify your state and local rates and rules against your official state tax authority.</p>
                     <h3 class="font-semibold mb-2 mt-4">Early Withdrawal Penalty</h3>
                     <p style="color:var(--text-secondary)">10% federal penalty on elective Traditional and Roth draws while the older spouse is under 59&frac12;. Simplifications: keyed to the older spouse's age; applied to full Roth draws (real Roth contribution basis can come out penalty-free); no 72(t)/SEPP, Rule of 55, or other exceptions.</p>
                     <h3 class="font-semibold mb-2 mt-4">Brokerage Dividend Drag</h3>
                     <p style="color:var(--text-secondary)">A taxable brokerage account pays out dividends each year — cash you owe tax on <em>whether or not you sell anything</em>, unlike the tax-sheltered Traditional/Roth/HSA buckets. That unavoidable annual tax is the "drag." The engine estimates it as <strong style="color:var(--text-primary)">Dividend Yield &times; brokerage balance</strong> (default 2%), split into a <strong style="color:var(--text-primary)">qualified</strong> slice and an <strong style="color:var(--text-primary)">ordinary</strong> slice. Qualified dividends (default 85% — the kind from U.S. and many foreign stocks held long enough) are taxed at the <strong style="color:var(--text-primary)">preferential long-term capital-gains rates</strong> (0/15/20%), stacked on top of ordinary income just like realized gains; the ordinary slice (REITs, money-market and bond funds, or stocks not held long enough) is taxed at <strong style="color:var(--text-primary)">regular income rates</strong>. A portfolio of broad U.S. index funds runs high (~85–100% qualified); heavy REIT/bond holdings pull it lower. Both are added to MAGI, so dividends can nudge you toward the ACA cliff or an IRMAA tier. The dividends themselves stay invested (they're part of the 6% return, not an extra inflow); because they are after-tax principal, reinvesting them adds to cost basis — which lowers the taxable gain on <em>future</em> sales. Net effect: a small tax paid every year, partly offset later by reduced capital-gains tax when those shares are sold. Set the yield to 0 to switch the whole feature off.</p>
 
                     <h3 class="font-semibold mb-2 mt-4">Not modeled</h3>
-                    <p style="color:var(--text-secondary)">AMT, NIIT (3.8%), IRMAA surcharges, ACA premium subsidies/cliffs, state-specific 529 recapture, qualified dividends on un-sold holdings, tax-loss harvesting, and filing-status changes (e.g., survivor filing single).</p>
+                    <p style="color:var(--text-secondary)">AMT, NIIT (3.8%), state-specific 529 recapture, and tax-loss harvesting. (ACA subsidies and IRMAA surcharges <em>are</em> modeled &mdash; optional toggles, see Section 14; and the survivor filing-status change is modeled &mdash; Section 7, Phase 4.)</p>
                 </section>
 
                 <!-- 13. Social Security -->
@@ -3648,7 +4000,7 @@
                     </div>
 
                     <h3 class="font-semibold text-base mb-2 mt-5">14.3 &mdash; ACA subsidies before 65: the math, worked</h3>
-                    <p style="color:var(--text-secondary)">Under post-2025 law, subsidies exist only while MAGI &le; 400% of the Federal Poverty Level (FPL is editable in Tax &amp; Other Details; household of 2 &rarr; cliff at <span class="font-mono">$84,600</span> today's $). Within eligibility, you contribute a sliding <span class="font-mono">2.1%–9.96%</span> of MAGI toward the <strong style="color:var(--text-primary)">benchmark premium</strong> (the $28K SLCSP input — the subsidizable slice of the $36K; the ~$8K OOP remainder is never subsidized); the subsidy pays the rest.</p>
+                    <p style="color:var(--text-secondary)">Under post-2025 law, subsidies exist only while MAGI &le; 400% of the Federal Poverty Level (FPL is editable in the Federal Tax Details tab; household of 2 &rarr; cliff at <span class="font-mono">$84,600</span> today's $). Within eligibility, you contribute a sliding <span class="font-mono">2.1%–9.96%</span> of MAGI toward the <strong style="color:var(--text-primary)">benchmark premium</strong> (the $28K SLCSP input — the subsidizable slice of the $36K; the ~$8K OOP remainder is never subsidized); the subsidy pays the rest.</p>
                     <div class="rounded-lg p-4 mt-3 border border-slate-300" style="background:var(--bg-base);">
                         <p class="font-semibold mb-1" style="color:var(--text-primary)">Worked example — MAGI $60,000, household of 2:</p>
                         <p class="font-mono text-sm" style="color:var(--text-secondary)">ratio = 60,000 / 21,150 FPL = 2.84&times; &rarr; applicable % &asymp; 9.46%<br>your contribution = 9.46% &times; 60,000 = $5,678<br>subsidy = $28,000 benchmark − $5,678 = <strong>$22,322</strong><br>net healthcare = $36,000 − $22,322 = <strong>$13,678</strong> (vs $36,000 unsubsidized)</p>
@@ -3657,7 +4009,7 @@
                     <div class="overflow-x-auto"><table class="w-full text-sm">
                         <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">MAGI</th><th class="py-2 pr-4">Subsidy</th><th class="py-2">Net healthcare (of $36,000)</th></tr></thead>
                         <tbody style="color:var(--text-secondary)" class="font-mono">
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$5,000 (Roth-funded yr)</td><td class="py-1.5 pr-4">$26,993</td><td class="py-1.5">$9,007 &larr; matches the app's default 2042 cell exactly</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$5,000 (Roth-funded yr)</td><td class="py-1.5 pr-4">$26,993</td><td class="py-1.5">$9,007</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$30,000</td><td class="py-1.5 pr-4">$26,894</td><td class="py-1.5">$9,106</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$60,000</td><td class="py-1.5 pr-4">$22,322</td><td class="py-1.5">$13,678</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$84,600 (cliff edge)</td><td class="py-1.5 pr-4">$19,574</td><td class="py-1.5">$16,426</td></tr>
@@ -3682,15 +4034,15 @@
                             <li>One high-MAGI year &rarr; <strong style="color:var(--text-primary)">exactly one penalized year</strong>, arriving two years later. Not "penalized for the next 2 years."</li>
                             <li>Each year resets independently. There's no memory, no averaging, no persistence.</li>
                             <li>Sustained high MAGI <em>does</em> produce a sustained surcharge — but only because every high year generates its own penalized year downstream. The penalty stream is simply your MAGI stream, shifted two years and run through the tier table.</li>
-                            <li>The danger zone therefore starts at <strong style="color:var(--text-primary)">age 63</strong>, not 65: age-63 MAGI sets the first Medicare premium. High MAGI at 62 or earlier maps to premium years before enrollment and never bites — the classic reason to finish big Roth conversions by 62.</li>
+                            <li>The danger zone therefore starts at <strong style="color:var(--text-primary)">age 63</strong>, not 65: the MAGI from the year a person turns 63 sets their first Medicare premium (at 65). High MAGI at 62 or earlier maps to premium years before enrollment and never bites &mdash; the classic reason to finish big Roth conversions by 62.</li>
                         </ul>
                         <div class="overflow-x-auto mt-3"><table class="w-full text-sm">
-                            <thead><tr class="border-b border-slate-300 text-left"><th class="py-1 pr-3">Year</th><th class="py-1 pr-3">Your MAGI</th><th class="py-1 pr-3">Premium based on...</th><th class="py-1">Surcharge</th></tr></thead>
+                            <thead><tr class="border-b border-slate-300 text-left"><th class="py-1 pr-3">At age</th><th class="py-1 pr-3">Your MAGI</th><th class="py-1 pr-3">Premium based on...</th><th class="py-1">Surcharge</th></tr></thead>
                             <tbody style="color:var(--text-secondary)" class="font-mono">
-                            <tr class="border-b border-slate-200"><td class="py-1 pr-3">2042 (age 63)</td><td class="py-1 pr-3">$430K (big conversion)</td><td class="py-1 pr-3">— not enrolled yet</td><td class="py-1">—</td></tr>
-                            <tr class="border-b border-slate-200"><td class="py-1 pr-3">2043</td><td class="py-1 pr-3">$50K</td><td class="py-1 pr-3">—</td><td class="py-1">—</td></tr>
-                            <tr class="border-b border-slate-200"><td class="py-1 pr-3">2044 (65, enrolled)</td><td class="py-1 pr-3">$50K</td><td class="py-1 pr-3">2042's $430K</td><td class="py-1 font-bold">+$6,355/person</td></tr>
-                            <tr><td class="py-1 pr-3">2045</td><td class="py-1 pr-3">$50K</td><td class="py-1 pr-3">2043's $50K</td><td class="py-1">$0 — clean again</td></tr>
+                            <tr class="border-b border-slate-200"><td class="py-1 pr-3">63</td><td class="py-1 pr-3">$430K (big conversion)</td><td class="py-1 pr-3">— not enrolled yet</td><td class="py-1">—</td></tr>
+                            <tr class="border-b border-slate-200"><td class="py-1 pr-3">64</td><td class="py-1 pr-3">$50K</td><td class="py-1 pr-3">—</td><td class="py-1">—</td></tr>
+                            <tr class="border-b border-slate-200"><td class="py-1 pr-3">65 (enrolled)</td><td class="py-1 pr-3">$50K</td><td class="py-1 pr-3">age 63's $430K</td><td class="py-1 font-bold">+$6,355/person</td></tr>
+                            <tr><td class="py-1 pr-3">66</td><td class="py-1 pr-3">$50K</td><td class="py-1 pr-3">age 64's $50K</td><td class="py-1">$0 — clean again</td></tr>
                             </tbody>
                         </table></div>
                         <p class="mt-2 text-sm" style="color:var(--text-secondary)">One spike, one surcharge year, then done. (Real-world escape hatch not modeled: form SSA-44 lets you appeal the lookback after a life-changing event — retirement itself qualifies — see Limitations.)</p>
@@ -3708,35 +4060,36 @@
                     </table></div>
                     <div class="rounded-lg p-4 mt-3 border border-slate-300" style="background:var(--bg-base);">
                         <p class="font-semibold mb-1" style="color:var(--text-primary)">Worked example:</p>
-                        <p style="color:var(--text-secondary)">A $430,000-MAGI year at age 63 (say, a large Roth conversion) lands in the &gt;$410K tier. Two years later, at 65: <span class="font-mono">+$6,355</span> on that spouse's Medicare premiums; if both spouses are enrolled, <span class="font-mono">+$12,710</span> household. Under the current defaults IRMAA <em>does</em> fire: W works to 60, conversions start later, and Traditional persists into the Medicare years — the large 2042–2043 drawdown MAGI (~$530–550K) lands in the &gt;$410K tier, so H pays +$6,355/yr in 2044–2045, easing to tier 1 by 2046–2047 before Roth-funded years drop MAGI to ~$0 and the surcharge to $0 from 2048. Each red sub-line traces back to the MAGI column exactly two rows earlier. IRMAA is <strong style="color:var(--text-primary)">ON by default</strong> because counting the downside is the conservative direction.</p>
+                        <p style="color:var(--text-secondary)">A $430,000-MAGI year at age 63 (say, a large Roth conversion) lands in the &gt;$410K tier. Two years later, at 65: <span class="font-mono">+$6,355</span> on that spouse's Medicare premiums; if both spouses are enrolled, <span class="font-mono">+$12,710</span> household. Whether IRMAA fires under <em>your</em> inputs depends on how high MAGI runs in the years each spouse is 63&ndash;64: if Traditional drawdowns or large conversions keep MAGI in the upper tiers as a spouse approaches 65, the surcharge follows two years later; once Roth-funded years pull MAGI back down, it falls away (again on the two-year delay). Each red sub-line in the ledger traces back to the MAGI column exactly two rows earlier. IRMAA is <strong style="color:var(--text-primary)">ON by default</strong> because counting the downside is the conservative direction.</p>
                     </div>
 
-                    <h3 class="font-semibold text-base mb-2 mt-5">14.6 &mdash; Your default plan's timeline (as of the current default inputs)</h3>
+                    <h3 class="font-semibold text-base mb-2 mt-5">14.6 &mdash; The typical MAGI arc of a phased retirement</h3>
+                    <p class="text-sm mb-2" style="color:var(--text-secondary)">The <em>shape</em> below is what most phased-retirement plans produce; the exact years depend on your birth years and retirement ages, so it's described by phase rather than by calendar year.</p>
                     <div class="overflow-x-auto"><table class="w-full text-sm">
-                        <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">Years</th><th class="py-2 pr-4">Funding &rarr; MAGI</th><th class="py-2">Healthcare outcome (ACA toggle on)</th></tr></thead>
+                        <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">Phase</th><th class="py-2 pr-4">Funding &rarr; MAGI</th><th class="py-2">Healthcare outcome (ACA toggle on)</th></tr></thead>
                         <tbody style="color:var(--text-secondary)">
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4 font-mono">2032–2038</td><td class="py-1.5 pr-4">1099 income + conversions &rarr; ~$250–310K</td><td class="py-1.5">Over the cliff every year &rarr; $0 subsidy &rarr; full $36,000</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4 font-mono">2039–2041</td><td class="py-1.5 pr-4">Brokerage/Traditional draws &rarr; ~$300–500K</td><td class="py-1.5">Over the cliff &rarr; $0 subsidy &rarr; full $36,000</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4 font-mono">2042–2043</td><td class="py-1.5 pr-4">Roth-funded &rarr; ~$0–9K</td><td class="py-1.5">Deep under the cliff &rarr; ~$27K subsidy &rarr; ~$9,000</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4 font-mono">2044–2046</td><td class="py-1.5 pr-4">Roth-funded; H on Medicare, W marketplace</td><td class="py-1.5">W's half subsidized &rarr; ~$14,000 of the $27,000 blend</td></tr>
-                        <tr><td class="py-1.5 pr-4 font-mono">2047+</td><td class="py-1.5 pr-4">Both on Medicare; MAGI ~$0</td><td class="py-1.5">No marketplace = no ACA; MAGI too low for IRMAA &rarr; flat $18,000</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Early semi-retirement (1099 income + conversions running)</td><td class="py-1.5 pr-4">income + Roth conversions &rarr; high MAGI</td><td class="py-1.5">Usually over the ACA cliff &rarr; $0 subsidy &rarr; full pre-65 cost</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Later semi-retirement (income ended, still drawing Traditional/brokerage)</td><td class="py-1.5 pr-4">Traditional / brokerage draws &rarr; still elevated MAGI</td><td class="py-1.5">Often over the cliff &rarr; $0 subsidy &rarr; full pre-65 cost</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Roth-funded window (Traditional largely converted away, both under 65)</td><td class="py-1.5 pr-4">Roth draws &rarr; MAGI near zero</td><td class="py-1.5">Deep under the cliff &rarr; large subsidy &rarr; low net cost</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Split-Medicare window (one spouse 65+, one still on the marketplace)</td><td class="py-1.5 pr-4">Roth-funded &rarr; low MAGI</td><td class="py-1.5">Only the under-65 spouse's half is subsidizable</td></tr>
+                        <tr><td class="py-1.5 pr-4">Both on Medicare (65+)</td><td class="py-1.5 pr-4">Low MAGI</td><td class="py-1.5">No marketplace = no ACA; MAGI usually too low for IRMAA &rarr; flat Medicare cost</td></tr>
                         </tbody>
                     </table></div>
-                    <p class="mt-2 text-sm" style="color:var(--text-secondary)">Note the punchline: the conversions you pay tax on in 2032–2041 are what empty Traditional and manufacture the low-MAGI years — the conversion ladder is simultaneously a tax play <em>and</em> a health-insurance play.</p>
+                    <p class="mt-2 text-sm" style="color:var(--text-secondary)">Note the punchline: the conversions you pay tax on during the income/drawdown years are what empty Traditional and manufacture the later low-MAGI years &mdash; the conversion ladder is simultaneously a tax play <em>and</em> a health-insurance play.</p>
 
                     <h3 class="font-semibold text-base mb-2 mt-5">14.7 &mdash; "The ACA toggle doesn't seem to do anything"</h3>
                     <div class="rounded-lg p-4 border border-slate-300" style="background:var(--bg-base);">
                         <p style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">The toggle doesn't create subsidies — low MAGI does.</strong> The toggle only permits the model to count them. If every marketplace-eligible year has MAGI over the cliff (e.g., with conversions off, Traditional funds those years at ~$500K MAGI), the subsidy is $0 in every year and the toggle changes nothing — correctly. Diagnostic checklist: (1) Lifetime ACA Subsidy KPI reads $0? (2) Scan the MAGI column across pre-65 retirement years — is any year under ~$84,600? (3) If not, no toggle will help; only a strategy that changes the <em>funding source</em> of those years (conversions draining Traditional, Roth/basis-heavy withdrawals) can get you under the cliff.</p>
                     </div>
 
-                    <p class="mt-4" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Funding order (unchanged):</strong> the HSA pays healthcare first, tax-free, up to its balance (Medicare premiums and IRMAA are HSA-qualified); only the uncovered remainder enters the portfolio withdrawal and is grossed up for taxes. A subsidy therefore reduces real account outflows dollar-for-dollar — first preserving HSA, then shrinking Portfolio W/D. The living target still excludes healthcare entirely; these costs ride on top of the $149K. A 3-year subsidy extension has passed the House — the toggle exists precisely because this law may change.</p>
+                    <p class="mt-4" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Funding order (unchanged):</strong> the HSA pays healthcare first, tax-free, up to its balance (Medicare premiums and IRMAA are HSA-qualified); only the uncovered remainder enters the portfolio withdrawal and is grossed up for taxes. A subsidy therefore reduces real account outflows dollar-for-dollar — first preserving HSA, then shrinking Portfolio W/D. The living target still excludes healthcare entirely; these costs ride on top of the living target. A 3-year subsidy extension has passed the House — the toggle exists precisely because this law may change.</p>
                 </section>
 
                 <!-- 15. Children -->
                 <section id="sec-children">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-children mr-2"></i>15. Children: College Funding &amp; Gifting</h2>
                     <p>The Children section defines per-child education profiles that drive the 529's tuition schedule automatically — nothing is hardcoded. For each child: birth year, annual undergrad cost and years, and an optional grad-school block with its own cost and years. Undergrad starts the year the child turns 18; grad school starts immediately after undergrad ends. All costs are today's dollars, inflated to each tuition year.</p>
-                    <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Defaults:</strong> two children (born 2012 and 2015), each $30,500/yr &times; 4 undergrad years and $50,000/yr &times; 2 grad years — producing overlapping tuition from 2030 through 2038, including years where one child's grad school overlaps the other's undergrad.</p>
+                    <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Defaults:</strong> two children (born 2012 and 2015), each $30,500/yr &times; 4 undergrad years and $50,000/yr &times; 3 grad years &mdash; producing overlapping tuition spanning roughly a decade, including years where one child's grad school overlaps the other's undergrad. (Undergrad starts the year a child turns 18; grad follows immediately, so the exact calendar span shifts with each child's birth year.)</p>
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Funding:</strong> tuition is paid from the 529 first. If the 529 runs dry, the shortfall is paid from Brokerage (reducing basis proportionally) and the 529 Status KPI flips to "Underfunded." </p>
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Gifting schedule:</strong> year/amount rows for one-off transfers (weddings, home down-payments, major gifts). Amounts are today's dollars — the engine inflates them to the gift year so the recipient gets the intended real value — and they appear in the Life Event column, funded through the normal withdrawal sequence.</p>
                 </section>
@@ -3772,7 +4125,7 @@
                 <section id="sec-profiles">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-file-export mr-2"></i>18. Profiles: Import / Export / Reset</h2>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a complete JSON snapshot (saved as .txt): every input, the editable tax brackets and RMD divisors, the children and gifting schedules, and display preferences (theme, view mode, dollar mode, visible column groups). It captures your <em>setup</em>, not the computed table.</li>
+                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a JSON snapshot (saved as .txt) of <em>your</em> setup: every left-panel input (household, assets, contributions, distribution, Roth conversions, Social Security, survivor, state/local tax, heir assumptions), the children and gifting schedules, and display preferences (theme, view mode, dollar mode, visible column groups). It deliberately does <em>not</em> save the federal tax tables (brackets, LTCG, standard deduction, FPL, RMD divisors) &mdash; those are current tax law, not personal data, so on import they always come from the app's current figures rather than whatever they were when you saved. This means a profile saved in an earlier tax year stays valid: your situation is re-run against today's tax law.</li>
                         <li><strong style="color:var(--text-primary)">Import Profile</strong> restores a previously exported file exactly — useful for maintaining named scenarios (e.g., "aggressive conversions" vs. "no SS, conservative") and swapping between them. The file is validated before anything is overwritten.</li>
                         <li><strong style="color:var(--text-primary)">Reset</strong> restores every input, table, and schedule to the built-in defaults (with a confirmation prompt). Your current theme preference is left alone, and any active comparison is cleared.</li>
                     </ul>
@@ -3816,6 +4169,7 @@
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-scale-balanced mr-2"></i>19. Key Assumptions &amp; Simplifications</h2>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                         <li>One fixed nominal return (6%) for every bucket, every year — no volatility, no glide path, no asset-allocation differences between account types.</li>
+                        <li>The single growth rate is applied to the <em>entire</em> portfolio — the model doesn't carve out a separate low-yield cash reserve. Many retirees hold a few years of expenses in cash/short-term instruments (a HYSA or Treasuries) earning less than their growth rate, which slightly lowers the blended return. The effect is modest (the reserve is a small share of a large portfolio, and shrinks as the portfolio grows), and you can approximate it by entering a slightly lower Nominal Return.</li>
                         <li>One fixed inflation rate (3%) drives spending, healthcare, contributions, brackets, deductions, tuition, and gifts alike (SS has its own COLA input, defaulted equal).</li>
                         <li>Tax law is frozen: 2026 MFJ brackets/deduction inflate forever; no TCJA-style regime changes, no future legislation.</li>
                         <li>Single shared buckets per type (one Traditional, one Roth, etc.) rather than per-spouse accounts; RMDs and penalties key off the older spouse's age.</li>
@@ -3823,7 +4177,7 @@
                         <li>Contribution inputs are taken as-entered (inflation-indexed) — IRS contribution limits are not enforced.</li>
                         <li>Healthcare costs are flat within each tier (no age-based escalation beyond inflation, no long-term-care shock modeling).</li>
                         <li>All flows are annual; intra-year timing exists only through the growth convention.</li>
-                        <li>No Monte Carlo / sequence-of-returns analysis in this version — a single deterministic path only.</li>
+                        <li>The core projection is a single deterministic path (one fixed return every year); sequence-of-returns risk is tested separately via the optional Monte Carlo tool (top-nav button), which is not part of the deterministic engine.</li>
                     </ul>
                 </section>
 
@@ -3834,7 +4188,7 @@
                         <li>Roth 5-year seasoning rules (for conversions and earnings) are not enforced — early Roth access is modeled as available with only the 10% penalty pre-59&frac12;.</li>
                         <li>Roth withdrawal ordering (contributions &rarr; conversions &rarr; earnings) is not modeled; penalties may be overstated for Roth draws.</li>
                         <li>The SS taxability phase-in, spousal/survivor benefits, and claiming-age benefit adjustments are simplified to flat inputs.</li>
-                        <li>ACA subsidies (a major real-world interaction with Roth conversions pre-65) and IRMAA (post-65) are not modeled — conversion sizing here optimizes brackets only.</li>
+                        <li>ACA subsidies (pre-65) and IRMAA (post-65) are modeled as optional toggles (Section 14); when they are on, Roth-conversion sizing can additionally respect the ACA subsidy cliff. Both carry their own simplifications, listed below.</li>
                         <li>Fixed-amount Roth conversions are sized without regard to bracket position or same-year spending draws (by design); only bracket-fill mode is spending-aware. Single filing (survivor) brackets are approximated as half of MFJ.</li>
                         <li>Survivor Scenario simplifications: Single brackets are approximated as exactly half of MFJ (slightly off above the 24% bracket); the survivor SS benefit is simplified to the larger of the two configured amounts from the survivor’s own claim age; the qualifying-surviving-spouse filing status (2 years with dependents) is not modeled; only one death event is supported.</li>
                         <li>State/county taxes are flat rates with no deductions or credits; the only state-specific exclusion modeled is the optional Social Security exemption. Scheduled or conditional future rate changes are not modeled (the editable rate is fixed for the whole run).</li>

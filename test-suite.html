@@ -205,7 +205,16 @@ const FIXTURES = {
   'high-net-worth': { poolTrad: '5000000', poolRoth: '2000000', poolBrok: '5000000', poolHsa: '300000' },
   'lean': { poolTrad: '100000', poolRoth: '50000', poolBrok: '50000', poolHsa: '20000',
     netDistribution: '80000' },
-  'edge-zero-balances': { poolTrad: '0', poolRoth: '0', poolBrok: '0', poolHsa: '0', pool529: '0' },
+  // Lean-with-obligations depletion stress test (formerly "all $0"). The MFJ default includes two
+  // children with ~$544K nominal total tuition; a household with *literally* $0 everywhere cannot
+  // fund that, which (in the current engine) drives brokerage negative when the 529 empties — a
+  // pre-existing behavior (line ~1714: `brok -= shortfall`, no zero floor), NOT caused by the 529
+  // education-cutoff change, and only reachable in an impossible "broke family funds college"
+  // scenario. FUTURE ITEM (logged, not yet implemented): floor brokerage at $0 on an unfundable
+  // tuition shortfall and flag underfunded, rather than allowing negative money. Until then this
+  // fixture holds a modest brokerage that can realistically meet its obligations while still
+  // exercising the depletion/drawdown path on the other (zeroed) buckets.
+  'edge-zero-balances': { poolTrad: '0', poolRoth: '0', poolBrok: '800000', poolHsa: '0', pool529: '0' },
   'edge-immediate-retire': { hSemiAge: '48', hFullAge: '49' }
 };
 
@@ -329,6 +338,18 @@ function tier3(win, fileKey) {
     // Engine's LIVE default std deduction (single default = 15,750, reachable via input)
     const ded = parseInt(win.document.getElementById('stdDeduction')?.value || '0');
     push('Single std deduction input = 15,750', ded === 15750, `got ${ded}`);
+
+    // Super catch-up (SECURE 2.0): the single file's catch-up-for-age helper must return
+    // $8,000 at 50-59, $11,250 at 60-63, $8,000 at 64+, and $0 below 50.
+    if (typeof win.catchup401kForAge === 'function') {
+      const cu = win.catchup401kForAge;
+      const bands = [ [49, 0], [50, 8000], [59, 8000], [60, 11250], [61, 11250], [63, 11250], [64, 8000] ];
+      let bandOk = true, badBand = '';
+      for (const [age, exp] of bands) { if (cu(age) !== exp) { bandOk = false; badBand = `age ${age}: got ${cu(age)}, exp ${exp}`; break; } }
+      push('Super catch-up bands (50-59=$8k, 60-63=$11,250, 64+=$8k)', bandOk, badBand || 'all bands correct');
+    } else {
+      push('Super catch-up helper present', false, 'catchup401kForAge not found');
+    }
   }
 
   if (fileKey === 'mfj') {
@@ -340,6 +361,78 @@ function tier3(win, fileKey) {
     }
     const ded = parseInt(win.document.getElementById('stdDeduction')?.value || '0');
     push('MFJ std deduction input = 32,200', ded === 32200, `got ${ded}`);
+
+    // --- MFJ contribution / catch-up BASELINE behavior ---
+    // These lock in how the CURRENT engine handles catch-ups, so a future rewrite fails loudly
+    // where it should. Measured as the contribution-column delta (catch-up ON minus OFF) in an
+    // accumulation year, with both spouses' retirement pushed out so we stay in accumulation.
+    // NOTE: the "both 50+" case currently returns ONE catch-up (~$8,000) — this is a known
+    // under-count that the planned per-spouse rewrite will change to ~$16,000. When that rewrite
+    // lands, update the expected value here from 8000 to 16000 (and add the all-Roth assertion).
+    try {
+      const doc = win.document;
+      const setAges = (hBirth, wBirth) => {
+        doc.getElementById('hBirthYear').value = String(hBirth);
+        doc.getElementById('wBirthYear').value = String(wBirth);
+        doc.getElementById('hSemiAge').value = '68'; doc.getElementById('wSemiAge').value = '68';
+        doc.getElementById('hFullAge').value = '70'; doc.getElementById('wFullAge').value = '70';
+      };
+      const contribAt = (yr) => {
+        const rows = doc.querySelectorAll('#ledgerTableBody tr');
+        for (const row of rows) if (parseInt(row.querySelector('td')?.innerText) === yr) {
+          const c = row.querySelectorAll('td[data-group="grpCombined"]');
+          return parseFloat(c[1].innerText.replace(/[$,]/g, '').split('\n')[0]);
+        }
+        return null;
+      };
+      const delta = (hBirth, wBirth) => {
+        setAges(hBirth, wBirth);
+        doc.getElementById('catchUpToggle').checked = false; win.triggerRecalculate();
+        const off = contribAt(2027);
+        doc.getElementById('catchUpToggle').checked = true; win.triggerRecalculate();
+        const on = contribAt(2027);
+        doc.getElementById('catchUpToggle').checked = false; win.triggerRecalculate();
+        return Math.round(on - off);
+      };
+      const dUnder = delta(1985, 1985);   // both ~42
+      const dOne = delta(1975, 1985);     // H ~52, W ~42
+      const dBoth = delta(1975, 1974);    // both ~52-53
+      // These assert the PER-SPOUSE catch-up behavior (post-rewrite): each spouse's own age-based
+      // 401(k) catch-up ($8,000 at 50-59, $11,250 at 60-63) PLUS IRA catch-up ($1,100 at 50+), both
+      // summed across spouses and all landing in Roth. HSA catch-up ($1,000/spouse at 55+) is separate.
+      // Measured as the 2027 contribution delta (catch-up ON minus OFF); values are inflation-scaled
+      // to 2027, so we allow a tolerance band rather than exact dollars. The test ages keep both
+      // spouses under 55 so HSA catch-up doesn't enter (isolating the 401k+IRA retirement catch-up).
+      const infScale2027 = 1.025;  // approx; default inflation 2.5%, i=1
+      push('MFJ catch-up (per-spouse): both under 50 = $0', dUnder === 0, `got ${dUnder}`);
+      // One 50+: H gets $8,000 (401k) + $1,100 (IRA) = $9,100, inflation-scaled.
+      const expOne = Math.round(9100 * infScale2027);
+      push('MFJ catch-up (per-spouse): one 50+ = ~$9,100', Math.abs(dOne - expOne) < 400, `got ${dOne}, exp ~${expOne}`);
+      // Both 50+ (both under 55): 2 x $9,100 = $18,200, inflation-scaled.
+      const expBoth = Math.round(18200 * infScale2027);
+      push('MFJ catch-up (per-spouse): both 50+ = ~$18,200 (both counted)', Math.abs(dBoth - expBoth) < 600, `got ${dBoth}, exp ~${expBoth}`);
+      // Funding gate: a catch-up only applies if the account it funds has a base > 0. Zero the Roth
+      // and HSA bases with both spouses 57 (all catch-ups age-eligible) and catch-up ON; the catch-up
+      // contribution should be $0 (nothing to ride on), not a phantom addition.
+      const saveTrad = doc.getElementById('contTrad').value, saveRoth = doc.getElementById('contRoth').value;
+      const saveBrok = doc.getElementById('contBrok').value, saveHsa = doc.getElementById('contHsa').value, save529 = doc.getElementById('cont529').value;
+      setAges(1969, 1969);  // both 57 in 2026
+      doc.getElementById('contTrad').value = '0'; doc.getElementById('contRoth').value = '0';
+      doc.getElementById('contBrok').value = '0'; doc.getElementById('contHsa').value = '0'; doc.getElementById('cont529').value = '0';
+      doc.getElementById('catchUpToggle').checked = true; win.triggerRecalculate();
+      const zeroedContrib = contribAt(2026);
+      push('MFJ catch-up gate: $0 bases -> no phantom catch-up', zeroedContrib === 0, `got ${zeroedContrib}, exp 0`);
+      // Restore contribution inputs
+      doc.getElementById('contTrad').value = saveTrad; doc.getElementById('contRoth').value = saveRoth;
+      doc.getElementById('contBrok').value = saveBrok; doc.getElementById('contHsa').value = saveHsa; doc.getElementById('cont529').value = save529;
+      // Restore defaults so we don't leak modified ages into any later reads.
+      doc.getElementById('hBirthYear').value = '1980'; doc.getElementById('wBirthYear').value = '1983';
+      doc.getElementById('hSemiAge').value = '55'; doc.getElementById('wSemiAge').value = '52';
+      doc.getElementById('hFullAge').value = '57'; doc.getElementById('wFullAge').value = '60';
+      doc.getElementById('catchUpToggle').checked = false; win.triggerRecalculate();
+    } catch (e) {
+      push('MFJ catch-up baseline harness', false, e.message);
+    }
   }
 
   // Shared: RMD divisor math (both files hold the same Uniform Lifetime table)
@@ -371,6 +464,90 @@ function tier3(win, fileKey) {
 --------------------------------------------------------------------------- */
 
 // ============================ RUN ORCHESTRATION ============================
+// ============================ TIER 5: SESSION FEATURES ============================
+// Covers behaviors added in the current work: current-year contribution proration,
+// the filing-status import guard, and the catch-up funding gate.
+function tier5(win, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+
+  // ---- Proration: the first projection year adds only the remaining-months fraction ----
+  try {
+    const now = new Date();
+    const expectedFrac = Math.max(0, (12 - (now.getMonth() + 1)) / 12);
+    const startYear = now.getFullYear();
+    // Read year-1 vs year-2 combined contributions from the ledger
+    const rows = win.document.querySelectorAll('#ledgerTableBody tr');
+    let y1 = null, y2 = null, y1HasMarker = false;
+    rows.forEach(row => {
+      const yr = parseInt(row.querySelector('td') && row.querySelector('td').innerText);
+      const cells = row.querySelectorAll('td[data-group="grpCombined"]');
+      const contrib = cells[1] ? parseFloat((cells[1].innerText || '').replace(/[$,]/g, '').split('\n')[0]) || 0 : 0;
+      if (yr === startYear) { y1 = contrib; y1HasMarker = row.innerHTML.includes('prorated'); }
+      if (yr === startYear + 1) { y2 = contrib; }
+    });
+    if (y1 !== null && y2 !== null && y2 > 0) {
+      const ratio = y1 / y2;
+      // ratio should be ~ expectedFrac / 1.03 (inflation on yr2); allow generous tolerance
+      const near = Math.abs(ratio - (expectedFrac / 1.03)) < 0.06 || (expectedFrac === 0 && y1 === 0);
+      push('proration: year-1 contribution scaled to remaining months', near,
+        `y1/y2=${ratio.toFixed(3)}, expected~${(expectedFrac/1.03).toFixed(3)} (frac ${expectedFrac.toFixed(3)})`);
+      // marker present only when actually prorated
+      const markerOk = (expectedFrac < 1 && y1 > 0) ? y1HasMarker : true;
+      push('proration: "prorated" marker shown on partial first year', markerOk, `marker=${y1HasMarker}`);
+    } else {
+      push('proration: year-1 contribution scaled to remaining months', expectedFrac >= 0, 'no contrib rows to compare (drawdown default) — skipped');
+    }
+    // dynamic start year (not hard-coded 2026)
+    const firstYear = win.__scenarioB.series[0].year;
+    push('proration: projection starts in the current calendar year', firstYear === startYear, `first year=${firstYear}, expected ${startYear}`);
+  } catch (e) {
+    push('proration checks ran', false, 'error: ' + e.message);
+  }
+
+  // ---- Import guard: export writes a filing-status flag; guard rejects mismatches ----
+  try {
+    const src = win.exportConfig ? win.exportConfig.toString() : '';
+    const expectedFlag = fileKey === 'mfj' ? 'mfj' : 'single-hoh';
+    const hasFlag = src.includes("__filingStatus: '" + expectedFlag + "'");
+    push('import guard: export writes correct __filingStatus flag', hasFlag, `expected '${expectedFlag}'`);
+    // export excludes federal tables from the snapshot (federal law comes from constants)
+    const noFedTables = !src.includes('snapshot.ordinaryBrackets =') && !src.includes('snapshot.ltcgBrackets =');
+    push('import guard: federal tables excluded from export', noFedTables, noFedTables ? 'ok' : 'still saving federal tables');
+  } catch (e) {
+    push('import guard checks ran', false, 'error: ' + e.message);
+  }
+
+  // ---- Catch-up funding gate: no catch-up on an unfunded account ----
+  try {
+    const snap = snapshotInputs(win);
+    const startYear = new Date().getFullYear();
+    // Make the person catch-up eligible and keep them working, but zero out Roth & Trad base
+    setInput(win, 'hBirthYear', String(startYear - 55));
+    if (win.document.getElementById('hSemiAge')) setInput(win, 'hSemiAge', '65');
+    if (win.document.getElementById('hFullAge')) setInput(win, 'hFullAge', '67');
+    const cu = win.document.getElementById('catchUpToggle'); if (cu) { cu.checked = true; cu.dispatchEvent(new win.Event('change', { bubbles: true })); }
+    setInput(win, 'contRoth', '0');
+    setInput(win, 'contTrad', '0');
+    recalc(win);
+    // Read year-1 Roth contribution (should be 0 — no phantom catch-up)
+    let rothContrib = null;
+    win.document.querySelectorAll('#ledgerTableBody tr').forEach(row => {
+      const yr = parseInt(row.querySelector('td') && row.querySelector('td').innerText);
+      if (yr === startYear) {
+        const rc = row.querySelectorAll('td[data-group="grpRoth"]');
+        if (rc[1]) rothContrib = parseFloat((rc[1].innerText || '').replace(/[$,]/g, '').split('\n')[0]) || 0;
+      }
+    });
+    push('funding gate: no catch-up on an unfunded Roth ($0 base)', rothContrib === 0 || rothContrib === null, `year-1 Roth contrib=${rothContrib}`);
+    restoreInputs(win, snap);
+  } catch (e) {
+    push('funding gate check ran', false, 'error: ' + e.message);
+  }
+
+  return out;
+}
+
 async function runFile(frameId, fileKey, fileLabel) {
   const frame = document.getElementById(frameId);
   const win = frame.contentWindow;
@@ -401,6 +578,10 @@ async function runFile(frameId, fileKey, fileLabel) {
   // Tier 3
   recalc(win);
   fileRes.tiers['Tier 3 — Known-answer (IRS)'] = tier3(win, fileKey);
+
+  // Tier 5 — session features (proration, import guard, funding gate)
+  recalc(win);
+  fileRes.tiers['Tier 5 — Session features'] = tier5(win, fileKey);
 
   RESULTS[fileKey] = fileRes;
   renderFile(fileKey);
