@@ -250,13 +250,18 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Semi-Retirement Income (1099) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Self-employment (1099) income during semi-retirement, from your semi-retirement age to full-retirement age. Subject to SE tax. <a onclick="openHelp('sec-inputs')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §3 &rarr;</a></span></span></label>
+                    <label class="block text-[11px] text-slate-400 mb-1">Semi-Ret Income <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Part-time earned income during semi-retirement, from your semi-retirement age to full-retirement age. Choose <strong>1099</strong> (self-employed &mdash; pays 15.3% SE tax, gets the &frac12;-SE income-tax deduction) or <strong>W-2</strong> (employee &mdash; pays 7.65% FICA, no &frac12; deduction). <a onclick="openHelp('sec-inputs')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §3 &rarr;</a></span></span></label>
                     <input type="text" inputmode="decimal" data-money="true" id="hSemiInc1099" value="25000" class="mini-input">
+                    <select id="hSemiType" class="mini-input mt-1 w-full text-[11px]" data-default-value="1099">
+                        <option value="1099">1099 (self-employed)</option>
+                        <option value="w2">W-2 (employee)</option>
+                    </select>
                 </div>
                 <!-- Hidden spouse mirrors (single-filer build; see note above) -->
                 <select id="wSemiAge" style="display:none" data-select-type="age" data-default="55"></select>
                 <select id="wFullAge" style="display:none" data-select-type="age" data-default="60"></select>
                 <input type="hidden" id="wSemiInc1099" value="0">
+                <input type="hidden" id="wSemiType" value="1099">
             </div>
 
 
@@ -1079,7 +1084,7 @@
 
         const inputIds = [
             'hBirthMonth', 'hBirthYear', 'wBirthMonth', 'wBirthYear', 'targetEol', 'hSemiAge', 'wSemiAge',
-            'hFullAge', 'wFullAge', 'hSemiInc1099', 'wSemiInc1099', 'contTrad', 'contRoth', 'contBrok', 'contHsa', 'cont529',
+            'hFullAge', 'wFullAge', 'hSemiInc1099', 'wSemiInc1099', 'hSemiType', 'wSemiType', 'contTrad', 'contRoth', 'contBrok', 'contHsa', 'cont529',
             'catchUpToggle', 'coveredContribPct', 'poolTrad', 'poolRoth', 'poolBrok', 'poolHsa', 'pool529', 'brokBasisPct', 'brokDivYield', 'brokDivQualifiedPct',
             'withdrawalSeq', 'netDistribution', 'pctDistribution', 'distModel', 'healthcareCost', 'medicareCost',
             'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle', 'heirTaxRate', 'heirHsaTaxRate',
@@ -1697,6 +1702,8 @@
             const hFull = parseInt(document.getElementById('hFullAge').value) || 60;
             const wFull = hFull;                       // mirror
             const hSemi1099 = parseFloat(cleanNum(document.getElementById('hSemiInc1099').value)) || 0;
+            const hSemiType = (document.getElementById('hSemiType') || {}).value || '1099';
+            const wSemiType = (document.getElementById('wSemiType') || {}).value || '1099';
             const wSemi1099 = 0;                       // single filer: no second income
 
             const baseContTrad = parseFloat(cleanNum(document.getElementById('contTrad').value)) || 0;
@@ -1929,12 +1936,28 @@
                 // full age, so one spouse fully retiring no longer keeps the other's income
                 // flowing (or vice versa). In the survivor phase, only the survivor's own
                 // income remains (replaces the old 50% household haircut).
-                let gross1099 = 0, seTax = 0, netEarnedIncome = 0;
+                let gross1099 = 0, seTax = 0, netEarnedIncome = 0, seDeduction = 0;
                 const h1099Active = !isCovered && hAge >= hSemi && hAge < hFull && (!isSurvivorPhase || survivorWho === 'W');
                 const w1099Active = !isCovered && wAge >= wSemi && wAge < wFull && (!isSurvivorPhase || survivorWho === 'H');
-                gross1099 = ((h1099Active ? hSemi1099 : 0) + (w1099Active ? wSemi1099 : 0)) * infScale;
+                // Per-person payroll tax + income-tax treatment by income type:
+                //   1099 (self-employed): 15.3% SE tax on 92.35% of gross; HALF of it deducts from the income-tax base.
+                //   W-2 (employee):       7.65% employee FICA on gross; NO half deduction (W-2 wages are fully taxable).
+                const payrollFor = (grossPersonNominal, type) => {
+                    if (grossPersonNominal <= 0) return { tax: 0, halfDeduction: 0 };
+                    if (type === 'w2') {
+                        return { tax: grossPersonNominal * 0.0765, halfDeduction: 0 };
+                    }
+                    const t = grossPersonNominal * IRS_2026.seTaxNetFactor * IRS_2026.seTaxRate;
+                    return { tax: t, halfDeduction: t / 2 };
+                };
+                const hGrossNom = (h1099Active ? hSemi1099 : 0) * infScale;
+                const wGrossNom = (w1099Active ? wSemi1099 : 0) * infScale;
+                gross1099 = hGrossNom + wGrossNom;
                 if (gross1099 > 0) {
-                    seTax = gross1099 * IRS_2026.seTaxNetFactor * IRS_2026.seTaxRate;
+                    const hPay = payrollFor(hGrossNom, hSemiType);
+                    const wPay = payrollFor(wGrossNom, wSemiType);
+                    seTax = hPay.tax + wPay.tax;
+                    seDeduction = hPay.halfDeduction + wPay.halfDeduction;
                     netEarnedIncome = gross1099 - seTax;
                 }
 
@@ -2070,7 +2093,7 @@
                 //   1099 net of ½SE deduction + forced RMD + fixed-mode Roth conversion + taxable SS
                 //   (bracket-mode conversions are sized dynamically inside the solver instead)
                 const standardDeduction = stdDedBase * infScale * filingScale;
-                const seDeductionFinal = seTax / 2;
+                const seDeductionFinal = seDeduction;   // 1099 contributes half its SE tax; W-2 contributes 0
                 const preWithdrawOrdinary = Math.max(0, gross1099 - seDeductionFinal)
                     + forcedRmd
                     + rothConvAmt

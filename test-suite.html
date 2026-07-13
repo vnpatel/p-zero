@@ -336,8 +336,9 @@ function tier3(win, fileKey) {
       push(`HoH tax $${(+ti).toLocaleString()}`, approx(got, exp, TOL), `got ${got.toFixed(2)}, exp ${exp}`);
     }
     // Engine's LIVE default std deduction (single default = 15,750, reachable via input)
-    const ded = parseInt(win.document.getElementById('stdDeduction')?.value || '0');
-    push('Single std deduction input = 15,750', ded === 15750, `got ${ded}`);
+    const sdEl = win.document.getElementById('stdDeduction');
+    const ded = sdEl ? parseInt((sdEl.value || sdEl.textContent || '0').replace(/[$,]/g, '')) : 0;
+    push('Single std deduction display = 15,750 (from IRS_2026)', ded === 15750, `got ${ded}`);
 
     // Super catch-up (SECURE 2.0): the single file's catch-up-for-age helper must return
     // $8,000 at 50-59, $11,250 at 60-63, $8,000 at 64+, and $0 below 50.
@@ -359,8 +360,10 @@ function tier3(win, fileKey) {
       const got = mt(+ti, IRS.MFJ_ORDINARY, 1);
       push(`MFJ tax $${(+ti).toLocaleString()}`, approx(got, exp, TOL), `got ${got.toFixed(2)}, exp ${exp}`);
     }
-    const ded = parseInt(win.document.getElementById('stdDeduction')?.value || '0');
-    push('MFJ std deduction input = 32,200', ded === 32200, `got ${ded}`);
+    // stdDeduction is now a read-only display (span) sourced from IRS_2026; read text or input value
+    const sdEl = win.document.getElementById('stdDeduction');
+    const ded = sdEl ? parseInt((sdEl.value || sdEl.textContent || '0').replace(/[$,]/g, '')) : 0;
+    push('MFJ std deduction display = 32,200 (from IRS_2026)', ded === 32200, `got ${ded}`);
 
     // --- MFJ contribution / catch-up BASELINE behavior ---
     // These lock in how the CURRENT engine handles catch-ups, so a future rewrite fails loudly
@@ -543,6 +546,45 @@ function tier5(win, fileKey) {
     restoreInputs(win, snap);
   } catch (e) {
     push('funding gate check ran', false, 'error: ' + e.message);
+  }
+
+  // ---- W-2 vs 1099 semi-retirement income: payroll-tax treatment differs ----
+  try {
+    if (win.document.getElementById('hSemiType')) {
+      const snap = snapshotInputs(win);
+      const startYear = new Date().getFullYear();
+      // Construct an ACTIVE semi window: person semi at 55, full at 65, born ~52 yrs ago
+      // so the semi window (55-65) lies in the near future and is exercised. For MFJ, put both
+      // spouses on the same schedule so isCovered=false during the window.
+      setInput(win, 'hBirthYear', String(startYear - 52));
+      if (win.document.getElementById('wBirthYear')) setInput(win, 'wBirthYear', String(startYear - 52));
+      if (win.document.getElementById('hSemiAge')) setInput(win, 'hSemiAge', '55');
+      if (win.document.getElementById('wSemiAge')) setInput(win, 'wSemiAge', '55');
+      if (win.document.getElementById('hFullAge')) setInput(win, 'hFullAge', '65');
+      if (win.document.getElementById('wFullAge')) setInput(win, 'wFullAge', '65');
+      setInput(win, 'hSemiInc1099', '50000');
+      if (win.document.getElementById('wSemiInc1099')) setInput(win, 'wSemiInc1099', '0');
+      // Give a healthy portfolio so the scenario does NOT deplete to a $0 floor (which would mask
+      // the W-2-vs-1099 difference). We want a surviving EOL where the tax difference is visible.
+      setInput(win, 'poolTrad', '2000000');
+      setInput(win, 'poolRoth', '500000');
+      setInput(win, 'poolBrok', '1000000');
+
+      // W-2 pays 7.65% vs 1099's ~14.13% payroll tax — less tax paid — so EOL should not be lower.
+      setInput(win, 'hSemiType', '1099'); recalc(win);
+      const eol1099 = Math.round(win.__scenarioB.series[win.__scenarioB.series.length - 1].spendableTotal);
+      setInput(win, 'hSemiType', 'w2'); recalc(win);
+      const eolW2 = Math.round(win.__scenarioB.series[win.__scenarioB.series.length - 1].spendableTotal);
+
+      push('W-2 vs 1099: W-2 semi income yields >= EOL (lower payroll tax)', eolW2 >= eol1099,
+        `1099 EOL=$${eol1099.toLocaleString()}, W-2 EOL=$${eolW2.toLocaleString()}`);
+      push('W-2 vs 1099: the income-type toggle changes the projection', eolW2 !== eol1099,
+        `1099=$${eol1099.toLocaleString()} vs W-2=$${eolW2.toLocaleString()}`);
+
+      restoreInputs(win, snap);
+    }
+  } catch (e) {
+    push('W-2/1099 semi income check ran', false, 'error: ' + e.message);
   }
 
   return out;
