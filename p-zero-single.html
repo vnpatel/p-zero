@@ -817,21 +817,28 @@
             </div>
 
             <!-- View Canvas 2: Editable Tax & System Params -->
-            <div id="viewSystemMetrics" class="hidden grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div class="glass-panel p-5 rounded-xl border border-slate-800">
+            <div id="viewSystemMetrics" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
+                <div class="glass-panel p-5 rounded-xl border border-slate-800 md:col-span-2 lg:col-span-6">
+                    <h3 class="text-xs font-bold text-white heading-font border-b border-slate-800 pb-2 mb-3 uppercase tracking-wider">
+                        <i class="fa-solid fa-piggy-bank text-emerald-400 mr-2"></i>Contribution Limits (2026)
+                    </h3>
+                    <p class="text-[10px] text-slate-500 mb-3">IRS base limits, shown <strong>per person</strong> (a single/HoH filer is one earner, so these are your household amounts &mdash; unlike MFJ, they aren&rsquo;t doubled). Self-employed <strong>Solo 401(k)</strong> plans follow similar limits. The &ldquo;Fill Max&rdquo; button sets contributions to these; your contribution inputs remain editable. Federal values (read-only).</p>
+                    <div id="contribLimitRows" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-1 text-[11px] font-mono items-start"></div>
+                </div>
+                <div class="glass-panel p-5 rounded-xl border border-slate-800 md:col-span-1 lg:col-span-2">
                     <h3 class="text-xs font-bold text-white heading-font border-b border-slate-800 pb-2 mb-3 uppercase tracking-wider flex items-center">
                         <i class="fa-solid fa-scale-balanced text-blue-400 mr-2"></i>Ordinary Income Brackets
                         <span id="filingStatusPill" class="ml-2 normal-case tracking-normal text-[10px] font-semibold px-2 py-0.5 rounded-full border" style="background:rgba(37,99,235,0.15);color:#60a5fa;border-color:rgba(37,99,235,0.4)">Single</span>
                     </h3>
-                    <p class="text-[10px] text-slate-500 mb-2">Editable. Rate applies to income above "From" up to next tier. Switches automatically between Single and Head of Household when you add dependents.</p>
+                    <p class="text-[10px] text-slate-500 mb-2">Rate applies to income above &ldquo;From&rdquo; up to next tier. Switches automatically between Single and Head of Household when you add dependents. Federal values (read-only).</p>
                     <div id="bracketRows" class="space-y-1.5 text-xs text-slate-400"></div>
                     <div class="mt-4 bg-slate-900/60 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
                         <span id="stdDedLabel" class="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Std Deduction (Single)</span>
-                        <input type="number" id="stdDeduction" value="15750" class="mini-input w-28 text-right">
+                        <span id="stdDeduction" data-fed-display class="w-28 text-right font-mono text-[12px] font-semibold" style="color:var(--text-primary)"></span>
                     </div>
                 </div>
 
-                <div class="glass-panel p-5 rounded-xl border border-slate-800">
+                <div class="glass-panel p-5 rounded-xl border border-slate-800 md:col-span-1 lg:col-span-2">
                     <h3 class="text-xs font-bold text-white heading-font border-b border-slate-800 pb-2 mb-3 uppercase tracking-wider">
                         <i class="fa-solid fa-percent text-emerald-400 mr-2"></i>LTCG Brackets
                     </h3>
@@ -840,21 +847,56 @@
                     <div class="pt-3 border-t border-slate-900 space-y-2">
                         <div>
                             <label class="block mb-1">Federal Poverty Level — 1st Person <span class="text-[10px] text-slate-500">(prior-yr FPL, for ACA)</span></label>
-                            <input type="text" inputmode="decimal" data-money="true" id="fplFirstPerson" value="15650" class="mini-input w-full text-right">
+                            <span id="fplFirstPerson" data-fed-display class="w-full text-right font-mono text-[12px] font-semibold" style="color:var(--text-primary)"></span>
                         </div>
                         <div>
                             <label class="block mb-1">FPL — Each Additional Person</label>
-                            <input type="text" inputmode="decimal" data-money="true" id="fplAddlPerson" value="5500" class="mini-input w-full text-right">
+                            <span id="fplAddlPerson" data-fed-display class="w-full text-right font-mono text-[12px] font-semibold" style="color:var(--text-primary)"></span>
                         </div>
                     </div>
                 </div>
 
-                <div class="glass-panel p-5 rounded-xl border border-slate-800">
+                <div class="glass-panel p-5 rounded-xl border border-slate-800 md:col-span-2 lg:col-span-2">
                     <h3 class="text-xs font-bold text-white heading-font border-b border-slate-800 pb-2 mb-3 uppercase tracking-wider">
                         <i class="fa-solid fa-hourglass-half text-purple-400 mr-2"></i>IRS Uniform Lifetime Divisors
                     </h3>
-                    <p class="text-[10px] text-slate-500 mb-2">Editable. Used for RMD = Trad Balance / Divisor.</p>
+                    <p class="text-[10px] text-slate-500 mb-2">Used for RMD = Trad Balance / Divisor. Federal values (read-only).</p>
                     <div id="rmdDivisorRows" class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-mono text-slate-400 overflow-y-auto" style="max-height:36rem"></div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-xl border border-slate-800 md:col-span-2 lg:col-span-3">
+                    <h3 class="text-xs font-bold text-white heading-font border-b border-slate-800 pb-2 mb-3 uppercase tracking-wider">
+                        <i class="fa-solid fa-heart-pulse text-sky-400 mr-2"></i>ACA Subsidy &amp; Self-Employment Tax
+                    </h3>
+                    <p class="text-[10px] text-slate-500 mb-2">Statutory values behind the ACA premium-subsidy calc and 1099 self-employment tax. Federal values (read-only).</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-2">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider mb-1" style="color:var(--text-secondary)">Applicable % of MAGI (by FPL ratio)</p>
+                            <div id="acaPctRows" class="space-y-0.5 text-[11px] font-mono"></div>
+                            <p class="text-[9px] text-slate-600 mt-1.5 leading-relaxed">The share of income a household is expected to pay toward the benchmark plan; the subsidy covers the rest. Interpolated within bands.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wider mb-1" style="color:var(--text-secondary)">Subsidy Bounds</p>
+                                <div class="flex justify-between text-[11px] font-mono border-b border-slate-900 py-0.5"><span style="color:var(--text-secondary)">Subsidy cliff</span><span id="acaCliffDisplay" style="color:var(--text-primary)"></span></div>
+                                <div class="flex justify-between text-[11px] font-mono border-b border-slate-900 py-0.5"><span style="color:var(--text-secondary)">Medicaid floor</span><span id="acaFloorDisplay" style="color:var(--text-primary)"></span></div>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wider mb-1" style="color:var(--text-secondary)">Self-Employment Tax (1099)</p>
+                                <div class="flex justify-between text-[11px] font-mono border-b border-slate-900 py-0.5"><span style="color:var(--text-secondary)">SE tax rate</span><span id="seTaxRateDisplay" style="color:var(--text-primary)"></span></div>
+                                <div class="flex justify-between text-[11px] font-mono border-b border-slate-900 py-0.5"><span style="color:var(--text-secondary)">On net-earnings factor</span><span id="seTaxFactorDisplay" style="color:var(--text-primary)"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-xl border border-slate-800 md:col-span-2 lg:col-span-3">
+                    <h3 class="text-xs font-bold text-white heading-font border-b border-slate-800 pb-2 mb-3 uppercase tracking-wider">
+                        <i class="fa-solid fa-notes-medical text-rose-400 mr-2"></i>IRMAA Tiers (Medicare)
+                    </h3>
+                    <p class="text-[10px] text-slate-500 mb-2">Annual Part B + D surcharge by MAGI (2-yr lookback), Single/HoH thresholds. Federal values (read-only).</p>
+                    <div id="irmaaTierRows" class="space-y-1 text-xs font-mono text-slate-400"></div>
+                    <p class="text-[9px] text-slate-600 mt-2 leading-relaxed">Applied post-65; thresholds inflation-index each simulated year. Toggle on/off in the left panel's Healthcare section.</p>
                 </div>
             </div>
 
@@ -915,6 +957,12 @@
             // --- Federal Poverty Level (prior-year, single-person base + per-additional) ---
             fplFirstPerson: 15650,
             fplAddlPerson: 5500,
+            // --- Self-employment tax (Social Security 12.4% + Medicare 2.9% = 15.3% on 92.35% of net) ---
+            seTaxRate: 0.153,
+            seTaxNetFactor: 0.9235,
+            // --- ACA subsidy eligibility bounds (as multiples of FPL) ---
+            acaCliffFplMult: 4.0,
+            acaMedicaidFloorMult: 1.38,
 
             // --- Contribution limits (base, before catch-ups) ---
             elective401k: 24500,      // employee elective deferral (Traditional or Roth 401k)
@@ -923,6 +971,7 @@
             iraLimit: 7500,           // Traditional/Roth IRA (backdoor Roth for high earners) — 2026
             iraCatchup: 1100,         // extra IRA at age 50+ (2026)
             hsaSelfOnly: 4400,        // HSA self-only (individual) coverage max
+            hsaFamily: 8750,          // HSA family-coverage max (shown for reference; e.g. HoH with a family HDHP — contribution input is editable)
 
             // --- Catch-up contributions (added dynamically by the engine when the toggle is on
             //     AND the person is old enough; ages differ: 50 for retirement, 55 for HSA) ---
@@ -1033,10 +1082,10 @@
             'hFullAge', 'wFullAge', 'hSemiInc1099', 'wSemiInc1099', 'contTrad', 'contRoth', 'contBrok', 'contHsa', 'cont529',
             'catchUpToggle', 'coveredContribPct', 'poolTrad', 'poolRoth', 'poolBrok', 'poolHsa', 'pool529', 'brokBasisPct', 'brokDivYield', 'brokDivQualifiedPct',
             'withdrawalSeq', 'netDistribution', 'pctDistribution', 'distModel', 'healthcareCost', 'medicareCost',
-            'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle', 'fplFirstPerson', 'fplAddlPerson', 'heirTaxRate', 'heirHsaTaxRate',
+            'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle', 'heirTaxRate', 'heirHsaTaxRate',
             'rmdAge', 'rothConvToggle', 'rothConvStartAge', 'rothConvMethod', 'rothConvBracketCap', 'rothConvFixedAmt',
             'ssToggle', 'hSsAge', 'wSsAge', 'hSsAmount', 'wSsAmount', 'ssCola', 'ssTaxablePct',
-            'roiNominal', 'inflationRate', 'stdDeduction', 'stateRate', 'countyRate', 'stateExemptsSS',
+            'roiNominal', 'inflationRate', 'stateRate', 'countyRate', 'stateExemptsSS',
             'survivorToggle', 'survivorFirstToDie', 'survivorDeathAge', 'survivorSpendPct',
             'chartIncludeHsa', 'chartInclude529', 'growthConvention'
         ];
@@ -1046,6 +1095,82 @@
         const EXPORT_EXCLUDE = new Set(['stdDeduction', 'fplFirstPerson', 'fplAddlPerson']);
 
         // ---------- Bootstrapping editable tables ----------
+        // Federal statutory values are read-only displays sourced from IRS_2026.
+        function populateFederalDisplays() {
+            const fmt = (n) => '$' + Math.round(n).toLocaleString();
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            const hoh = (typeof isHoH === 'function') ? isHoH() : false;
+            set('stdDeduction', fmt(hoh ? IRS_2026.stdDedHoH : IRS_2026.stdDedSingle));
+            set('fplFirstPerson', fmt(IRS_2026.fplFirstPerson));
+            set('fplAddlPerson', fmt(IRS_2026.fplAddlPerson));
+            renderIrmaaTierRows();
+            const acaWrap = document.getElementById('acaPctRows');
+            if (acaWrap && typeof ACA_PCT_BANDS !== 'undefined') {
+                acaWrap.innerHTML = '<div class="flex justify-between text-[9px] text-slate-500 uppercase tracking-wider pb-0.5 border-b border-slate-800 mb-0.5"><span>FPL ratio</span><span>% of MAGI</span></div>';
+                ACA_PCT_BANDS.forEach(band => {
+                    const row = document.createElement('div');
+                    row.className = 'flex justify-between items-center border-b border-slate-900 py-0.5';
+                    const ratioLabel = `${band.fromRatio.toFixed(2)}\u2013${band.toRatio.toFixed(2)}\u00d7`;
+                    const pctLabel = band.fromPct === band.toPct
+                        ? `${(band.fromPct * 100).toFixed(2)}%`
+                        : `${(band.fromPct * 100).toFixed(2)}\u2013${(band.toPct * 100).toFixed(2)}%`;
+                    row.innerHTML = `<span style="color:var(--text-primary)">${ratioLabel}</span><span class="text-right" style="color:var(--text-primary)">${pctLabel}</span>`;
+                    acaWrap.appendChild(row);
+                });
+            }
+            set('acaCliffDisplay', (IRS_2026.acaCliffFplMult * 100).toFixed(0) + '% FPL');
+            set('acaFloorDisplay', (IRS_2026.acaMedicaidFloorMult * 100).toFixed(0) + '% FPL');
+            set('seTaxRateDisplay', (IRS_2026.seTaxRate * 100).toFixed(1) + '%');
+            set('seTaxFactorDisplay', (IRS_2026.seTaxNetFactor * 100).toFixed(2) + '%');
+            renderContribLimits();
+        }
+        // Read-only IRS contribution-limit reference, from IRS_2026.
+        function renderContribLimits() {
+            const wrap = document.getElementById('contribLimitRows');
+            if (!wrap) return;
+            const K = IRS_2026;
+            const money = (n) => '$' + Math.round(n).toLocaleString();
+            const groups = [
+                { title: '401(k) / 457(b) / 403(b)', rows: [
+                    ['Trad or Roth (Employee)', money(K.elective401k)],
+                    ['Total (Employee + Employer)', money(K.totalAddition)],
+                    ['Catch-up (age ' + K.catchupAge401k + '+)', '+' + money(K.catchup401k)],
+                    ['Super Catch-up (ages ' + K.superCatchupAgeStart + '\u2013' + K.superCatchupAgeEnd + ')', '+' + money(K.superCatchup401k) + ' <span style="color:var(--text-muted)">(instead of the +' + money(K.catchup401k) + ')</span>'],
+                ]},
+                { title: 'IRA', rows: [
+                    ['Trad or Roth', money(K.iraLimit)],
+                    ['Catch-up (age ' + K.catchupAge401k + '+)', '+' + money(K.iraCatchup)],
+                ]},
+                { title: 'HSA', rows: [
+                    ['Self-Only', money(K.hsaSelfOnly)],
+                    ['Family', money(K.hsaFamily)],
+                    ['Catch-up (age ' + K.catchupAgeHsa + '+)', '+' + money(K.catchupHsa)],
+                ]},
+            ];
+            wrap.innerHTML = groups.map(g =>
+                `<div>`
+                + `<p class="text-[11px] font-bold uppercase tracking-wider mb-1.5 pb-1 border-b border-slate-700" style="color:var(--text-primary)">${g.title}</p>`
+                + g.rows.map(([label, val]) =>
+                    `<div class="flex justify-between items-baseline gap-3 py-1 border-b border-slate-900">`
+                    + `<span style="color:var(--text-secondary)">${label}</span>`
+                    + `<span class="text-right whitespace-nowrap" style="color:var(--text-primary)">${val}</span></div>`
+                  ).join('')
+                + `</div>`
+            ).join('');
+        }
+        // Read-only IRMAA reference table from IRS_2026.irmaaTiers (single/HoH thresholds).
+        function renderIrmaaTierRows() {
+            const wrap = document.getElementById('irmaaTierRows');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="flex justify-between text-[10px] text-slate-500 uppercase tracking-wider pb-1 border-b border-slate-800 mb-1"><span>MAGI over</span><span>$/yr</span></div>';
+            IRS_2026.irmaaTiers.forEach(t => {
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center border-b border-slate-900 py-0.5';
+                row.innerHTML = `<span style="color:var(--text-primary)">$${Number(t.from).toLocaleString()}</span><span class="text-right" style="color:var(--text-primary)">$${Number(t.annual).toLocaleString()}</span>`;
+                wrap.appendChild(row);
+            });
+        }
+
         function renderBracketRows() {
             const wrap = document.getElementById('bracketRows');
             wrap.innerHTML = '';
@@ -1053,9 +1178,9 @@
                 const row = document.createElement('div');
                 row.className = 'flex justify-between items-center gap-2 border-b border-slate-900 py-1';
                 row.innerHTML = `
-                    <span class="text-white font-mono text-[11px] w-10">${b.rate}%</span>
+                    <span class="font-mono text-[11px] w-10 font-semibold" style="color:var(--text-primary)">${b.rate}%</span>
                     <span class="text-slate-500 text-[10px]">from $</span>
-                    <input type="number" class="mini-input flex-1" value="${b.from}" data-bracket-idx="${idx}" onchange="updateBracketFrom(this)">
+                    <span class="flex-1 text-right font-mono text-[11px]" style="color:var(--text-primary)">$${Number(b.from).toLocaleString()}</span>
                 `;
                 wrap.appendChild(row);
             });
@@ -1073,9 +1198,9 @@
                 const row = document.createElement('div');
                 row.className = 'flex justify-between items-center gap-2 border-b border-slate-900 py-1';
                 row.innerHTML = `
-                    <span class="text-white font-mono text-[11px] w-10">${b.rate}%</span>
+                    <span class="font-mono text-[11px] w-10 font-semibold" style="color:var(--text-primary)">${b.rate}%</span>
                     <span class="text-slate-500 text-[10px]">from $</span>
-                    <input type="number" class="mini-input flex-1" value="${b.from}" data-ltcg-idx="${idx}" onchange="updateLtcgFrom(this)">
+                    <span class="flex-1 text-right font-mono text-[11px]" style="color:var(--text-primary)">$${Number(b.from).toLocaleString()}</span>
                 `;
                 wrap.appendChild(row);
             });
@@ -1094,7 +1219,7 @@
                 row.className = 'flex justify-between items-center gap-1 border-b border-slate-900 py-0.5';
                 row.innerHTML = `
                     <span>${age}</span>
-                    <input type="number" step="0.1" class="mini-input w-16 text-right" value="${rmdTable[age]}" data-rmd-age="${age}" onchange="updateRmdDivisor(this)">
+                    <span class="w-16 text-right font-mono" style="color:var(--text-primary)">${rmdTable[age]}</span>
                 `;
                 wrap.appendChild(row);
             });
@@ -1650,16 +1775,15 @@
             if (window.__lastFilingIsHoH !== filingIsHoH) {
                 ordinaryBrackets = JSON.parse(JSON.stringify(filingIsHoH ? HOH_ORDINARY : SINGLE_ORDINARY));
                 ltcgBrackets = JSON.parse(JSON.stringify(filingIsHoH ? HOH_LTCG : SINGLE_LTCG));
-                const dedInput = document.getElementById('stdDeduction');
-                if (dedInput) dedInput.value = filingIsHoH ? HOH_STD_DED : SINGLE_STD_DED;
                 window.__lastFilingIsHoH = filingIsHoH;
                 if (typeof renderBracketRows === 'function') renderBracketRows();
                 if (typeof renderLtcgRows === 'function') renderLtcgRows();
+                if (typeof populateFederalDisplays === 'function') populateFederalDisplays();
                 updateFilingStatusLabels();
             }
-            // Standard deduction reads from the (now status-correct, user-editable) input.
-            const stdDedInput = document.getElementById('stdDeduction');
-            const stdDedBase = (parseFloat(cleanNum(stdDedInput ? stdDedInput.value : '')) || (filingIsHoH ? HOH_STD_DED : SINGLE_STD_DED));
+            // Standard deduction is a federal statutory value (read-only display, from IRS_2026),
+            // status-correct for Single vs HoH.
+            const stdDedBase = filingIsHoH ? HOH_STD_DED : SINGLE_STD_DED;
             const stateRate = (parseFloat(cleanNum(document.getElementById('stateRate').value)) || 0) / 100;
             const countyRate = (parseFloat(cleanNum(document.getElementById('countyRate').value)) || 0) / 100;
             const stateExemptsSS = document.getElementById('stateExemptsSS').checked;
@@ -1668,8 +1792,8 @@
             const acaHhSize = parseInt(document.getElementById('acaHouseholdSize').value) || 1;
             const acaPreserve = document.getElementById('acaPreserveSubsidy').checked;
             const irmaaOn = document.getElementById('irmaaToggle').checked;
-            const fplFirst = parseFloat(cleanNum(document.getElementById('fplFirstPerson').value)) || 15650;
-            const fplAddl = parseFloat(cleanNum(document.getElementById('fplAddlPerson').value)) || 5500;
+            const fplFirst = IRS_2026.fplFirstPerson;   // federal statutory (read-only in UI, from IRS_2026)
+            const fplAddl = IRS_2026.fplAddlPerson;     // federal statutory (read-only in UI, from IRS_2026)
             const heirTaxRate = (parseFloat(document.getElementById('heirTaxRate').value) || 0) / 100;
             const heirHsaTaxRate = (parseFloat(document.getElementById('heirHsaTaxRate').value) || 0) / 100;
             const magiHistory = {}; // IRMAA two-year lookback: year -> nominal MAGI
@@ -1810,7 +1934,7 @@
                 const w1099Active = !isCovered && wAge >= wSemi && wAge < wFull && (!isSurvivorPhase || survivorWho === 'H');
                 gross1099 = ((h1099Active ? hSemi1099 : 0) + (w1099Active ? wSemi1099 : 0)) * infScale;
                 if (gross1099 > 0) {
-                    seTax = gross1099 * 0.9235 * 0.153;
+                    seTax = gross1099 * IRS_2026.seTaxNetFactor * IRS_2026.seTaxRate;
                     netEarnedIncome = gross1099 - seTax;
                 }
 
@@ -1869,7 +1993,7 @@
                 const grossHealthcareBase = hcMarketplacePremium + hcNonSubsidizable + irmaaSurcharge;
                 // ACA cliff parameters for this year (survivor: household size shrinks by one)
                 const fplHousehold = (fplFirst + (Math.max(1, isSurvivorPhase ? acaHhSize - 1 : acaHhSize) - 1) * fplAddl) * infScale;
-                const cliffMagi = 4.0 * fplHousehold;
+                const cliffMagi = IRS_2026.acaCliffFplMult * fplHousehold;
                 const hsaAvailForHc = Math.max(0, hsa);
 
                 // ---- 529 tuition burn: derived from children profiles ----
@@ -2025,7 +2149,7 @@
                     if (acaOn && hcMarketplacePremium > 0 && !forceNoSubsidy && acaMagi <= cliffMagi) {
                         // Medicaid-floor simplification: contribution is computed as if income were
                         // at least 138% FPL, so near-zero-MAGI years still pay the minimum contribution
-                        const floorMagi = Math.max(acaMagi, 1.38 * fplHousehold);
+                        const floorMagi = Math.max(acaMagi, IRS_2026.acaMedicaidFloorMult * fplHousehold);
                         const ratio = floorMagi / fplHousehold;
                         acaSubsidy = Math.max(0, Math.min(hcMarketplacePremium,
                             hcMarketplacePremium - acaApplicablePct(ratio) * floorMagi));
@@ -3504,6 +3628,7 @@
             renderChildrenProfiles();
             renderGiftRows();
             toggleRothConvInputs();
+            populateFederalDisplays();   // read-only federal statutory values from IRS_2026
             triggerRecalculate();
             applyColumnGroupVisibility();
             maybeShowHelpCoach();    // first-visit nudge toward the Help docs
@@ -3772,7 +3897,7 @@
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                                 <li><strong style="color:var(--text-primary)">Nominal ROI (default 6%):</strong> applied identically to all five buckets every year.</li>
                                 <li><strong style="color:var(--text-primary)">Inflation (default 3%):</strong> inflates spending targets, healthcare, contributions, tax brackets, the standard deduction, and gift/tuition amounts; also drives the Today's $ deflator.</li>
-                                <li>Federal ordinary brackets, LTCG brackets, standard deduction ($15,750 Single / $23,625 Head of Household), state tax (2.90%), county/local tax (1.5%), and the IRS Uniform Lifetime RMD divisors, and the heir tax rates that drive the After-Tax Legacy KPI, are all editable in the <strong style="color:var(--text-primary)">Tax &amp; Other Details</strong> tab and feed the engine directly. Bracket thresholds are inflation-indexed each simulated year.</li>
+                                <li>Federal ordinary brackets, LTCG brackets, standard deduction ($15,750 Single / $23,625 Head of Household), the IRS Uniform Lifetime RMD divisors, and the IRMAA tiers are <em>read-only reference values</em> shown in the <strong style="color:var(--text-primary)">Federal Tax Details</strong> tab &mdash; sourced from the app's built-in tax-year data (IRS_2026), not editable, and never saved in a profile. Bracket thresholds are inflation-indexed each simulated year. Your <em>personal</em> settings &mdash; state tax (2.90%), county/local tax (1.5%), the &ldquo;State Exempts Social Security&rdquo; choice, and the heir tax rates for the After-Tax Legacy KPI &mdash; are editable in the left input panel (State &amp; Local Tax and Legacy / Heir Assumptions sections) and are saved with your profile.</li>
                             </ul>
                         </div>
                     </div>
@@ -3894,7 +4019,7 @@
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-rotate mr-2"></i>10. Roth Conversion Ladder</h2>
                     <p>The conversion ladder is <strong style="color:var(--text-primary)">off by default</strong> (the RMD tax-torpedo and its IRMAA knock-on are a genuine argument <em>for</em> conversions, but whether they pay off is scenario-specific — so the conservative baseline leaves them off and lets you switch them on to test). When enabled (with a start age), each year the engine can move money from Traditional to Roth, paying ordinary income tax now in exchange for tax-free growth forever after and a smaller future RMD base. Two modes:</p>
                     <ul class="list-disc ml-6 mt-2 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Fill bracket to X% (default) — spending-aware:</strong> the conversion is sized <em>inside</em> the iterative tax solver, after that year’s elective Traditional spending draws are known. It fills only the room remaining between (existing ordinary income + Traditional spending draws) and the top of your chosen bracket, so combined ordinary income lands <em>at</em> the cap and never over it. Spending has priority over conversion for both bracket room and Traditional balance — in years where spending draws alone exceed the cap, the conversion is $0, exactly as a human advisor would size it. When "Cap Roth conversions to preserve subsidy" is on (the default) and a marketplace subsidy is live, the conversion is additionally capped so MAGI lands at the 400% FPL cliff rather than over it — unless spending alone already blew the cliff, in which case the subsidy is lost anyway and the bracket cap governs alone. Capped at the remaining Traditional balance; brackets are the actual editable, inflation-indexed table.</li>
+                        <li><strong style="color:var(--text-primary)">Fill bracket to X% (default) — spending-aware:</strong> the conversion is sized <em>inside</em> the iterative tax solver, after that year’s elective Traditional spending draws are known. It fills only the room remaining between (existing ordinary income + Traditional spending draws) and the top of your chosen bracket, so combined ordinary income lands <em>at</em> the cap and never over it. Spending has priority over conversion for both bracket room and Traditional balance — in years where spending draws alone exceed the cap, the conversion is $0, exactly as a human advisor would size it. When "Cap Roth conversions to preserve subsidy" is on (the default) and a marketplace subsidy is live, the conversion is additionally capped so MAGI lands at the 400% FPL cliff rather than over it — unless spending alone already blew the cliff, in which case the subsidy is lost anyway and the bracket cap governs alone. Capped at the remaining Traditional balance; brackets are the actual federal, inflation-indexed table (shown read-only in the Federal Tax Details tab).</li>
                         <li><strong style="color:var(--text-primary)">Fixed amount:</strong> converts a set dollar amount per year regardless of bracket position.</li>
                     </ul>
                     <p class="mt-3"><strong>Start timing:</strong> the default is <em>Auto — the year after you fully step down</em>, avoiding bracket-filling on top of any unmodeled partial-year income in the transition year; any manual age from the same dropdown overrides it. Either way, conversions are suppressed while you still work full-time, since your income would invisibly occupy the same brackets. <strong>How the size responds to income:</strong> in a year where 1099 income already fills part of the lower brackets, the engine converts only the room left up to your chosen bracket cap; once your consulting income ends at full retirement and income drops, the remaining room widens and the conversion grows to fill it. The conversion appears in Roth Conv and Total Taxable, its tax lands in Taxes (and is grossed into the withdrawal), and the money itself moves Traditional &rarr; Roth without ever appearing in Portfolio W/D.</p>
@@ -3904,7 +4029,7 @@
                 <!-- 11. RMDs -->
                 <section id="sec-rmd">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-hourglass-half mr-2"></i>11. Required Minimum Distributions (RMDs)</h2>
-                    <p>Starting the year you reach the RMD age (default 75), the engine forces a distribution of Traditional balance &divide; the IRS Uniform Lifetime divisor for that age (table editable in Tax &amp; Other Details). RMDs are always fully taxable ordinary income and are included in Total Taxable.</p>
+                    <p>Starting the year you reach the RMD age (default 75), the engine forces a distribution of Traditional balance &divide; the IRS Uniform Lifetime divisor for that age (shown read-only in the Federal Tax Details tab). RMDs are always fully taxable ordinary income and are included in Total Taxable.</p>
                     <p class="mt-2" style="color:var(--text-secondary)">RMD cash is used to fund the year's spending need first; any excess beyond what spending required is reinvested into the Brokerage account (adding to cost basis) — it never disappears. Simplification: the model holds one shared Traditional bucket keyed to your age.</p>
                 </section>
 
@@ -3914,7 +4039,7 @@
                     <h3 class="font-semibold mb-2">Ordinary Income Tax</h3>
                     <p style="color:var(--text-secondary)">Applied to: 1099 income (less the &frac12; SE-tax deduction), RMDs, elective Traditional withdrawals, Roth conversions, and the taxable share of Social Security. The standard deduction ($15,750 Single / $23,625 Head of Household, inflation-indexed) is subtracted, then the single-filer marginal brackets (thresholds inflation-indexed) apply. If you add one or more dependents, filing status switches automatically to Head of Household, which uses its own wider brackets and larger standard deduction.</p>
                     <h3 class="font-semibold mb-2 mt-4">Long-Term Capital Gains</h3>
-                    <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income. It stacks on top of ordinary taxable income against the editable LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.</p>
+                    <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income. It stacks on top of ordinary taxable income against the LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.</p>
                     <h3 class="font-semibold mb-2 mt-4">Self-Employment Tax</h3>
                     <p style="color:var(--text-secondary)">15.3% on 92.35% of gross 1099 income during semi-retirement (the Social Security wage-base cap is not modeled). Half of the SE tax &mdash; <em>not</em> half the income &mdash; is deducted from ordinary taxable income. Income is displayed gross and SE tax sits in the Taxes column, so it is counted exactly once in the cash-flow math.</p>
                     <h3 class="font-semibold mb-2 mt-4">State &amp; Local Tax</h3>
@@ -3971,7 +4096,7 @@
                     </div>
 
                     <h3 class="font-semibold text-base mb-2 mt-5">14.3 &mdash; ACA subsidies before 65: the math, worked</h3>
-                    <p style="color:var(--text-secondary)">Under post-2025 law, subsidies exist only while MAGI &le; 400% of the Federal Poverty Level (FPL is editable in Tax &amp; Other Details; a single-person household &rarr; cliff at roughly <span class="font-mono">$62,600</span> today's $). Within eligibility, you contribute a sliding <span class="font-mono">2.1%–9.96%</span> of MAGI toward the <strong style="color:var(--text-primary)">benchmark premium</strong> (the SLCSP input — the subsidizable slice of the $18,000 pre-65 cost; the out-of-pocket remainder is never subsidized); the subsidy pays the rest. The exact figures depend on your benchmark-premium and FPL inputs — the numbers below illustrate the mechanics with representative single-filer values.</p>
+                    <p style="color:var(--text-secondary)">Under post-2025 law, subsidies exist only while MAGI &le; 400% of the Federal Poverty Level (FPL is shown read-only in the Federal Tax Details tab; a single-person household &rarr; cliff at roughly <span class="font-mono">$62,600</span> today's $). Within eligibility, you contribute a sliding <span class="font-mono">2.1%–9.96%</span> of MAGI toward the <strong style="color:var(--text-primary)">benchmark premium</strong> (the SLCSP input — the subsidizable slice of the $18,000 pre-65 cost; the out-of-pocket remainder is never subsidized); the subsidy pays the rest. The exact figures depend on your benchmark-premium and FPL inputs — the numbers below illustrate the mechanics with representative single-filer values.</p>
                     <div class="rounded-lg p-4 mt-3 border border-slate-300" style="background:var(--bg-base);">
                         <p class="font-semibold mb-1" style="color:var(--text-primary)">Worked example — MAGI $40,000, single (benchmark $14,000):</p>
                         <p class="font-mono text-sm" style="color:var(--text-secondary)">ratio = 40,000 / 15,650 FPL = 2.56&times; &rarr; applicable % &asymp; 8.4%<br>your contribution = 8.4% &times; 40,000 = $3,360<br>subsidy = $14,000 benchmark − $3,360 = <strong>$10,640</strong><br>net healthcare = $18,000 − $10,640 = <strong>$7,360</strong> (vs $18,000 unsubsidized)</p>
@@ -4096,7 +4221,7 @@
                 <section id="sec-profiles">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-file-export mr-2"></i>18. Profiles: Import / Export / Reset</h2>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a complete JSON snapshot (saved as .txt): every input, the editable tax brackets and RMD divisors, the children and gifting schedules, and display preferences (theme, view mode, dollar mode, visible column groups). It captures your <em>setup</em>, not the computed table.</li>
+                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a complete JSON snapshot (saved as .txt): every personal input, the children and gifting schedules, and display preferences (theme, view mode, dollar mode, visible column groups). It captures your <em>setup</em>, not the computed table.</li>
                         <li><strong style="color:var(--text-primary)">Import Profile</strong> restores a previously exported file exactly — useful for maintaining named scenarios (e.g., "aggressive conversions" vs. "no SS, conservative") and swapping between them. The file is validated before anything is overwritten.</li>
                         <li><strong style="color:var(--text-primary)">Reset</strong> restores every input, table, and schedule to the built-in defaults (with a confirmation prompt). Your current theme preference is left alone, and any active comparison is cleared.</li>
                     </ul>
