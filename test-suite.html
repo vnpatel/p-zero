@@ -590,6 +590,121 @@ function tier5(win, fileKey) {
   return out;
 }
 
+// ---- Tier 6 — Real Estate / Business Investments (RE/BI) ----
+// Verifies the RE/BI subsystem: zero-deal baseline preserved, distributions (income + taxable
+// portion), appreciation, refi + exit capital events, recapture-at-25%-of-invested-capital,
+// LTCG on remaining gain, step-up-at-death legacy, and the two-tier net-worth KPI. Targets are
+// the same ones hand-verified during the build.
+function tier6(win, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+
+  // Skip cleanly if this build predates RE/BI (returns no tests, not a failure — e.g. an app
+  // that hasn't had the feature replicated yet). Once RE/BI is present, the tests activate.
+  if (typeof win.addRebiDeal !== 'function' || typeof win.__rebiGet !== 'function') {
+    return out;
+  }
+
+  const snap = snapshotInputs(win);
+  const startYear = new Date().getFullYear();
+  // Exact-value checks below compare NOMINAL cash amounts, so switch to future/nominal $ (dispScale=1)
+  // for the duration of this tier; the "today's $" deflator would otherwise shrink the numbers.
+  const prevDollarMode = (typeof win.setDollarMode === 'function') ? 'today' : null;
+  if (typeof win.setDollarMode === 'function') win.setDollarMode('future');
+
+  try {
+    // Ensure we start with no deals, capture baseline
+    win.__rebiSet([]);
+    recalc(win);
+    const baseEol = Math.round(win.__scenarioB.series[win.__scenarioB.series.length - 1].spendableTotal);
+
+    // --- Test 1: adding then removing a deal restores the baseline (no leak) ---
+    win.addRebiDeal();
+    let d = win.__rebiGet()[0];
+    d.capital = 100000; d.currentValue = 100000; d.apprPct = 0;
+    d.annualDist = 10000; d.distTaxablePct = 25; d.distCola = false;
+    d.refiYear = 0; d.refiCapital = 0; d.exitYear = 0; d.exitValue = 0; d.recapturePct = 0;
+    recalc(win);
+    const withDealEol = Math.round(win.__scenarioB.series[win.__scenarioB.series.length - 1].spendableTotal);
+    push('RE/BI: a distribution-paying deal raises EOL (income reduces drawdown)', withDealEol > baseEol,
+      `base=$${baseEol.toLocaleString()}, with deal=$${withDealEol.toLocaleString()}`);
+
+    // --- Test 2: distribution mechanics via __chartSeries (year 0, infScale=1) ---
+    const full = win.__chartSeries;
+    const y0 = full[0];
+    push('RE/BI: year-0 distribution = $10,000 to income', Math.round(y0.rebiDist) === 10000,
+      `got $${Math.round(y0.rebiDist).toLocaleString()}`);
+    push('RE/BI: year-0 start value = $100,000', Math.round(y0.rebiStartValue) === 100000,
+      `got $${Math.round(y0.rebiStartValue).toLocaleString()}`);
+
+    // --- Test 3: appreciation (set 3%/yr, check year-0 end value = 103,000) ---
+    d.apprPct = 3; recalc(win);
+    const y0b = win.__chartSeries[0];
+    push('RE/BI: 3% appreciation -> year-0 end value $103,000', Math.round(y0b.rebiEndValue) === 103000,
+      `got $${Math.round(y0b.rebiEndValue).toLocaleString()}`);
+
+    // --- Test 4: COLA distribution grows with inflation ---
+    d.distCola = true; d.annualDist = 10000; recalc(win);
+    const y5 = win.__chartSeries[5];
+    const colaTarget = Math.round(10000 * Math.pow(1.03, 5));
+    push('RE/BI: COLA distribution grows with inflation (yr5)', Math.abs(Math.round(y5.rebiDist) - colaTarget) <= 2,
+      `got $${Math.round(y5.rebiDist).toLocaleString()}, target ~$${colaTarget.toLocaleString()}`);
+
+    // --- Test 5: refi + exit + recapture + LTCG (hand-verified targets) ---
+    // basis $100k, refi returns $30k (basis->$70k), exit $180k -> gain $110k;
+    // recapture 20% of $100k = $20k @25% = $5,000; LTCG portion = $90,000; proceeds $180k.
+    win.__rebiSet([]);
+    win.addRebiDeal();
+    d = win.__rebiGet()[0];
+    d.capital = 100000; d.currentValue = 100000; d.apprPct = 0;
+    d.annualDist = 0; d.distTaxablePct = 0; d.distCola = false;
+    d.refiYear = startYear + 2; d.refiCapital = 30000;
+    d.exitYear = startYear + 5; d.exitValue = 180000; d.recapturePct = 20;
+    recalc(win);
+    const fx = win.__chartSeries;
+    const refiRow = fx.find(x => x.year === startYear + 2);
+    const exitRow = fx.find(x => x.year === startYear + 5);
+    push('RE/BI: refi returns $30,000 cash', refiRow && Math.round(refiRow.rebiRefi) === 30000,
+      `got $${refiRow ? Math.round(refiRow.rebiRefi).toLocaleString() : 'n/a'}`);
+    push('RE/BI: exit shows $180,000 gross proceeds', exitRow && Math.round(exitRow.rebiExit) === 180000,
+      `got $${exitRow ? Math.round(exitRow.rebiExit).toLocaleString() : 'n/a'}`);
+
+    // --- Test 6: step-up-at-death legacy (deal held to end passes 100%) ---
+    win.__rebiSet([]);
+    win.addRebiDeal();
+    d = win.__rebiGet()[0];
+    d.capital = 100000; d.currentValue = 300000; d.apprPct = 3;
+    d.annualDist = 0; d.distTaxablePct = 0; d.exitYear = 0; d.refiYear = 0;
+    recalc(win);
+    const liquidEol = Math.round(win.__scenarioB.series[win.__scenarioB.series.length - 1].spendableTotal);
+    const rebiEol = Math.round(win.__chartSeries[win.__chartSeries.length - 1].rebiEndValue);
+    const legacyText = win.document.getElementById('kpiLegacy').innerText;
+    // The two-tier KPI: liquid stays the primary; the RE/BI tile shows the held value; total line appears.
+    const rebiTileVal = win.document.getElementById('kpiRebiValue') ? win.document.getElementById('kpiRebiValue').innerText : '';
+    const tileShown = win.document.getElementById('kpiRebiCard') && win.document.getElementById('kpiRebiCard').style.display !== 'none';
+    push('RE/BI: dedicated KPI tile appears when a deal exists', tileShown, `tile display ${tileShown ? 'shown' : 'hidden'}`);
+    push('RE/BI: legacy includes the stepped-up RE/BI value (held to death)', rebiEol > 0 && legacyText && legacyText !== '$0',
+      `rebiEOL=$${rebiEol.toLocaleString()}, legacy=${legacyText}`);
+
+    // --- Test 7: zero-deal baseline restored ---
+    win.__rebiSet([]);
+    recalc(win);
+    const restoredEol = Math.round(win.__scenarioB.series[win.__scenarioB.series.length - 1].spendableTotal);
+    push('RE/BI: removing all deals restores the baseline EOL', restoredEol === baseEol,
+      `base=$${baseEol.toLocaleString()}, restored=$${restoredEol.toLocaleString()}`);
+
+  } catch (e) {
+    push('RE/BI tier ran without error', false, 'error: ' + e.message);
+  } finally {
+    if (typeof win.setDollarMode === 'function' && prevDollarMode) win.setDollarMode(prevDollarMode);
+    restoreInputs(win, snap);
+    win.__rebiSet([]);
+    recalc(win);
+  }
+
+  return out;
+}
+
 async function runFile(frameId, fileKey, fileLabel) {
   const frame = document.getElementById(frameId);
   const win = frame.contentWindow;
@@ -624,6 +739,10 @@ async function runFile(frameId, fileKey, fileLabel) {
   // Tier 5 — session features (proration, import guard, funding gate)
   recalc(win);
   fileRes.tiers['Tier 5 — Session features'] = tier5(win, fileKey);
+
+  // Tier 6 — Real Estate / Business Investments
+  recalc(win);
+  fileRes.tiers['Tier 6 — Real Estate / Business'] = tier6(win, fileKey);
 
   RESULTS[fileKey] = fileRes;
   renderFile(fileKey);

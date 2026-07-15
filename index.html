@@ -284,14 +284,14 @@
 
             <!-- Balances -->
             <div class="border-t border-slate-900 pt-4">
-                <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-vault mr-2 text-emerald-400"></i>Asset Core Pools (Today's Balance)</h2>
+                <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-vault mr-2 text-emerald-400"></i>Account Balances (Today's $)</h2>
                 <div class="grid grid-cols-2 gap-3 mb-2">
                     <div>
                         <label class="block text-[11px] text-slate-400 mb-1">Traditional</label>
                         <input type="text" inputmode="decimal" data-money="true" id="poolTrad" value="1000000" class="mini-input">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Roth Core</label>
+                        <label class="block text-[11px] text-slate-400 mb-1">Roth</label>
                         <input type="text" inputmode="decimal" data-money="true" id="poolRoth" value="500000" class="mini-input">
                     </div>
                 </div>
@@ -604,6 +604,15 @@
                 </button>
             </div>
 
+            <!-- Real Estate / Business Investments -->
+            <div class="border-t border-slate-900 pt-4">
+                <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-building-columns mr-2 text-purple-400"></i>Real Estate / Business Investments <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Passive positions where you're a limited / non-managing partner &mdash; real-estate syndications (apartments, storage), business LP stakes, private funds. You receive distributions while held, capital back on refinance, and a lump on exit/sale. <strong>Illiquid:</strong> value shows in net worth &amp; legacy but is <em>not</em> part of the spendable withdrawal pool until a refi or exit converts it to cash. <a onclick="openHelp('sec-rebi')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &rarr;</a></span></span></h2>
+                <div id="rebiDealRows" class="space-y-3 mb-3"></div>
+                <button onclick="addRebiDeal()" class="w-full bg-slate-900 border border-slate-800 text-slate-300 text-[11px] py-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer mb-2">
+                    <i class="fa-solid fa-plus mr-1"></i> Add Investment
+                </button>
+            </div>
+
             <!-- Economic Framework -->
             <div class="border-t border-slate-900 pt-4">
                 <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-chart-line mr-2 text-indigo-400"></i>Macro Inputs</h2>
@@ -681,8 +690,9 @@
                 </div>
                 <div class="glass-panel p-4 rounded-xl border-l-4 border-cyan-500 shadow-xl flex items-center justify-between">
                     <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Net Worth at EOL (excl. 529)</p>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Liquid Net Worth at EOL (excl. 529)</p>
                         <h3 id="kpiEolNetWorth" class="text-xl font-bold text-white heading-font mt-0.5">$0</h3>
+                        <p id="kpiEolTotal" class="hidden text-[10px] font-mono mt-0.5 leading-tight" style="color:var(--text-muted)"></p>
                         <p id="dEol" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
                     </div>
                     <div class="bg-cyan-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-flag-checkered text-cyan-400"></i></div>
@@ -726,6 +736,20 @@
                         <p id="d529" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
                     </div>
                     <div class="bg-amber-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-graduation-cap text-amber-400"></i></div>
+                </div>
+                <div id="kpiRebiCard" class="glass-panel p-4 rounded-xl border-l-4 border-purple-400 shadow-xl flex items-center justify-between relative hover:z-40">
+                    <div>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1">
+                            Real Estate / Business (illiquid)
+                            <span class="relative info-tip-wrap inline-flex items-center justify-center" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)">
+                                <i class="fa-solid fa-circle-info text-slate-500 cursor-help" style="font-size:11px"></i>
+                                <span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Value of your passive real-estate / business (LP) positions still held at end of life. It's part of your total net worth and passes to heirs with a step-up in basis, but it is <strong style="color:var(--text-primary,#fff)">illiquid</strong> &mdash; not part of the spendable portfolio until a refi or exit converts it to cash.</span>
+                            </span>
+                        </p>
+                        <h3 id="kpiRebiValue" class="text-xl font-bold text-white heading-font mt-0.5">$0</h3>
+                        <p id="dRebi" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
+                    </div>
+                    <div class="bg-purple-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-building-columns text-purple-400"></i></div>
                 </div>
                 <div id="kpiAcaCard" class="glass-panel p-4 rounded-xl border-l-4 border-emerald-500 shadow-xl flex items-center justify-between">
                     <div>
@@ -778,6 +802,7 @@
                     <button onclick="toggleColumnGroup('grpRoth')" id="btnHide_grpRoth" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer">Roth</button>
                     <button onclick="toggleColumnGroup('grpBrok')" id="btnHide_grpBrok" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer">Brokerage</button>
                     <button onclick="toggleColumnGroup('grpHsa')" id="btnHide_grpHsa" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer">HSA & 529</button>
+                    <button onclick="toggleColumnGroup('grpRebi')" id="btnHide_grpRebi" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer">Real Estate / Business</button>
 
                     </div>
 
@@ -806,7 +831,8 @@
                                 <th class="p-2.5 text-center bg-blue-950/20 text-blue-400 border-r border-slate-800" data-group="grpTrad" colspan="7">Traditional Detail</th>
                                 <th class="p-2.5 text-center bg-purple-950/20 text-purple-400 border-r border-slate-800" data-group="grpRoth" colspan="5">Roth Detail</th>
                                 <th class="p-2.5 text-center bg-emerald-950/20 text-emerald-400 border-r border-slate-800" data-group="grpBrok" colspan="5">Brokerage Detail</th>
-                                <th class="p-2.5 text-center bg-cyan-950/20 text-cyan-400" data-group="grpHsa" colspan="10">HSA & 529 Detail</th>
+                                <th class="p-2.5 text-center bg-cyan-950/20 text-cyan-400 border-r border-slate-800" data-group="grpHsa" colspan="10">HSA & 529 Detail</th>
+                                <th class="p-2.5 text-center bg-purple-950/20 text-purple-300" data-group="grpRebi" colspan="5">Real Estate / Business Detail</th>
                             </tr>
                             <tr id="ledgerHeaderRow2" class="bg-slate-900/80 text-slate-400 border-b border-slate-800 font-medium text-[10px]">
                                 <th class="p-2 border-r border-slate-800 sticky left-0 bg-slate-900 z-20 shadow-md min-w-[110px]">Year (H / W Age)</th>
@@ -856,6 +882,11 @@
                                 <th class="p-2 font-mono" data-group="grpHsa">Growth</th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Dists</th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Ending</th>
+                                <th class="p-2 font-mono" data-group="grpRebi">Start Value</th>
+                                <th class="p-2 font-mono" data-group="grpRebi">Distributions</th>
+                                <th class="p-2 font-mono" data-group="grpRebi">Refi</th>
+                                <th class="p-2 font-mono" data-group="grpRebi">Sale/Exit</th>
+                                <th class="p-2 font-mono" data-group="grpRebi">End Value</th>
                             </tr>
                         </thead>
                         <tbody id="ledgerTableBody" class="divide-y divide-slate-900 font-mono text-slate-300 text-[11px]">
@@ -1077,12 +1108,21 @@
             { id: 2, birthYear: 2015, undergradCost: 30500, undergradYears: 4, gradEnabled: true, gradCost: 50000, gradYears: 3 }
         ];
 
+        // Real Estate / Business Investments — passive LP / syndication / private-deal positions.
+        // Illiquid: value shows in net worth & legacy but is NOT part of the spendable withdrawal pool
+        // until a refi or exit converts it to cash (deposited to Brokerage). Default is EMPTY so the
+        // baseline projection is unchanged unless the user adds a deal.
+        // Shape: { id, name, capital(basis), currentValue, apprPct, annualDist, distTaxablePct,
+        //          distCola(bool), refiYear, refiCapital, exitYear, exitValue, recapturePct }
+        let rebiDeals = [];
+
         // Frozen snapshots of original defaults, captured once at load, used by resetToDefaults()
         const DEFAULT_RMD_TABLE = JSON.parse(JSON.stringify(rmdTable));
         const DEFAULT_ORDINARY_BRACKETS = JSON.parse(JSON.stringify(ordinaryBrackets));
         const DEFAULT_LTCG_BRACKETS = JSON.parse(JSON.stringify(ltcgBrackets));
         const DEFAULT_CHILD_GIFTING = JSON.parse(JSON.stringify(childGiftingProfile));
         const DEFAULT_CHILDREN_PROFILES = JSON.parse(JSON.stringify(childrenProfiles));
+        const DEFAULT_REBI_DEALS = JSON.parse(JSON.stringify(rebiDeals));
 
         const inputIds = [
             'hBirthMonth', 'hBirthYear', 'wBirthMonth', 'wBirthYear', 'targetEol', 'hSemiAge', 'wSemiAge',
@@ -1315,6 +1355,77 @@
             triggerRecalculate();
         }
 
+        // ---- Real Estate / Business Investments (RE/BI) repeatable deal list ----
+        function renderRebiDeals() {
+            const wrap = document.getElementById('rebiDealRows');
+            if (!wrap) return;
+            wrap.innerHTML = '';
+            rebiDeals.forEach((d, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/40 p-3 rounded-lg border border-slate-900 space-y-2';
+                const money = (v) => '$' + (parseFloat(v) || 0).toLocaleString();
+                card.innerHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <input type="text" class="mini-input" style="font-family:inherit;font-weight:600" value="${(d.name || '').replace(/"/g, '&quot;')}" placeholder="Deal name" data-rebi-id="${d.id}" data-field="name" onchange="updateRebiField(this)">
+                        <button onclick="removeRebiDeal(${d.id})" class="text-red-400 hover:text-red-300 text-xs px-1 flex-shrink-0 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Invested (basis)</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.capital)}" data-rebi-id="${d.id}" data-field="capital" onchange="updateRebiField(this)"></div>
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Current value</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.currentValue)}" data-rebi-id="${d.id}" data-field="currentValue" onchange="updateRebiField(this)"></div>
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Appreciation %/yr</label><input type="number" step="0.1" class="mini-input" value="${d.apprPct}" data-rebi-id="${d.id}" data-field="apprPct" onchange="updateRebiField(this)"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Annual distribution</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.annualDist)}" data-rebi-id="${d.id}" data-field="annualDist" onchange="updateRebiField(this)"></div>
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Distribution taxable %</label><input type="number" step="1" min="0" max="100" class="mini-input" value="${d.distTaxablePct}" data-rebi-id="${d.id}" data-field="distTaxablePct" onchange="updateRebiField(this)"></div>
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Dist. COLA</label><select class="mini-input" data-rebi-id="${d.id}" data-field="distCola" onchange="updateRebiField(this)"><option value="true" ${d.distCola ? 'selected' : ''}>Grows w/ infl.</option><option value="false" ${!d.distCola ? 'selected' : ''}>Flat</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Refi year</label><input type="number" step="1" class="mini-input" value="${d.refiYear || ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="refiYear" onchange="updateRebiField(this)"></div>
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Refi capital</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${d.refiCapital ? money(d.refiCapital) : ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="refiCapital" onchange="updateRebiField(this)"></div>
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Exit year</label><input type="number" step="1" class="mini-input" value="${d.exitYear || ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="exitYear" onchange="updateRebiField(this)"></div>
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Exit value</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${d.exitValue ? money(d.exitValue) : ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="exitValue" onchange="updateRebiField(this)"></div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 items-end">
+                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Recapture %</label><input type="number" step="1" min="0" max="100" class="mini-input" value="${d.recapturePct}" data-rebi-id="${d.id}" data-field="recapturePct" onchange="updateRebiField(this)"></div>
+                        <p class="text-[9px] text-slate-600 col-span-3 leading-snug">On exit: capital returned tax-free \u00b7 gain above basis at LTCG \u00b7 recapture % at 25% \u00b7 proceeds \u2192 Brokerage.</p>
+                    </div>
+                `;
+                wrap.appendChild(card);
+            });
+        }
+        function updateRebiField(el) {
+            const id = parseInt(el.dataset.rebiId);
+            const field = el.dataset.field;
+            const deal = rebiDeals.find(d => d.id === id);
+            if (!deal) return;
+            if (field === 'name') {
+                deal[field] = el.value;
+            } else if (field === 'distCola') {
+                deal[field] = (el.value === 'true');
+            } else if (field === 'refiYear' || field === 'exitYear') {
+                deal[field] = parseInt(el.value) || 0;
+            } else if (el.dataset.money === 'true') {
+                deal[field] = parseFloat(cleanNum(el.value)) || 0;
+            } else {
+                deal[field] = parseFloat(el.value) || 0;
+            }
+            triggerRecalculate();
+        }
+        function addRebiDeal() {
+            const nextId = rebiDeals.length ? Math.max(...rebiDeals.map(d => d.id)) + 1 : 1;
+            rebiDeals.push({ id: nextId, name: 'Investment ' + nextId, capital: 100000, currentValue: 100000, apprPct: 3, annualDist: 7000, distTaxablePct: 25, distCola: true, refiYear: 0, refiCapital: 0, exitYear: 0, exitValue: 0, recapturePct: 20 });
+            renderRebiDeals();
+            triggerRecalculate();
+        }
+        function removeRebiDeal(id) {
+            rebiDeals = rebiDeals.filter(d => d.id !== id);
+            renderRebiDeals();
+            triggerRecalculate();
+        }
+        // Test accessors (harmless in production; used by test-suite.html since rebiDeals is module-scoped)
+        window.__rebiGet = () => rebiDeals;
+        window.__rebiSet = (arr) => { rebiDeals = arr; renderRebiDeals(); };
+
         function renderGiftRows() {
             const wrap = document.getElementById('giftRows');
             wrap.innerHTML = '';
@@ -1528,7 +1639,7 @@
 
         function applyColumnGroupVisibility() {
             // Combined/Household defaults ON but is now user-toggleable; detail groups default OFF.
-            ['grpCombined', 'grpTrad', 'grpRoth', 'grpBrok', 'grpHsa'].forEach(groupKey => {
+            ['grpCombined', 'grpTrad', 'grpRoth', 'grpBrok', 'grpHsa', 'grpRebi'].forEach(groupKey => {
                 const cells = document.querySelectorAll(`[data-group="${groupKey}"]`);
                 cells.forEach(c => { c.style.display = visibleGroups[groupKey] ? '' : 'none'; });
                 const btn = document.getElementById('btnHide_' + groupKey);
@@ -1989,6 +2100,58 @@
                     netEarnedIncome = gross1099 - seTax;
                 }
 
+                // ---- Real Estate / Business Investments (RE/BI) — hold, distributions, appreciation, capital events ----
+                // A deal is "held" while currentYear < exitYear (or exitYear==0 = never exit). While held it
+                // pays a distribution (taxed on distTaxablePct as ordinary income) and its value appreciates.
+                // Distributions with COLA scale with inflation (infScale); flat ones stay nominal (today's $).
+                // Capital events (nominal cash, deposited to Brokerage AFTER the tax solver below):
+                //   REFI (refiYear): returns refiCapital as ~tax-free return of capital (reduces basis).
+                //   EXIT (exitYear): pays exitValue; gain above (basis net of prior refis) is taxed —
+                //     recapturePct of INVESTED CAPITAL (capped at the gain) is recaptured at 25%;
+                //     the remaining gain is LTCG (joins the brokerage-gain preferential pool + MAGI).
+                let rebiDistTotal = 0;         // gross cash distributions received this year (nominal)
+                let rebiDistTaxable = 0;       // taxable portion -> ordinary income
+                let rebiStartValue = 0;        // aggregate held value at year start (nominal)
+                let rebiEndValue = 0;          // aggregate held value at year end (nominal)
+                let rebiRefiCash = 0;          // capital returned via refi this year (to brokerage, ~non-taxable)
+                let rebiExitProceedsGross = 0; // gross sale proceeds this year (to brokerage, pre-tax)
+                let rebiExitGainLtcg = 0;      // LTCG-eligible portion of exit gain (joins brokGain pool)
+                let rebiRecaptureTax = 0;      // depreciation-recapture tax (25% flat) on exits this year
+                rebiDeals.forEach(d => {
+                    const exitYr = d.exitYear || 0;
+                    const refiYr = d.refiYear || 0;
+                    const held = (exitYr === 0) || (currentYear < exitYr);
+                    const apprRate = (parseFloat(d.apprPct) || 0) / 100;
+                    const yrsElapsed = currentYear - startYear;
+                    const grownValue = (parseFloat(d.currentValue) || 0) * Math.pow(1 + apprRate, Math.max(0, yrsElapsed));
+                    const invested = parseFloat(d.capital) || 0;
+
+                    if (held) {
+                        rebiStartValue += grownValue;
+                        rebiEndValue += grownValue * (1 + apprRate);
+                        const distNominal = (parseFloat(d.annualDist) || 0) * (d.distCola ? infScale : 1);
+                        rebiDistTotal += distNominal;
+                        rebiDistTaxable += distNominal * ((parseFloat(d.distTaxablePct) || 0) / 100);
+                    }
+                    // Refi event (only if still held that year and refi is before/at exit)
+                    if (refiYr && currentYear === refiYr && (exitYr === 0 || refiYr <= exitYr)) {
+                        rebiRefiCash += (parseFloat(d.refiCapital) || 0);
+                    }
+                    // Exit event: the deal sells this year
+                    if (exitYr && currentYear === exitYr) {
+                        const exitVal = parseFloat(d.exitValue) || 0;
+                        const refiReturned = (refiYr && refiYr <= exitYr) ? (parseFloat(d.refiCapital) || 0) : 0;
+                        const basisAtExit = Math.max(0, invested - refiReturned); // refis are return of capital
+                        const totalGain = Math.max(0, exitVal - basisAtExit);
+                        // Recapture: recapturePct of INVESTED CAPITAL, capped at the total gain
+                        const recaptureBase = Math.min(totalGain, invested * ((parseFloat(d.recapturePct) || 0) / 100));
+                        const ltcgPortion = Math.max(0, totalGain - recaptureBase);
+                        rebiRecaptureTax += recaptureBase * 0.25;   // recapture taxed at 25% flat
+                        rebiExitGainLtcg += ltcgPortion;            // remainder at LTCG (added to preferential pool)
+                        rebiExitProceedsGross += exitVal;           // gross proceeds -> brokerage (tax netted later)
+                    }
+                });
+
                 let currentSsPayout = 0;
                 if (ssActive) {
                     if (isSurvivorPhase) {
@@ -2131,6 +2294,7 @@
                     + forcedRmd
                     + rothConvAmt
                     + brokDivOrdinary
+                    + rebiDistTaxable
                     + (currentSsPayout * ssTaxablePct);
 
                 // Brokerage basis ratio snapshot (before any withdrawals this year)
@@ -2184,7 +2348,7 @@
                         // MAGI lands AT the cliff, never over it. If spending alone already blew
                         // the cliff, the subsidy is lost anyway — convert per the bracket cap.
                         if (acaOn && acaPreserve && hcMarketplacePremium > 0) {
-                            const magiExConv = preWithdrawOrdinary + elecTradDrawn + brokGain
+                            const magiExConv = preWithdrawOrdinary + elecTradDrawn + brokGain + rebiExitGainLtcg
                                 + (currentSsPayout * (1 - ssTaxablePct));
                             if (magiExConv <= cliffMagi) {
                                 dynConv = Math.min(dynConv, Math.max(0, cliffMagi - magiExConv));
@@ -2200,7 +2364,7 @@
                     let stLocalTax = stLocalBase * (stateRate + countyRate);
 
                     // ---- ACA subsidy from THIS iteration's MAGI (full SS counts for ACA MAGI) ----
-                    let acaMagi = totalOrdinary + brokGain + brokDivQualified + (currentSsPayout * (1 - ssTaxablePct));
+                    let acaMagi = totalOrdinary + brokGain + rebiExitGainLtcg + brokDivQualified + (currentSsPayout * (1 - ssTaxablePct));
                     let acaSubsidy = 0;
                     if (acaOn && hcMarketplacePremium > 0 && !forceNoSubsidy && acaMagi <= cliffMagi) {
                         // Medicaid-floor simplification: contribution is computed as if income were
@@ -2216,11 +2380,11 @@
                     let hcFromPortfolio = netHealthcare - hsaCover;
                     // IRMAA-relevant MAGI (AGI + tax-exempt interest; excludes untaxed SS).
                     // Ordinary dividends are already inside totalOrdinary; add gains + qualified divs.
-                    let irmaaMagi = totalOrdinary + brokGain + brokDivQualified;
+                    let irmaaMagi = totalOrdinary + brokGain + rebiExitGainLtcg + brokDivQualified;
 
                     // LTCG on brokerage gain portion PLUS qualified dividends (both stack on top
                     // of ordinary income against the preferential LTCG brackets)
-                    let preferentialGains = brokGain + brokDivQualified;
+                    let preferentialGains = brokGain + rebiExitGainLtcg + brokDivQualified;
                     let ltcgTax = marginalTax(taxableOrd + preferentialGains, ltcgBrackets, infScale * filingScale)
                                 - marginalTax(taxableOrd, ltcgBrackets, infScale * filingScale);
                     let ltcgStateTax = preferentialGains * (stateRate + countyRate);
@@ -2230,7 +2394,7 @@
                     if (maxAge < 59.5) penaltyTax = (elecTradDrawn + elecRothDrawn) * 0.10;
 
                     return {
-                        totalTax: fedTax + stLocalTax + seTax + ltcgTax + ltcgStateTax + penaltyTax,
+                        totalTax: fedTax + stLocalTax + seTax + ltcgTax + ltcgStateTax + penaltyTax + rebiRecaptureTax,
                         elecTradDrawn, elecBrokDrawn, elecRothDrawn, brokGain, dynConv,
                         acaSubsidy, hsaCover, hcFromPortfolio, netHealthcare, irmaaMagi, acaMagi,
                         taxableOrd, totalOrdinary
@@ -2249,7 +2413,7 @@
                 const brokAvailForElec = Math.max(0, brok);
 
                 // --- Iterative solve ---
-                const cashSources = gross1099 + currentSsPayout;
+                const cashSources = gross1099 + currentSsPayout + rebiDistTotal + rebiRefiCash + rebiExitProceedsGross;
                 // Healthcare-from-portfolio is now iteration-dependent (ACA subsidy reacts to
                 // MAGI), so only the truly fixed needs are outside the loop.
                 const baseNeedFixed = plannedTargetDraw + childGiftAmt;
@@ -2315,6 +2479,24 @@
                 let excessRmd = Math.max(0, forcedRmd - rmdUsedForSpending);
                 if (excessRmd > 0) { brok += excessRmd; brokBasis += excessRmd; }
 
+                // RE/BI capital events: refi + gross exit proceeds are cash sources this year. Whatever
+                // isn't consumed by that year's spending + taxes is reinvested to Brokerage as after-tax
+                // principal (adds to basis, so it isn't re-taxed as gain later). The exit's own tax
+                // (LTCG + recapture) is already in solvedTax; here we bank the leftover capital so a big
+                // sale lump grows the liquid portfolio rather than vanishing.
+                let rebiCapitalProceeds = rebiRefiCash + rebiExitProceedsGross;
+                if (rebiCapitalProceeds > 0) {
+                    // Total cash need this year (spending + healthcare-from-portfolio + all taxes).
+                    let totalNeed = baseNeedFixed + solvedResult.hcFromPortfolio + solvedTax;
+                    // Non-RE/BI recurring cash that also offsets need (income streams, not capital).
+                    let recurringCash = gross1099 + currentSsPayout + rebiDistTotal;
+                    // Portfolio draws already taken this year also covered need.
+                    let drawsTaken = solvedResult.elecTradDrawn + solvedResult.elecBrokDrawn + solvedResult.elecRothDrawn + forcedRmd;
+                    let capitalUsed = Math.max(0, totalNeed - recurringCash - drawsTaken);
+                    let excessCapital = Math.max(0, rebiCapitalProceeds - capitalUsed);
+                    if (excessCapital > 0) { brok += excessCapital; brokBasis += excessCapital; }
+                }
+
                 // ---- Total Taxable Gross for display (pre-std-deduction ordinary income pool) ----
                 let totalTaxableGross = solvedResult.totalOrdinary;
 
@@ -2370,6 +2552,11 @@
                     incomeSS: currentSsPayout * dispScale,
                     income1099: netEarnedIncome * dispScale,
                     assetDist: portfolioWithdrawalActual * dispScale,
+                    rebiStartValue: rebiStartValue * dispScale,
+                    rebiDist: rebiDistTotal * dispScale,
+                    rebiRefi: rebiRefiCash * dispScale,
+                    rebiExit: rebiExitProceedsGross * dispScale,
+                    rebiEndValue: rebiEndValue * dispScale,
                     isSemiRetired, isFullyRetired, isCovered
                 });
 
@@ -2432,6 +2619,11 @@
                         <td class="p-2 text-blue-400 font-mono" data-group="grpHsa">${c(f529Grow)}</td>
                         <td class="p-2 text-red-400 font-mono" data-group="grpHsa">${c(tuitionBurn)}</td>
                         <td class="p-2 text-cyan-500 font-mono" data-group="grpHsa">${c(f529)}</td>
+                        <td class="p-2 text-slate-400 font-mono" data-group="grpRebi">${c(rebiStartValue)}</td>
+                        <td class="p-2 text-emerald-400 font-mono" data-group="grpRebi">${c(rebiDistTotal)}</td>
+                        <td class="p-2 text-blue-400 font-mono" data-group="grpRebi">${rebiRefiCash > 0 ? c(rebiRefiCash) : '<span class="text-slate-700">\u2014</span>'}</td>
+                        <td class="p-2 text-purple-300 font-mono" data-group="grpRebi">${rebiExitProceedsGross > 0 ? c(rebiExitProceedsGross) : '<span class="text-slate-700">\u2014</span>'}</td>
+                        <td class="p-2 text-purple-400 font-mono" data-group="grpRebi">${c(rebiEndValue)}</td>
                     </tr>`;
                 }
             }
@@ -2463,16 +2655,35 @@
             document.getElementById('kpiEolNetWorth').innerText = currency(eolNetWorth);
             document.getElementById('kpiEolNetWorth').className = runwayDepletedYear ? 'text-xl font-bold text-red-400 heading-font mt-0.5' : 'text-xl font-bold text-white heading-font mt-0.5';
 
+            // Real Estate / Business Investments value still held at EOL (illiquid). Feeds the
+            // two-tier Net Worth tile (Liquid primary + Total secondary) and its own dedicated tile.
+            let eolRebiValue = chartSeries.length ? Math.max(0, chartSeries[chartSeries.length - 1].rebiEndValue || 0) : 0;
+            let eolTotalNetWorth = eolNetWorth + eolRebiValue;
+            const kpiRebiEl = document.getElementById('kpiRebiValue');
+            if (kpiRebiEl) kpiRebiEl.innerText = currency(eolRebiValue);
+            const kpiEolTotalEl = document.getElementById('kpiEolTotal');
+            const kpiRebiCardEl = document.getElementById('kpiRebiCard');
+            if (eolRebiValue > 0) {
+                if (kpiEolTotalEl) { kpiEolTotalEl.classList.remove('hidden'); kpiEolTotalEl.innerText = 'Total incl. RE/Business: ' + currency(eolTotalNetWorth); }
+                if (kpiRebiCardEl) kpiRebiCardEl.style.display = '';
+            } else {
+                if (kpiEolTotalEl) kpiEolTotalEl.classList.add('hidden');
+                if (kpiRebiCardEl) kpiRebiCardEl.style.display = 'none';
+            }
+
             // After-Tax Legacy: value of the final estate to non-spouse heirs, by bucket:
             //   Roth 100% (tax-free), Brokerage 100% (step-up erases gain), HSA taxed at heir
             //   ordinary rate, Traditional taxed at heir ordinary rate (SECURE Act 10-yr drain).
+            //   Real Estate / Business Investments held at death: 100% (step-up in basis at death
+            //   erases the built-in gain for heirs, same treatment as brokerage).
             //   529 excluded (education-earmarked), consistent with the spendable-wealth KPIs.
             let legacyValue = 0;
             if (chartSeries.length) {
                 const L = chartSeries[chartSeries.length - 1];
                 legacyValue = Math.max(0, L.roth) + Math.max(0, L.brok)
                     + Math.max(0, L.hsa) * (1 - heirHsaTaxRate)
-                    + Math.max(0, L.trad) * (1 - heirTaxRate);
+                    + Math.max(0, L.trad) * (1 - heirTaxRate)
+                    + Math.max(0, L.rebiEndValue || 0);
             }
             document.getElementById('kpiLegacy').innerText = currency(legacyValue);
             window.__legacyValue = legacyValue;
@@ -2758,6 +2969,7 @@
             // IRS_2026. Only personal, non-statutory tables travel with the profile.
             snapshot.childGiftingProfile = childGiftingProfile;
             snapshot.childrenProfiles = childrenProfiles;
+            snapshot.rebiDeals = rebiDeals;
 
             // Display preferences, so the imported profile looks the same as when it was saved
             snapshot.preferences = { colorTheme, viewMode, dollarMode, visibleGroups };
@@ -2782,7 +2994,7 @@
         function currentInputsSnapshot() {
             // Reuse export logic's shape so Swap can fully restore A's inputs
             const snap = { inputs: {}, childGiftingProfile: JSON.parse(JSON.stringify(childGiftingProfile)),
-                childrenProfiles: JSON.parse(JSON.stringify(childrenProfiles)), rmdTable: JSON.parse(JSON.stringify(rmdTable)),
+                childrenProfiles: JSON.parse(JSON.stringify(childrenProfiles)), rebiDeals: JSON.parse(JSON.stringify(rebiDeals)), rmdTable: JSON.parse(JSON.stringify(rmdTable)),
                 ordinaryBrackets: JSON.parse(JSON.stringify(ordinaryBrackets)), ltcgBrackets: JSON.parse(JSON.stringify(ltcgBrackets)) };
             inputIds.forEach(id => { const el = document.getElementById(id); if (el) snap.inputs[id] = el.type === 'checkbox' ? el.checked : cleanNum(el.value); });
             return snap;
@@ -3427,6 +3639,7 @@
             });
             if (snap.childGiftingProfile) childGiftingProfile = JSON.parse(JSON.stringify(snap.childGiftingProfile));
             if (snap.childrenProfiles) childrenProfiles = JSON.parse(JSON.stringify(snap.childrenProfiles));
+            if (snap.rebiDeals) rebiDeals = JSON.parse(JSON.stringify(snap.rebiDeals));
             if (snap.rmdTable) rmdTable = JSON.parse(JSON.stringify(snap.rmdTable));
             if (snap.ordinaryBrackets) ordinaryBrackets = JSON.parse(JSON.stringify(snap.ordinaryBrackets));
             if (snap.ltcgBrackets) ltcgBrackets = JSON.parse(JSON.stringify(snap.ltcgBrackets));
@@ -3540,6 +3753,7 @@
                 // Restore editable JS-side tables, falling back to current state if the file is missing a section
                 if (snapshot.childGiftingProfile) childGiftingProfile = snapshot.childGiftingProfile;
                 if (snapshot.childrenProfiles) childrenProfiles = snapshot.childrenProfiles;
+                rebiDeals = Array.isArray(snapshot.rebiDeals) ? snapshot.rebiDeals : [];
                 // Federal statutory tables (rmdTable, ordinaryBrackets, ltcgBrackets) are intentionally
                 // NOT restored from the imported file — the app's current IRS_2026 always wins, so an
                 // old profile can never silently downgrade the tax figures. (Older exports may still
@@ -3568,6 +3782,7 @@
                 renderLtcgRows();
                 renderRmdDivisorRows();
                 renderChildrenProfiles();
+                renderRebiDeals();
                 renderGiftRows();
                 document.querySelectorAll('input[data-money="true"]').forEach(el => formatMoneyInput(el));
                 toggleDistInputs();
@@ -3615,6 +3830,7 @@
             ltcgBrackets = JSON.parse(JSON.stringify(DEFAULT_LTCG_BRACKETS));
             childGiftingProfile = JSON.parse(JSON.stringify(DEFAULT_CHILD_GIFTING));
             childrenProfiles = JSON.parse(JSON.stringify(DEFAULT_CHILDREN_PROFILES));
+            rebiDeals = JSON.parse(JSON.stringify(DEFAULT_REBI_DEALS));
 
             // Reset column detail visibility back to default (all detail groups hidden, Combined-only view)
             visibleGroups = { grpCombined: true };
@@ -3632,6 +3848,7 @@
             renderLtcgRows();
             renderRmdDivisorRows();
             renderChildrenProfiles();
+            renderRebiDeals();
             renderGiftRows();
             toggleDistInputs();
             toggleSsInputs();
@@ -3676,6 +3893,7 @@
             renderLtcgRows();
             renderRmdDivisorRows();
             renderChildrenProfiles();
+            renderRebiDeals();
             renderGiftRows();
             toggleRothConvInputs();
             populateFederalDisplays();   // read-only federal statutory values from IRS_2026
@@ -3839,6 +4057,7 @@
                         <a href="#sec-ss" class="hover:underline cursor-pointer">13. Social Security</a>
                         <a href="#sec-healthcare" class="hover:underline cursor-pointer">14. Healthcare: MAGI, ACA &amp; IRMAA</a>
                         <a href="#sec-children" class="hover:underline cursor-pointer">15. Children: College Funding &amp; Gifting</a>
+                        <a href="#sec-rebi" class="hover:underline cursor-pointer">15b. Real Estate / Business Investments</a>
                         <a href="#sec-529hsa" class="hover:underline cursor-pointer">16. 529 &amp; HSA: Spendable vs Total Net Worth</a>
                         <a href="#sec-growth" class="hover:underline cursor-pointer">17. Growth Timing Conventions</a>
                         <a href="#sec-profiles" class="hover:underline cursor-pointer">18. Profiles: Import / Export / Reset</a>
@@ -3851,7 +4070,7 @@
                 <!-- 1. Overview -->
                 <section id="sec-overview">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-house mr-2"></i>1. Overview &amp; Purpose</h2>
-                    <p>P-ZERO is a <strong>deterministic, year-by-year retirement simulation engine</strong> for a married couple planning a phased early retirement. Starting from 2026, it projects the growth, drawdown, tax liability, and longevity of five asset pools — Traditional (pre-tax), Roth, Taxable Brokerage, HSA, and 529 — across a multi-decade horizon, through several life phases: full-time accumulation, a "covered" bridge when only one spouse has stepped down, semi-retirement (both on consulting income), full retirement, and an optional survivor scenario.</p>
+                    <p>P-ZERO is a <strong>deterministic, year-by-year retirement simulation engine</strong> for a married couple planning a phased early retirement. Starting from 2026, it projects the growth, drawdown, tax liability, and longevity of five asset pools — Traditional (pre-tax), Roth, Taxable Brokerage, HSA, and 529 — plus any number of illiquid Real Estate / Business (passive LP) positions with their own distributions and capital events (Section 15b) — across a multi-decade horizon, through several life phases: full-time accumulation, a "covered" bridge when only one spouse has stepped down, semi-retirement (both on consulting income), full retirement, and an optional survivor scenario.</p>
                     <p class="mt-3">"Deterministic" means one fixed path: every year uses the same nominal return (default 6%) and the same inflation rate (default 3%). This makes each year's math fully traceable — you can pick any row and reconcile every dollar — which is the tool's core strength. The deterministic core does <em>not</em> model market volatility; a good year and a crash year look identical. To test that risk directly, the <strong>Monte Carlo</strong> tool (top nav) re-runs the whole plan hundreds of times over random return sequences — see Section 18.</p>
                     <p class="mt-3">The engine runs each year through a consistent pipeline: determine life phase from each spouse's age &rarr; apply contributions (accumulation and, at a reduced rate, the covered phase) &rarr; compute forced RMDs &rarr; compute Roth conversions (bracket-filling) &rarr; pay tuition from 529 &rarr; pay healthcare from HSA &rarr; iteratively solve the tax-and-withdrawal loop (Section 8) &rarr; apply investment growth per your chosen timing convention (Section 17) &rarr; record the row.</p>
                     <p class="mt-3">Beyond the projection, four tools (top nav) help you act on it: <strong>Compare</strong> pins two plans side by side; <strong>Solve For</strong> inverts the model to find max spend, earliest retirement, or required portfolio; <strong>Monte Carlo</strong> stress-tests against random return sequences; and the seven KPI cards surface horizon, end wealth, after-tax legacy to heirs, lifetime tax, ACA subsidy, and 529 status. All are documented below.</p>
@@ -3899,8 +4118,8 @@
                         <div>
                             <h3 class="font-semibold text-base mb-1">Age Milestones</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li><strong style="color:var(--text-primary)">Semi-Retirement Age (H &amp; W):</strong> The age at which each spouse leaves full-time work. Household drawdown begins only when the <em>last</em> full-time worker steps down &mdash; if one spouse steps down first, the gap years are the &ldquo;Covered&rdquo; phase (Section 7, Phase 1.5) with contributions at the configurable covered-% (default 50%). Once both have stepped down, all contributions stop, per-spouse 1099 consulting income begins (each spouse’s income runs from their <em>own</em> semi-retirement age to their <em>own</em> full-retirement age), healthcare costs begin, and portfolio withdrawals start covering any shortfall.</li>
-                                <li><strong style="color:var(--text-primary)">Full Retirement Age (H &amp; W):</strong> Full retirement begins only when <em>both</em> spouses have reached their full-retirement age. Each spouse's 1099 income (and its SE tax) ends at their own full-retirement age.</li>
+                                <li><strong style="color:var(--text-primary)">Semi-Retirement Age (H &amp; W):</strong> The age at which each spouse leaves full-time work. Household drawdown begins only when the <em>last</em> full-time worker steps down &mdash; if one spouse steps down first, the gap years are the &ldquo;Covered&rdquo; phase (Section 7, Phase 1.5) with contributions at the configurable covered-% (default 50%). Once both have stepped down, all contributions stop, per-spouse semi-retirement income begins (each spouse’s income runs from their <em>own</em> semi-retirement age to their <em>own</em> full-retirement age), healthcare costs begin, and portfolio withdrawals start covering any shortfall.</li>
+                                <li><strong style="color:var(--text-primary)">Full Retirement Age (H &amp; W):</strong> Full retirement begins only when <em>both</em> spouses have reached their full-retirement age. Each spouse's semi-retirement income (and its payroll tax &mdash; SE tax if 1099, FICA if W-2) ends at their own full-retirement age.</li>
                                 <li><strong style="color:var(--text-primary)">RMD age (default 75):</strong> When the older spouse reaches this age, forced minimum distributions from the Traditional bucket begin (Section 11).</li>
                             </ul>
                         </div>
@@ -3910,6 +4129,7 @@
                                 <li>Defaults: Traditional $70,000 &bull; Roth $70,000 &bull; Brokerage $70,000 &bull; HSA $8,750 &bull; 529 $24,000 — all entered in today's dollars and inflated each year. These are household combined figures (both spouses), not per-person IRS limits; adjust them to match your actual savings plan. The <strong style="color:var(--text-primary)">Fill Max Contributions</strong> button sets Traditional, Roth, and HSA to the household base IRS maximum in one click: Traditional $49,000 (2 &times; $24,500 elective), Roth $110,000 (2 &times; [$47,500 mega-backdoor + $7,500 backdoor IRA]), and HSA $8,750 (family coverage — one plan covers both spouses, so this is not doubled). It fills base limits only; the Catch-Up toggle adds each spouse's age-based amounts on top. Brokerage and 529 are left untouched.</li>
                                 <li><strong style="color:var(--text-primary)">Catch-up toggle:</strong> when on, adds each spouse's IRS catch-up based on that spouse's own age, summed across both spouses (inflation-scaled). Per spouse: a 401(k) catch-up of $8,000 at ages 50&ndash;59, rising to the SECURE 2.0 &ldquo;super catch-up&rdquo; of $11,250 at ages 60&ndash;63, then back to $8,000 at 64+; plus an IRA catch-up of $1,100 at 50+. Under the 2026 high-earner rule, all of this retirement catch-up is directed to <strong style="color:var(--text-primary)">Roth</strong> (Traditional gets no catch-up). Separately, an HSA catch-up of $1,000 per spouse applies at 55+. Because each spouse is scored by their own age, a couple where both are 50+ gets two catch-ups, and the amounts step up and down as each spouse crosses the 50 / 55 / 60&ndash;63 / 64 boundaries. Hover the &#9432; next to the toggle for a live per-spouse breakdown at your current ages.</li>
                                 <li>Brokerage contributions increase the brokerage cost basis dollar-for-dollar.</li>
+                        <li><strong style="color:var(--text-primary)">Real Estate / Business Investments</strong> — an optional, repeatable list of passive LP / syndication positions, each with its own capital, value, appreciation, distribution (and taxable %), optional refinance, and exit year/value plus recapture %. Empty by default, so it changes nothing until you add a deal. Full detail in Section 15b.</li>
                             </ul>
                         </div>
                         <div>
@@ -3958,7 +4178,8 @@
                         <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">KPI</th><th class="py-2">What it means &amp; how it's computed</th></tr></thead>
                         <tbody style="color:var(--text-secondary)">
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Portfolio Horizon</td><td class="py-2">The headline "will the money last" test — <strong>529 is excluded</strong>. Shows "95+ (Secure)" if the spendable portfolio (Traditional + Roth + Brokerage + HSA) covers every year's needs to Target EOL. Depletion is detected by <em>funding shortfall</em>, not by balances literally hitting zero: the failure year is the first year the portfolio cannot supply more than a trivial amount (&gt;$100 nominal) of the required withdrawal. This matters because withdrawals are capped at available balances, so tiny residual balances can linger even after the plan has effectively failed. On failure, the card shows both spouses’ ages at the failure year beneath the headline (the survivor’s age alone in a Survivor Scenario), and the chart’s red “Depleted” marker carries the same year-and-age annotation. The Brokerage Exhausted card carries the same age sub-line at its crossover year.</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Net Worth at EOL (excl. 529)</td><td class="py-2">The spendable portfolio balance (Traditional + Roth + Brokerage + HSA) in the final simulated year, in the currently selected dollar mode. 529 is deliberately excluded so leftover education money can never mask a depleted retirement portfolio. Turns red whenever Portfolio Horizon has failed.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Liquid Net Worth at EOL (excl. 529)</td><td class="py-2">The spendable portfolio balance (Traditional + Roth + Brokerage + HSA) in the final simulated year, in the currently selected dollar mode. 529 is deliberately excluded so leftover education money can never mask a depleted retirement portfolio. Turns red whenever Portfolio Horizon has failed.<br><br>If you hold Real Estate / Business investments (Section 15b), a smaller <strong style="color:var(--text-primary)">Total incl. RE/Business</strong> line appears beneath this number, adding the illiquid position value on top. The big number deliberately stays <em>liquid-only</em> — it's the money you can actually draw on — so a large illiquid holding can never make a thin spendable portfolio look safe. The line is hidden when you have no such deals.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Real Estate / Business (illiquid)</td><td class="py-2">The value of your passive real-estate / business (LP) positions still held in the final simulated year. Illiquid — not part of the spendable portfolio until a refi or exit converts it to cash — but it <em>is</em> part of your total net worth and passes to heirs with a step-up in basis (so it flows into After-Tax Legacy at 100%). This tile only appears when you have at least one deal. See Section 15b.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">After-Tax Legacy (to heirs)</td><td class="py-2">The final estate's worth to non-spouse heirs, applying a per-bucket tax haircut the plain End Worth number hides: Roth &times; 100% (inherited tax-free), Brokerage &times; 100% (heirs get a step-up in basis that erases the gain), HSA and Traditional taxed at the editable heir tax rates (default 28% each) — because under the SECURE Act a non-spouse heir must drain an inherited Traditional within 10 years, paying ordinary tax on every dollar. 529 is excluded, like the other wealth KPIs. When this number sits well below End Worth, the gap is the deferred tax bomb your heirs would inherit; when they're nearly equal (as in the default plan, whose sequencing leaves an almost all-Roth estate), the estate is already tax-efficient. This is the missing half of the Roth-conversion decision: a conversion that looks unattractive on lifetime tax alone can pay off once its shrinking of the heirs' Traditional bomb is counted.<br><br><strong style="color:var(--text-primary)">How to read it:</strong> compare this card directly against Net Worth at EOL sitting beside it. <strong style="color:var(--text-primary)">If the two match, you're doing great</strong> — your estate is essentially all Roth/brokerage, so nothing is lost to heir taxes and there's no bomb to defuse (this is the default plan's situation, thanks to the Brokerage→Traditional→Roth withdrawal order). If Legacy sits <em>below</em> End Worth, the gap is exactly the tax your heirs would owe on the leftover Traditional/HSA — a signal that Roth conversions (or spending Traditional sooner) could shrink it. To test the payoff: note the baseline, <strong style="color:var(--text-primary)">Pin as A</strong>, turn conversions on, and watch the Lifetime Tax delta (the cost to you) against the After-Tax Legacy delta (the gain to heirs) side by side — that comparison is the whole decision.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Brokerage Exhausted</td><td class="py-2">The first retirement year in which the brokerage account was fully drained by the year's withdrawal <em>and the draw still needed more</em> — i.e., the true crossover point where spending spills into Traditional/Roth. Under the default sequential order this is a normal, expected milestone, so it only displays as a warning if it coincides with overall portfolio failure.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Projected Lifetime Tax</td><td class="py-2">The sum of all taxes (federal ordinary, LTCG, SE, state, county, penalties) across every simulated year. Each year's tax is converted to the selected dollar mode <em>before</em> summing — nominal dollars from different decades can't be meaningfully added, so in Today's $ mode each year's tax is deflated at its own factor first.</td></tr>
@@ -3980,11 +4201,11 @@
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-blue-600">Growth</td><td class="py-2">Investment growth on the four spendable buckets, per the selected growth timing convention (Section 17). Under the default half-year convention, the growth base is Starting + &frac12;Contributions &minus; &frac12;Withdrawals.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-cyan-600">Planned Dist</td><td class="py-2">Your annual living target (default $150K, today's $, inflated). Pure lifestyle spending — excludes healthcare, gifting, Roth conversions, and taxes. This is a <em>need</em>, not a flow.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-amber-600">Healthcare</td><td class="py-2">Total household healthcare cost for the year (pre-65 / split / Medicare tiers — Section 14). The HSA pays this first, tax-free; only the portion the HSA can't cover flows into the portfolio withdrawal.</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-emerald-600">Income</td><td class="py-2">Gross 1099 consulting income (defaults H $25K / W $100K, today's $, inflated). Each spouse's income runs on their own window — from their semi-retirement age until their own full-retirement age — so this column steps down as each spouse individually stops consulting. Shown gross — SE tax is not netted out here; it appears in the Taxes column instead, so it is counted exactly once.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-emerald-600">Income</td><td class="py-2">Gross semi-retirement earned income (defaults H $25K / W $100K, today's $, inflated; each spouse is 1099 or W-2 by your choice). Each spouse's income runs on their own window — from their semi-retirement age until their own full-retirement age — so this column steps down as each spouse individually stops consulting. Shown gross — SE tax is not netted out here; it appears in the Taxes column instead, so it is counted exactly once.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-purple-600">Roth Conv</td><td class="py-2">Amount converted Traditional &rarr; Roth this year (Section 10). Fully taxable as ordinary income, but it does <strong>not</strong> leave the portfolio — so it appears here and in Total Taxable, but never in Portfolio W/D.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Soc Sec</td><td class="py-2">Combined gross Social Security benefits received (per-spouse claim ages; COLA-indexed). $0 while the SS toggle is off (the default).</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-amber-600">Life Event</td><td class="py-2">One-off outflows from the gifting schedule (entered in today's $, inflated to the gift year so the real value you intended is what's actually gifted).</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Total Taxable</td><td class="py-2">The gross ordinary-income pool feeding the tax engine, <em>before</em> the standard deduction: (1099 income &minus; &frac12; SE-tax deduction) + RMDs + elective Traditional draws + Roth conversion + taxable share of SS. Note the &frac12; SE deduction is half of the SE <em>tax</em>, not half of the income. LTCG from brokerage gains is taxed separately on top and is not in this column.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Total Taxable</td><td class="py-2">The gross ordinary-income pool feeding the tax engine, <em>before</em> the standard deduction: (semi-retirement earned income &minus; the &frac12; SE-tax deduction, which applies to 1099 income only &mdash; W-2 wages are fully taxable) + RMDs + elective Traditional draws + Roth conversion + taxable share of SS. Note the &frac12; SE deduction is half of the SE <em>tax</em>, not half of the income. LTCG from brokerage gains is taxed separately on top and is not in this column.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-amber-600">MAGI</td><td class="py-2">Modified Adjusted Gross Income for benefit-eligibility purposes: gross ordinary income + realized capital gains + full Social Security (taxed and untaxed portions). No deductions reduce it — which is why it differs from Total Taxable. Drives the ACA 400% FPL subsidy cliff in pre-65 years and the IRMAA tiers post-65 (via the two-year lookback). The column hides automatically when both the ACA and IRMAA toggles are off. Note how the same spending produces wildly different MAGI depending on the funding source: Traditional draws count fully, brokerage draws count only their gain portion, Roth draws count zero.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-red-600">Taxes</td><td class="py-2">Total tax drag for the year: federal ordinary + LTCG (federal and state/local on the gain) + SE tax + state + county + any 10% early-withdrawal penalty. Produced by the iterative solver (Section 8).</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold text-red-600">Portfolio W/D</td><td class="py-2">The net cash that actually left the portfolio: Planned Dist + healthcare not covered by HSA + gifts + taxes &minus; gross income &minus; Social Security (floored at zero). Reconciles exactly to the sum of the per-bucket Dists columns (Trad + Roth + Brokerage elective draws + RMD used for spending). Roth conversions are excluded.</td></tr>
@@ -4008,6 +4229,7 @@
                         <li><strong style="color:var(--text-primary)">Brokerage:</strong> withdrawals split proportionally into basis (tax-free return of principal) and gain (LTCG-taxed) using the tracked basis ratio. Excess RMDs beyond spending needs are reinvested here and add to basis.</li>
                         <li><strong style="color:var(--text-primary)">HSA:</strong> Dists are healthcare payments (tax-free), made before any portfolio money is touched. The HSA is never tapped for non-medical spending in this model.</li>
                         <li><strong style="color:var(--text-primary)">529:</strong> Dists are tuition payments per the Children schedule (Section 15). Not part of the Combined columns.</li>
+                        <li><strong style="color:var(--text-primary)">Real Estate / Business:</strong> a separate group (Start Value / Distributions / Refi / Sale-Exit / End Value) tracking your passive LP positions year by year. Distributions are the cash yield received; Refi and Sale/Exit show &mdash; except in the years those capital events occur. These columns are <em>not</em> part of the Combined columns and the value is not spendable, because the positions are illiquid until a capital event. See Section 15b.</li>
                     </ul>
                     <p class="mt-2" style="color:var(--text-secondary)">Cross-check anytime: Trad Dists (elective + RMD used for spending) + Roth Dists + Brokerage Dists = Combined Portfolio W/D.</p>
                 </section>
@@ -4015,26 +4237,26 @@
                 <!-- 7. Life phases -->
                 <section id="sec-lifecycle">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-timeline mr-2"></i>7. Life Phase Logic</h2>
-                    <p class="mb-3" style="color:var(--text-secondary)">The model moves each household through up to five phases, driven entirely by when each spouse reaches their <strong style="color:var(--text-primary)">semi-retirement age</strong> (the &ldquo;Semi-Ret Age&rdquo; input) and <strong style="color:var(--text-primary)">full-retirement age</strong> (the &ldquo;Full Retirement&rdquo; input). Phases aren't tied to calendar dates &mdash; they're derived from the age inputs, so they shift automatically with whatever ages you enter.</p>
+                    <p class="mb-3" style="color:var(--text-secondary)">The model moves each household through up to five phases, driven entirely by when each spouse reaches their <strong style="color:var(--text-primary)">semi-retirement age</strong> (the &ldquo;Semi-Ret Age&rdquo; input) and <strong style="color:var(--text-primary)">full-retirement age</strong> (the &ldquo;Full Retirement&rdquo; input). <strong style="color:var(--text-primary)">Real Estate / Business distributions are phase-independent</strong> &mdash; they flow in every year a deal is held, in accumulation as much as in full retirement, and their capital events (refinance, exit) fire on the years you set regardless of phase. See Section 15b. Phases aren't tied to calendar dates &mdash; they're derived from the age inputs, so they shift automatically with whatever ages you enter.</p>
                     <div class="space-y-3">
                         <div><p class="font-semibold" style="color:var(--text-primary)">Phase 1 &mdash; Accumulation</p>
-                        <p style="color:var(--text-secondary)">Both spouses work full-time, from the start of the projection until the <em>first</em> spouse reaches their semi-retirement age. All five contribution streams flow (inflation-indexed, plus catch-ups when eligible). No withdrawals, no healthcare cost modeled (employer coverage assumed), no 1099 income.</p>
+                        <p style="color:var(--text-secondary)">Both spouses work full-time, from the start of the projection until the <em>first</em> spouse reaches their semi-retirement age. All five contribution streams flow (inflation-indexed, plus catch-ups when eligible). No withdrawals, no healthcare cost modeled (employer coverage assumed), no semi-retirement income.</p>
                         <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; For our household, accumulation runs 2026&ndash;2034: both spouses step down in 2035, so every year before that is accumulation.</div></div>
 
                         <div><p class="font-semibold" style="color:var(--text-primary)">Phase 1.5 &mdash; Covered (bridge, only when the two semi-retirement ages differ)</p>
-                        <p style="color:var(--text-secondary)">If one spouse reaches their semi-retirement age while the other still works full-time, the household enters a &ldquo;Covered&rdquo; bridge phase: the working spouse's W2 income (which the model does not simulate) is assumed to fund all living costs, and employer coverage handles healthcare &mdash; so there are <strong style="color:var(--text-primary)">no portfolio draws, no healthcare cost, and no living-target withdrawal</strong>. Contributions continue at the configurable &ldquo;Contribution % While One Spouse Still Works&rdquo; (default 50%, reflecting one earner's remaining savings capacity). The semi-retired spouse's 1099 income is ignored (assumed absorbed into household coverage), and Roth conversions are suppressed &mdash; bracket-fill sizing would be blind to the unmodeled W2 income occupying the same brackets. The one exception: <strong style="color:var(--text-primary)">scheduled gifts remain portfolio-funded</strong> &mdash; a one-off six-figure transfer isn't plausibly cash-flowed from a single salary, so the conservative treatment draws it (plus its capital-gains gross-up) from the portfolio. True drawdown begins only when the <em>last</em> full-time worker steps down.</p>
+                        <p style="color:var(--text-secondary)">If one spouse reaches their semi-retirement age while the other still works full-time, the household enters a &ldquo;Covered&rdquo; bridge phase: the working spouse's W2 income (which the model does not simulate) is assumed to fund all living costs, and employer coverage handles healthcare &mdash; so there are <strong style="color:var(--text-primary)">no portfolio draws, no healthcare cost, and no living-target withdrawal</strong>. Contributions continue at the configurable &ldquo;Contribution % While One Spouse Still Works&rdquo; (default 50%, reflecting one earner's remaining savings capacity). The semi-retired spouse's semi-retirement income is ignored (assumed absorbed into household coverage), and Roth conversions are suppressed &mdash; bracket-fill sizing would be blind to the unmodeled W2 income occupying the same brackets. The one exception: <strong style="color:var(--text-primary)">scheduled gifts remain portfolio-funded</strong> &mdash; a one-off six-figure transfer isn't plausibly cash-flowed from a single salary, so the conservative treatment draws it (plus its capital-gains gross-up) from the portfolio. True drawdown begins only when the <em>last</em> full-time worker steps down.</p>
                         <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Our household skips this phase: both spouses share the same step-down year (2035), so there's no bridge. It would appear only if their semi-retirement ages produced different years.</div></div>
 
                         <div><p class="font-semibold" style="color:var(--text-primary)">Phase 2 &mdash; Semi-Retirement</p>
-                        <p style="color:var(--text-secondary)">Begins once <em>both</em> spouses have passed their semi-retirement age. Contributions stop entirely. Each spouse earns 1099 consulting income (subject to SE tax) from their own semi-retirement age until their own full-retirement age, so household income steps down as each spouse individually reaches full retirement. Healthcare costs begin (pre-65 private rate). The living target, healthcare not covered by HSA, gifts, and all taxes are funded first by income, then by portfolio withdrawals. Roth conversions start per the Auto rule &mdash; the year after the last spouse steps down &mdash; sized to the bracket room left after 1099 income and any Traditional spending draws; a manual start age can override Auto, but conversions are always suppressed while any spouse still works full-time.</p>
-                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Semi-retirement starts in 2035 with combined 1099 income of $125,000 (Husband $25K, Wife $100K). The Husband's income ends at his full-retirement age (57, in 2037); the Wife's continues until hers (60, in 2043). Conversions begin in 2036.</div></div>
+                        <p style="color:var(--text-secondary)">Begins once <em>both</em> spouses have passed their semi-retirement age. Contributions stop entirely. Each spouse earns part-time semi-retirement income from their own semi-retirement age until their own full-retirement age. You choose per spouse whether it's <strong>1099</strong> self-employment income (15.3% SE tax, with the &frac12;-SE income-tax deduction) or <strong>W-2</strong> employee income (7.65% FICA, no &frac12; deduction), so household income steps down as each spouse individually reaches full retirement. Healthcare costs begin (pre-65 private rate). The living target, healthcare not covered by HSA, gifts, and all taxes are funded first by income, then by portfolio withdrawals. Roth conversions start per the Auto rule &mdash; the year after the last spouse steps down &mdash; sized to the bracket room left after semi-retirement income and any Traditional spending draws; a manual start age can override Auto, but conversions are always suppressed while any spouse still works full-time.</p>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Semi-retirement starts in 2035 with combined semi-retirement income of $125,000 (Husband $25K, Wife $100K). The Husband's income ends at his full-retirement age (57, in 2037); the Wife's continues until hers (60, in 2043). Conversions begin in 2036.</div></div>
 
                         <div><p class="font-semibold" style="color:var(--text-primary)">Phase 3 &mdash; Full Retirement</p>
-                        <p style="color:var(--text-secondary)">Begins only when <em>both</em> spouses have reached their full-retirement age. By this point each spouse's 1099 income &mdash; and its SE tax &mdash; has ended, so the portfolio (plus Social Security, if enabled) funds everything. Medicare transition occurs per spouse at 65; RMDs begin at the RMD age (default 75); conversions continue while bracket room and Traditional balance remain.</p>
+                        <p style="color:var(--text-secondary)">Begins only when <em>both</em> spouses have reached their full-retirement age. By this point each spouse's semi-retirement income &mdash; and its payroll tax (SE tax or FICA) &mdash; has ended, so the portfolio (plus Social Security, if enabled) funds everything. Medicare transition occurs per spouse at 65; RMDs begin at the RMD age (default 75); conversions continue while bracket room and Traditional balance remain.</p>
                         <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Full retirement begins in 2043 &mdash; the year the Wife, the later of the two to stop, reaches her full-retirement age of 60.</div></div>
 
                         <div><p class="font-semibold" style="color:var(--text-primary)">Phase 4 &mdash; Survivor Scenario (optional, off by default)</p>
-                        <p style="color:var(--text-secondary)">When enabled in the sidebar, you choose which spouse passes first and at what age. The year of death itself still files MFJ (matching IRS rules) and is marked with a † in the ledger; from the following year onward the model captures the <strong style="color:var(--text-primary)">“widow’s penalty”</strong>: filing status flips to Single, which the engine <strong style="color:var(--text-primary)">approximates by halving the MFJ bracket thresholds and standard deduction</strong> rather than applying the true IRS single-filer tables. This is a deliberate simplification: the single standard deduction really is about half of MFJ, and the lower brackets are close to half, but the higher single brackets are <em>not</em> exactly half of MFJ, so the survivor's tax above roughly the 24% bracket is an approximation (generally slightly overstated). The effect is directionally right and captures the core of the penalty &mdash; roughly the same RMD and conversion income now faces twice the bracket pressure &mdash; but it is not a penny-exact single-filer calculation. Simultaneously: the survivor keeps the <em>larger</em> of the two Social Security benefits (from their own claim age) and the smaller one stops; the living target is scaled by the Survivor Spending % (default 75%); healthcare drops to one person (half the age-appropriate tier); only the survivor's own 1099 income continues (if still within their consulting window); RMD age, penalty age, and retirement-phase logic re-key to the survivor’s own age; the simulation runs to the survivor’s Target EOL; and a one-time <strong style="color:var(--text-primary)">step-up in basis</strong> is applied &mdash; the decedent’s half of the jointly-held brokerage’s unrealized gain becomes basis, materially reducing future LTCG and partially offsetting the bracket compression. This is a deterministic what-if, not a mortality forecast: use it to test whether your Roth conversion strategy leaves the survivor exposed to compressed Single brackets.</p></div>
+                        <p style="color:var(--text-secondary)">When enabled in the sidebar, you choose which spouse passes first and at what age. The year of death itself still files MFJ (matching IRS rules) and is marked with a † in the ledger; from the following year onward the model captures the <strong style="color:var(--text-primary)">“widow’s penalty”</strong>: filing status flips to Single, which the engine <strong style="color:var(--text-primary)">approximates by halving the MFJ bracket thresholds and standard deduction</strong> rather than applying the true IRS single-filer tables. This is a deliberate simplification: the single standard deduction really is about half of MFJ, and the lower brackets are close to half, but the higher single brackets are <em>not</em> exactly half of MFJ, so the survivor's tax above roughly the 24% bracket is an approximation (generally slightly overstated). The effect is directionally right and captures the core of the penalty &mdash; roughly the same RMD and conversion income now faces twice the bracket pressure &mdash; but it is not a penny-exact single-filer calculation. Simultaneously: the survivor keeps the <em>larger</em> of the two Social Security benefits (from their own claim age) and the smaller one stops; the living target is scaled by the Survivor Spending % (default 75%); healthcare drops to one person (half the age-appropriate tier); only the survivor's own semi-retirement income continues (if still within their earning window); RMD age, penalty age, and retirement-phase logic re-key to the survivor’s own age; the simulation runs to the survivor’s Target EOL; and a one-time <strong style="color:var(--text-primary)">step-up in basis</strong> is applied &mdash; the decedent’s half of the jointly-held brokerage’s unrealized gain becomes basis, materially reducing future LTCG and partially offsetting the bracket compression. This is a deterministic what-if, not a mortality forecast: use it to test whether your Roth conversion strategy leaves the survivor exposed to compressed Single brackets.</p></div>
                     </div>
                 </section>
 
@@ -4045,7 +4267,7 @@
                     <p>Determining the year's withdrawal creates a circular problem: the withdrawal must cover taxes, but the taxes depend on <em>which accounts</em> the withdrawal comes from — Traditional draws add ordinary income (potentially crossing brackets), brokerage draws create capital gains, and pre-59&frac12; draws add penalties. More withdrawal &rarr; more tax &rarr; more withdrawal.</p>
                     <p class="mt-3">The engine resolves this with an iterative solve, run fresh for every simulated year:</p>
                     <ol class="list-decimal ml-6 mt-2 space-y-1" style="color:var(--text-secondary)">
-                        <li>Compute the base need: Planned Dist + healthcare not covered by HSA + gifts, minus cash sources (gross 1099 income + Social Security). This seeds the withdrawal estimate with no taxes yet.</li>
+                        <li>Compute the base need: Planned Dist + healthcare not covered by HSA + gifts, minus cash sources (gross semi-retirement income + Social Security + Real Estate / Business distributions, plus any refinance or sale proceeds in a capital-event year &mdash; Section 15b). This seeds the withdrawal estimate with no taxes yet.</li>
                         <li>Simulate the account draws for that withdrawal per the chosen sequence, capped at available balances.</li>
                         <li>Size the bracket-fill Roth conversion for this iteration (spending-aware): fill only the room remaining between (existing ordinary income + those elective Traditional spending draws) and the chosen bracket cap, further capped at the Traditional balance left after spending draws. Fixed-amount conversions are sized up-front instead and skip this step.</li>
                         <li>Compute the full tax stack for that draw mix: federal ordinary tax on (income &minus; &frac12;SE deduction + RMD + elective Traditional draws + Roth conversion + taxable SS &minus; standard deduction), LTCG on the brokerage gain portion (stacked on top of ordinary income against the LTCG brackets), state + county, SE tax, and the 10% early-withdrawal penalty on Trad/Roth draws if the older spouse is under 59&frac12;.</li>
@@ -4061,7 +4283,7 @@
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-arrow-right-from-bracket mr-2"></i>9. Withdrawal Sequencing</h2>
                     <p><strong>Sequential (default): Brokerage &rarr; Traditional &rarr; Roth.</strong> Spend the taxable account first (only the gain portion is taxed, at favorable LTCG rates, and draining it early leaves low-taxable-income years for cheap Roth conversions), tap Traditional second (ordinary income, but often at low brackets by then), preserve Roth for last (tax-free growth compounds longest, best asset to inherit).</p>
                     <p class="mt-3"><strong>Pro-Rata:</strong> each year's withdrawal is split across Traditional, Roth, and Brokerage in proportion to their current balances. Smooths the tax character of withdrawals over time rather than concentrating account types in phases.</p>
-                    <p class="mt-3" style="color:var(--text-secondary)">The solver (Section 8) prices both strategies correctly — Traditional portions generate ordinary tax, brokerage portions generate LTCG on the gain share, Roth portions are tax-free — and the resulting tax difference feeds back into the withdrawal size. The HSA sits outside this sequence entirely (healthcare only), as does the 529 (tuition only).</p>
+                    <p class="mt-3" style="color:var(--text-secondary)">The solver (Section 8) prices both strategies correctly — Traditional portions generate ordinary tax, brokerage portions generate LTCG on the gain share, Roth portions are tax-free — and the resulting tax difference feeds back into the withdrawal size. <strong style="color:var(--text-primary)">Real Estate / Business positions sit outside this sequence entirely:</strong> they're illiquid, so they are never drawn on to cover a shortfall. Their distributions (and any refinance or sale proceeds) instead arrive as cash that <em>reduces</em> the withdrawal the sequence has to produce, and sale proceeds land in Brokerage where they become part of the liquid pool from that year on. See Section 15b. The HSA sits outside this sequence entirely (healthcare only), as does the 529 (tuition only).</p>
                 </section>
 
                 <!-- 10. Roth ladder -->
@@ -4069,10 +4291,10 @@
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-rotate mr-2"></i>10. Roth Conversion Ladder</h2>
                     <p>The conversion ladder is <strong style="color:var(--text-primary)">off by default</strong> (the RMD tax-torpedo and its IRMAA knock-on are a genuine argument <em>for</em> conversions, but whether they pay off is scenario-specific — so the conservative baseline leaves them off and lets you switch them on to test). When enabled (with a start age), each year the engine can move money from Traditional to Roth, paying ordinary income tax now in exchange for tax-free growth forever after and a smaller future RMD base. Two modes:</p>
                     <ul class="list-disc ml-6 mt-2 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Fill bracket to X% (default) — spending-aware:</strong> the conversion is sized <em>inside</em> the iterative tax solver, after that year’s elective Traditional spending draws are known. It fills only the room remaining between (existing ordinary income + Traditional spending draws) and the top of your chosen bracket, so combined ordinary income lands <em>at</em> the cap and never over it. Spending has priority over conversion for both bracket room and Traditional balance — in years where spending draws alone exceed the cap, the conversion is $0, exactly as a human advisor would size it. When "Cap Roth conversions to preserve subsidy" is on (the default) and a marketplace subsidy is live, the conversion is additionally capped so MAGI lands at the 400% FPL cliff rather than over it — unless spending alone already blew the cliff, in which case the subsidy is lost anyway and the bracket cap governs alone. Capped at the remaining Traditional balance; brackets are the actual federal, inflation-indexed table (shown read-only in the Federal Tax Details tab).</li>
+                        <li><strong style="color:var(--text-primary)">Fill bracket to X% (default) — spending-aware:</strong> the conversion is sized <em>inside</em> the iterative tax solver, after that year’s elective Traditional spending draws are known. It fills only the room remaining between (existing ordinary income + Traditional spending draws) and the top of your chosen bracket, so combined ordinary income lands <em>at</em> the cap and never over it. <strong style="color:var(--text-primary)">Real Estate / Business distributions count here:</strong> their taxable portion is part of "existing ordinary income," so it consumes bracket room before the conversion is sized &mdash; a deal throwing off taxable distributions leaves less space to convert at your target bracket. A RE/BI <em>exit</em> gain is a capital gain, so it does not consume ordinary bracket room, but it does raise MAGI (Section 14) and can therefore tighten the ACA-subsidy cap. See Section 15b. Spending has priority over conversion for both bracket room and Traditional balance — in years where spending draws alone exceed the cap, the conversion is $0, exactly as a human advisor would size it. When "Cap Roth conversions to preserve subsidy" is on (the default) and a marketplace subsidy is live, the conversion is additionally capped so MAGI lands at the 400% FPL cliff rather than over it — unless spending alone already blew the cliff, in which case the subsidy is lost anyway and the bracket cap governs alone. Capped at the remaining Traditional balance; brackets are the actual federal, inflation-indexed table (shown read-only in the Federal Tax Details tab).</li>
                         <li><strong style="color:var(--text-primary)">Fixed amount:</strong> converts a set dollar amount per year regardless of bracket position.</li>
                     </ul>
-                    <p class="mt-3"><strong>Start timing:</strong> the default is <em>Auto &mdash; the year after the later-retiring spouse steps down</em>, avoiding bracket-filling on top of any unmodeled partial-year W2 income in the transition year; any manual age from the same dropdown overrides it. Either way, conversions are suppressed during accumulation and Covered years, since a still-working spouse's W2 income would invisibly occupy the same brackets. <strong>How the size responds to income:</strong> in a year where 1099 income already fills most of the lower brackets, the engine converts only the room left up to your chosen bracket cap; once a spouse fully retires and household income drops, the remaining room widens and the conversion grows to fill it. The conversion appears in Roth Conv and Total Taxable, its tax lands in Taxes (and is grossed into the withdrawal), and the money itself moves Traditional &rarr; Roth without ever appearing in Portfolio W/D.</p>
+                    <p class="mt-3"><strong>Start timing:</strong> the default is <em>Auto &mdash; the year after the later-retiring spouse steps down</em>, avoiding bracket-filling on top of any unmodeled partial-year W2 income in the transition year; any manual age from the same dropdown overrides it. Either way, conversions are suppressed during accumulation and Covered years, since a still-working spouse's W2 income would invisibly occupy the same brackets. <strong>How the size responds to income:</strong> in a year where semi-retirement income already fills most of the lower brackets, the engine converts only the room left up to your chosen bracket cap; once a spouse fully retires and household income drops, the remaining room widens and the conversion grows to fill it. The conversion appears in Roth Conv and Total Taxable, its tax lands in Taxes (and is grossed into the withdrawal), and the money itself moves Traditional &rarr; Roth without ever appearing in Portfolio W/D.</p>
                     <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; For our household, conversions begin in 2036 (the year after both spouses step down). While the Wife's $100K consulting income is still flowing, it occupies the lower brackets, so the engine converts only the room left up to the bracket cap; once she fully retires and household income falls, that room widens and the annual conversion grows to fill it.</div>
                     <p class="mt-2" style="color:var(--text-secondary)">Because the conversion and the withdrawal/tax solve are computed together, the conversion’s tax is grossed into the year’s withdrawal and its LTCG-stacking effect on brokerage gains is fully priced. Fixed-amount mode remains deliberately naive (converts the set amount regardless of bracket position or spending draws). The 5-year seasoning rule on converted funds is not enforced (see Limitations).</p>
                 </section>
@@ -4088,9 +4310,9 @@
                 <section id="sec-tax">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-building-columns mr-2"></i>12. Tax Calculations</h2>
                     <h3 class="font-semibold mb-2">Ordinary Income Tax</h3>
-                    <p style="color:var(--text-secondary)">Applied to: 1099 income (less the &frac12; SE-tax deduction), RMDs, elective Traditional withdrawals, Roth conversions, and the taxable share of Social Security. The standard deduction ($32,200 MFJ, inflation-indexed) is subtracted, then the MFJ marginal brackets (federal, inflation-indexed; shown read-only in the Federal Tax Details tab) apply.</p>
+                    <p style="color:var(--text-secondary)">Applied to: semi-retirement income (1099 income is reduced by the &frac12; SE-tax deduction; W-2 wages are fully taxable), RMDs, elective Traditional withdrawals, Roth conversions, the taxable share of Social Security, and the taxable portion of Real Estate / Business distributions (Section 15b &mdash; you set what percentage of each deal's distribution is currently taxable; the sheltered remainder is untaxed). The standard deduction ($32,200 MFJ, inflation-indexed) is subtracted, then the MFJ marginal brackets (federal, inflation-indexed; shown read-only in the Federal Tax Details tab) apply.</p>
                     <h3 class="font-semibold mb-2 mt-4">Long-Term Capital Gains</h3>
-                    <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income. It stacks on top of ordinary taxable income against the LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.</p>
+                    <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income &mdash; plus the gain on a Real Estate / Business exit (Section 15b), which flows through this same machinery. It stacks on top of ordinary taxable income against the LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.<br><br><strong style="color:var(--text-primary)">Depreciation recapture (RE/BI exits only):</strong> the recapture slice of a sale &mdash; your Recapture % of invested capital, capped at the gain &mdash; is taxed at the 25% recapture rate rather than LTCG, and is added on top of the year's other taxes. See Section 15b.</p>
                     <h3 class="font-semibold mb-2 mt-4">Self-Employment Tax</h3>
                     <p style="color:var(--text-secondary)">15.3% on 92.35% of gross 1099 income during semi-retirement, computed per spouse and summed across both spouses’ active incomes (the Social Security wage-base cap is not modeled). Half of the total SE tax &mdash; <em>not</em> half the income &mdash; is deducted from ordinary taxable income. Income is displayed gross and SE tax sits in the Taxes column, so it is counted exactly once in the cash-flow math.</p>
                     <h3 class="font-semibold mb-2 mt-4">State &amp; Local Tax</h3>
@@ -4125,11 +4347,11 @@
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Want the simple model?</strong> Turn both toggles off &rarr; the engine runs flat $36,000 / $18,000 (inflation-indexed, split-age blended) with zero ACA/IRMAA adjustments — verified identical to the pre-ACA engine, cell for cell. The MAGI column and the Lifetime ACA Subsidy card hide automatically so the interface matches the simpler model.</p>
 
                     <h3 class="font-semibold text-base mb-2 mt-5">14.2 &mdash; MAGI: the yardstick everything reads</h3>
-                    <p style="color:var(--text-secondary)">MAGI (Modified Adjusted Gross Income) is the government's measure of "how much income did you really have this year," used for benefit eligibility. Crucially, <strong style="color:var(--text-primary)">no deductions reduce it</strong> — which is why it differs from the Total Taxable column.</p>
+                    <p style="color:var(--text-secondary)">MAGI (Modified Adjusted Gross Income) is the government's measure of "how much income did you really have this year," used for benefit eligibility. Crucially, <strong style="color:var(--text-primary)">no deductions reduce it</strong> — which is why it differs from the Total Taxable column. Real Estate / Business investments feed MAGI too (Section 15b): the taxable portion of distributions counts as ordinary income, and a sale/exit gain counts like a brokerage gain — so a big exit year can push you over the ACA cliff or into an IRMAA tier exactly as a large conversion would.</p>
                     <div class="overflow-x-auto mt-2"><table class="w-full text-sm">
                         <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">Counts toward MAGI</th><th class="py-2">Does NOT count</th></tr></thead>
                         <tbody style="color:var(--text-secondary)">
-                        <tr><td class="py-2 pr-4 align-top">1099 income (net of ½ SE deduction) &bull; Traditional withdrawals &bull; RMDs &bull; <strong style="color:var(--text-primary)">Roth conversions</strong> &bull; the <em>gain</em> portion of brokerage sales &bull; all of Social Security (for ACA)</td>
+                        <tr><td class="py-2 pr-4 align-top">semi-retirement income (1099 net of the ½ SE deduction; W-2 fully taxable) &bull; Traditional withdrawals &bull; RMDs &bull; <strong style="color:var(--text-primary)">Roth conversions</strong> &bull; the <em>gain</em> portion of brokerage sales &bull; all of Social Security (for ACA)</td>
                         <td class="py-2 align-top"><strong style="color:var(--text-primary)">Roth withdrawals</strong> &bull; the <em>basis</em> (principal) portion of brokerage sales &bull; HSA spending &bull; the standard deduction never reduces it</td></tr>
                         </tbody>
                     </table></div>
@@ -4215,7 +4437,7 @@
                     <div class="overflow-x-auto"><table class="w-full text-sm">
                         <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">Phase</th><th class="py-2 pr-4">Funding &rarr; MAGI</th><th class="py-2">Healthcare outcome (ACA toggle on)</th></tr></thead>
                         <tbody style="color:var(--text-secondary)">
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Early semi-retirement (1099 income + conversions running)</td><td class="py-1.5 pr-4">income + Roth conversions &rarr; high MAGI</td><td class="py-1.5">Usually over the ACA cliff &rarr; $0 subsidy &rarr; full pre-65 cost</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Early semi-retirement (semi-retirement income + conversions running)</td><td class="py-1.5 pr-4">income + Roth conversions &rarr; high MAGI</td><td class="py-1.5">Usually over the ACA cliff &rarr; $0 subsidy &rarr; full pre-65 cost</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Later semi-retirement (income ended, still drawing Traditional/brokerage)</td><td class="py-1.5 pr-4">Traditional / brokerage draws &rarr; still elevated MAGI</td><td class="py-1.5">Often over the cliff &rarr; $0 subsidy &rarr; full pre-65 cost</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Roth-funded window (Traditional largely converted away, both under 65)</td><td class="py-1.5 pr-4">Roth draws &rarr; MAGI near zero</td><td class="py-1.5">Deep under the cliff &rarr; large subsidy &rarr; low net cost</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Split-Medicare window (one spouse 65+, one still on the marketplace)</td><td class="py-1.5 pr-4">Roth-funded &rarr; low MAGI</td><td class="py-1.5">Only the under-65 spouse's half is subsidizable</td></tr>
@@ -4239,6 +4461,36 @@
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Defaults:</strong> two children (born 2012 and 2015), each $30,500/yr &times; 4 undergrad years and $50,000/yr &times; 3 grad years &mdash; producing overlapping tuition spanning roughly a decade, including years where one child's grad school overlaps the other's undergrad. (Undergrad starts the year a child turns 18; grad follows immediately, so the exact calendar span shifts with each child's birth year.)</p>
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Funding:</strong> tuition is paid from the 529 first. If the 529 runs dry, the shortfall is paid from Brokerage (reducing basis proportionally) and the 529 Status KPI flips to "Underfunded." </p>
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Gifting schedule:</strong> year/amount rows for one-off transfers (weddings, home down-payments, major gifts). Amounts are today's dollars — the engine inflates them to the gift year so the recipient gets the intended real value — and they appear in the Life Event column, funded through the normal withdrawal sequence.</p>
+                </section>
+
+                <!-- 15b. Real Estate / Business Investments -->
+                <section id="sec-rebi">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-building-columns mr-2"></i>15b. Real Estate / Business Investments</h2>
+                    <p>This section models <strong>passive private investments</strong> where you're a limited or non-managing partner — real-estate syndications (apartment complexes, storage, industrial), business LP stakes, and private funds. These behave very differently from the five liquid buckets: they throw off cash <em>distributions</em> while you hold them, return capital on a <em>refinance</em>, and pay a lump on <em>exit/sale</em>, and they are <strong>illiquid</strong> — you can't draw on them to cover a shortfall until a capital event converts them to cash. Add as many deals as you like (the list works like the Children/Gifting lists).</p>
+
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Per-deal inputs:</strong></p>
+                    <ul class="list-disc ml-6 mt-1 space-y-1" style="color:var(--text-secondary)">
+                        <li><strong style="color:var(--text-primary)">Invested capital (basis)</strong> — what you put in; your cost basis for the exit-gain calculation.</li>
+                        <li><strong style="color:var(--text-primary)">Current value</strong> &amp; <strong style="color:var(--text-primary)">Appreciation %/yr</strong> — the position's value today and how fast it grows. (In Today's-$ mode the displayed value is deflated by inflation, so a position that only appreciates at ~inflation holds roughly flat in real terms.)</li>
+                        <li><strong style="color:var(--text-primary)">Annual distribution</strong> &amp; <strong style="color:var(--text-primary)">Distribution taxable %</strong> — the cash yield and the fraction of it that's currently taxable. Syndication distributions are frequently shielded by depreciation (the K-1 often shows a paper loss), so only part is taxed as ordinary income; the default 25% approximates that shelter. Set it to 100% for a fully-taxable income stream, or lower for a heavily-sheltered one.</li>
+                        <li><strong style="color:var(--text-primary)">Distribution COLA</strong> — whether the distribution grows with inflation or stays flat in nominal dollars.</li>
+                        <li><strong style="color:var(--text-primary)">Refi year / Refi capital</strong> — an optional mid-hold refinance that returns a chunk of your capital as tax-free return of capital (it reduces your remaining basis) and lands in Brokerage.</li>
+                        <li><strong style="color:var(--text-primary)">Exit year / Exit value</strong> — when the deal sells and for how much. Leave the exit year blank/0 to hold the position indefinitely (through end of life).</li>
+                        <li><strong style="color:var(--text-primary)">Recapture %</strong> — see the tax treatment below.</li>
+                    </ul>
+
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">How the money flows through the plan:</strong> distributions are added to your income for the year (reducing how much you must withdraw from the portfolio), and their taxable portion flows through the <em>same</em> ordinary-income machinery as everything else — so it counts toward your tax brackets, your state/local tax, your ACA/IRMAA MAGI, and the room a bracket-filling Roth conversion has before it hits your target bracket. Refinance and sale proceeds are deposited into Brokerage; whatever isn't needed for that year's spending and taxes is reinvested there as after-tax principal (so it isn't taxed again as gain later).</p>
+
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Exit taxation (accurate &amp; deliberately conservative):</strong> when a deal sells, the proceeds are split three ways:</p>
+                    <ul class="list-disc ml-6 mt-1 space-y-1" style="color:var(--text-secondary)">
+                        <li><strong style="color:var(--text-primary)">Return of capital</strong> (your remaining basis, net of any prior refinance) — not taxed.</li>
+                        <li><strong style="color:var(--text-primary)">Depreciation recapture</strong> — <strong>Recapture %</strong> of your <em>invested capital</em> (capped at the total gain) is taxed at the 25% recapture rate. This approximates the depreciation you benefited from during the hold coming due at sale. Set it to 0 to ignore recapture; a modest default (e.g. 15–20%) is realistic for a cost-segregated syndication. Because recapture is a real tax the simple view would omit, including it makes exits show <em>more</em> tax and <em>lower</em> net proceeds — the conservative, and more accurate, direction.</li>
+                        <li><strong style="color:var(--text-primary)">Remaining gain</strong> — taxed at long-term capital-gains rates, stacked on top of your ordinary income exactly like a brokerage gain (so it also raises MAGI for ACA/IRMAA and interacts with the conversion cap).</li>
+                    </ul>
+
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Net worth &amp; legacy — the two-tier view:</strong> because these positions are illiquid, the app keeps them visually separate from your spendable money. The <strong>Net Worth at EOL</strong> KPI shows <em>Liquid Net Worth</em> as the primary number (the spendable portfolio you can actually draw on), with a smaller <em>Total incl. RE/Business</em> line beneath it, and a dedicated <strong>Real Estate / Business (illiquid)</strong> KPI tile calls out the held value on its own. Both the total line and the tile appear only when you have at least one deal. At death, positions still held pass to heirs with a <strong>step-up in basis</strong> — the built-in gain is erased — so they flow into the After-Tax Legacy at 100%, the same favorable treatment as brokerage. To see the year-by-year activity (start value, distributions, refi, sale, end value), toggle the <strong>Real Estate / Business</strong> detail column-group above the projection table.</p>
+
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Deliberate simplifications:</strong> recapture is approximated as a percentage of invested capital rather than tracked from an actual depreciation schedule; there's no modeling of capital calls, deal-level debt/leverage beyond the net figures you enter, K-1 passive-activity-loss carryforwards, 1031 exchanges, or Opportunity-Zone rules. Enter your own net figures and the model handles the cash-flow and tax mechanics faithfully at the planning level. As always, this is a planning sandbox, not tax advice — confirm specifics with your CPA.</p>
                 </section>
 
                 <!-- 16. 529 & HSA -->
@@ -4272,7 +4524,7 @@
                 <section id="sec-profiles">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-file-export mr-2"></i>18. Profiles: Import / Export / Reset</h2>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a JSON snapshot (saved as .txt) of <em>your</em> setup: every left-panel input (household, assets, contributions, distribution, Roth conversions, Social Security, survivor, state/local tax, heir assumptions), the children and gifting schedules, and display preferences (theme, view mode, dollar mode, visible column groups). It deliberately does <em>not</em> save the federal tax tables (brackets, LTCG, standard deduction, FPL, RMD divisors) &mdash; those are current tax law, not personal data, so on import they always come from the app's current figures rather than whatever they were when you saved. This means a profile saved in an earlier tax year stays valid: your situation is re-run against today's tax law.</li>
+                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a JSON snapshot (saved as .txt) of <em>your</em> setup: every left-panel input (household, assets, contributions, distribution, Roth conversions, Social Security, survivor, state/local tax, heir assumptions), the children and gifting schedules, and display preferences (theme, view mode, dollar mode, visible column groups). It deliberately does  Real Estate / Business investment deals are saved with the profile too, so a scenario's private positions travel with it.<em>not</em> save the federal tax tables (brackets, LTCG, standard deduction, FPL, RMD divisors) &mdash; those are current tax law, not personal data, so on import they always come from the app's current figures rather than whatever they were when you saved. This means a profile saved in an earlier tax year stays valid: your situation is re-run against today's tax law.</li>
                         <li><strong style="color:var(--text-primary)">Import Profile</strong> restores a previously exported file exactly — useful for maintaining named scenarios (e.g., "aggressive conversions" vs. "no SS, conservative") and swapping between them. The file is validated before anything is overwritten.</li>
                         <li><strong style="color:var(--text-primary)">Reset</strong> restores every input, table, and schedule to the built-in defaults (with a confirmation prompt). Your current theme preference is left alone, and any active comparison is cleared.</li>
                     </ul>
@@ -4315,7 +4567,7 @@
                 <section id="sec-assumptions">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-scale-balanced mr-2"></i>19. Key Assumptions &amp; Simplifications</h2>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                        <li>One fixed nominal return (6%) for every bucket, every year — no volatility, no glide path, no asset-allocation differences between account types.</li>
+                        <li>One fixed nominal return (6%) for every bucket, every year — no volatility, no glide path, no asset-allocation differences between account types. Real Estate / Business positions are the exception: each carries its <em>own</em> appreciation rate you set per deal (Section 15b), independent of the portfolio return.</li>
                         <li>The single growth rate is applied to the <em>entire</em> portfolio — the model doesn't carve out a separate low-yield cash reserve. Many retirees hold a few years of expenses in cash/short-term instruments (a HYSA or Treasuries) earning less than their growth rate, which slightly lowers the blended return. The effect is modest (the reserve is a small share of a large portfolio, and shrinks as the portfolio grows), and you can approximate it by entering a slightly lower Nominal Return.</li>
                         <li>One fixed inflation rate (3%) drives spending, healthcare, contributions, brackets, deductions, tuition, and gifts alike (SS has its own COLA input, defaulted equal).</li>
                         <li>Tax law is frozen: 2026 MFJ brackets/deduction inflate forever; no TCJA-style regime changes, no future legislation.</li>
@@ -4340,6 +4592,7 @@
                         <li>Survivor Scenario simplifications: Single brackets are approximated as exactly half of MFJ (slightly off above the 24% bracket); the survivor SS benefit is simplified to the larger of the two configured amounts from the survivor’s own claim age; the qualifying-surviving-spouse filing status (2 years with dependents) is not modeled; only one death event is supported.</li>
                         <li>State/county taxes are flat rates with no deductions or credits; the only state-specific exclusion modeled is the optional Social Security exemption. Scheduled or conditional future rate changes are not modeled (the editable rate is fixed for the whole run).</li>
                         <li>Depletion detection uses a $100 nominal shortfall tolerance; sub-$100 annual gaps won't flag failure.</li>
+                        <li><strong style="color:var(--text-primary)">Real Estate / Business Investments (Section 15b) simplifications:</strong> depreciation recapture is approximated as a percentage of invested capital rather than tracked from a real depreciation schedule; the position's value follows a single appreciation rate you set (no deal-level modeling of leverage, NOI, or cap-rate shifts); capital calls, K-1 passive-activity-loss carryforwards, 1031 exchanges, and Opportunity-Zone rules are not modeled; distributions are assumed to be received as entered (no modeling of missed or suspended distributions in troubled years). Enter your own net figures and the cash-flow and tax mechanics are handled faithfully at the planning level.</li>
                         <li>After-Tax Legacy simplifications: a single flat heir tax rate is applied to the whole inherited Traditional/HSA balance (real heirs drain it over up to 10 years across their own brackets); state estate/inheritance tax is not modeled (many states have none — verify yours), the federal estate exemption is assumed not binding, and no growth during the heirs' 10-year window is modeled.</li>
                         <li>Dividend simplification: dividends are modeled as a flat yield on the brokerage balance with a fixed qualified/ordinary split; real dividends vary by holding, and return-of-capital distributions and dividend growth over time are not separately modeled.</li>
                         <li>Covered-phase assumption: the still-working spouse's W2 income is not simulated — the model assumes it fully funds living costs and healthcare during those years, with no surplus saved beyond the configured contribution %. If the salary couldn't actually cover the household budget, those years are modeled too favorably.</li>
@@ -4358,6 +4611,12 @@
                         <div><strong>Gross-Up:</strong> <span style="color:var(--text-secondary)">Withdrawing extra to cover the taxes generated by the withdrawal itself, so the target amount arrives net. Solved iteratively each year.</span></div>
                         <div><strong>RMD:</strong> <span style="color:var(--text-secondary)">Required Minimum Distribution — IRS-mandated annual withdrawal from pre-tax accounts starting at the RMD age, computed from the Uniform Lifetime divisor table.</span></div>
                         <div><strong>LTCG:</strong> <span style="color:var(--text-secondary)">Long-Term Capital Gains — the tax treatment of the gain portion of brokerage withdrawals; stacks on ordinary income against its own 0/15/20% brackets.</span></div>
+                        <div><strong>LP (Limited Partner):</strong> <span style="color:var(--text-secondary)">A passive, non-managing investor in a syndication, fund, or partnership. You contribute capital and receive distributions and a share of the sale proceeds, but don't operate the deal. Modeled in Section 15b.</span></div>
+                        <div><strong>Distribution (RE/BI):</strong> <span style="color:var(--text-secondary)">The periodic cash a private/LP position pays out while held. Only the taxable percentage you set is taxed as ordinary income — the rest reflects depreciation shelter (see Section 15b).</span></div>
+                        <div><strong>Depreciation Recapture:</strong> <span style="color:var(--text-secondary)">Tax due at sale on the depreciation benefit taken during the hold, at a 25% rate (higher than LTCG). Modeled as a percentage of invested capital, capped at the gain. Including it makes exits show more tax — the accurate and conservative direction.</span></div>
+                        <div><strong>Return of Capital:</strong> <span style="color:var(--text-secondary)">Cash back that represents your own principal rather than profit — a refinance payout, or the basis portion of sale proceeds. Not taxed; it reduces your remaining basis.</span></div>
+                        <div><strong>Step-Up in Basis:</strong> <span style="color:var(--text-secondary)">At death, an heir's cost basis in an inherited asset resets to its date-of-death value, erasing the built-in gain. Applies to Brokerage and to Real Estate / Business positions held at death — both pass into After-Tax Legacy at 100%.</span></div>
+                        <div><strong>Illiquid:</strong> <span style="color:var(--text-secondary)">Cannot be drawn on to fund spending. Real Estate / Business positions are illiquid until a refinance or exit converts them to cash — which is why the app shows Liquid Net Worth as the primary EOL number and the illiquid value separately.</span></div>
                         <div><strong>Cost Basis:</strong> <span style="color:var(--text-secondary)">The after-tax principal in the brokerage account. Withdrawals return basis tax-free and realize gains proportionally.</span></div>
                         <div><strong>SE Tax:</strong> <span style="color:var(--text-secondary)">Self-Employment tax (15.3% on 92.35% of 1099 income). Half of the tax itself is deductible from ordinary income.</span></div>
                         <div><strong>Roth Conversion Ladder:</strong> <span style="color:var(--text-secondary)">Systematically converting Traditional to Roth in low-bracket years to reduce lifetime taxes and future RMDs.</span></div>
