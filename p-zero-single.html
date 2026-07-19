@@ -11,6 +11,44 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
+        /* ---- KPI tile layout: aligned bands + hover-to-expand numbers ----
+           .kpi-lbl   fixed 2-line label block  -> every primary number shares one baseline
+           .kpi-body  flex column               -> lets the delta row be pinned to the bottom
+           .kpi-delta margin-top:auto           -> compare rows bottom-align across all tiles
+           .kpi-exact / .kpi-compact            -> hover swaps compact ($1.31M) for exact ($1,309,908)
+                                                   and shrinks the type so the tile never reflows. */
+        /* Fixed TWO-line label box. min-height alone was a floor, not a ceiling: at 8-across
+           the longer labels wrapped to 3-6 lines and overflowed the box (and pushed the numbers
+           off a shared baseline). line-clamp caps them at 2 lines with an ellipsis; the full text
+           stays available via the tile's title attribute. */
+        .kpi-lbl { height: 26px; display: flex; align-items: flex-start; overflow: hidden; }
+        .kpi-lbl > p {
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden; line-height: 13px; margin: 0;
+        }
+        .kpi-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+        .kpi-delta { margin-top: auto; }
+        .kpi-exact { display: none; }
+        .kpi-card:hover .kpi-exact { display: inline; }
+        .kpi-card:hover .kpi-compact { display: none; }
+        .kpi-card:hover .kpi-val { font-size: 0.85rem; }
+        .kpi-card:hover .kpi-sub, .kpi-card:hover .kpi-delta { font-size: 9px; }
+        .kpi-card { transition: background-color .12s ease, box-shadow .12s ease; }
+        /* Exact mode (global toggle): show full numbers permanently, no hover needed */
+        body.kpi-exact-mode .kpi-exact { display: inline; }
+        body.kpi-exact-mode .kpi-compact { display: none; }
+        body.kpi-exact-mode .kpi-val { font-size: 0.85rem; }
+        body.kpi-exact-mode .kpi-sub, body.kpi-exact-mode .kpi-delta { font-size: 9px; }
+        /* ---- RE/BI deal card: one consistent 2-col grid ----
+           The card used to stack 3-col, 3-col, 4-col and 4-col grids, so no vertical edge lined up.
+           Worse, at ~110px per 3-col cell the four longest labels ("Distribution Taxable %",
+           "Annual Distribution", "Appreciation %/Yr", "Recapture %") wrapped to two lines while their
+           row-mates stayed on one — which pushed those inputs down and produced the visible mess.
+           2-col gives ~165px per cell, where every label fits on one line. .rebi-lbl pins the label
+           height regardless, so a longer label added later still can't break the shared baseline. */
+        .rebi-lbl { min-height: 13px; }
+        .rebi-sec { margin-bottom: -2px; }
+        .rebi-sec + .grid { margin-top: 2px; }
         .info-tip { display: none; }
 
         :root {
@@ -634,93 +672,126 @@
                 </div>
             </div>
 
+            <!-- Key Metrics header: the page's global display controls live here, above everything
+                 they affect. Dollars rescales tiles + chart + table (dispScale); KPI Numbers formats
+                 the tiles only. Both previously sat in the TABLE toolbar, which was wrong for Dollars
+                 (it's global, not table-scoped) and outright misleading for KPI Numbers (it cannot
+                 affect a single table cell). Chart-only controls (HSA/529) deliberately stay on the
+                 chart header. -->
+            <div class="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3">
+                <h3 class="text-xs font-bold text-white heading-font uppercase tracking-wider">
+                    <i class="fa-solid fa-gauge-high text-blue-400 mr-2"></i>Key Metrics
+                </h3>
+                <div class="flex items-center flex-wrap gap-x-4 gap-y-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1"><i class="fa-solid fa-coins mr-1"></i> Dollars:</span>
+                        <div id="dollarToggleContainer" class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800">
+                            <button id="btnDollarToday" onclick="setDollarMode('today')" class="text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition">Today's $</button>
+                            <button id="btnDollarFuture" onclick="setDollarMode('future')" class="text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition">Future $</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1"><i class="fa-solid fa-hashtag mr-1"></i> KPI Numbers:</span>
+                        <div id="numFormatToggleContainer" class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800">
+                            <button id="btnNumCompact" onclick="setKpiNumberMode('compact')" class="text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition" title="Show KPI values as $1.31M — hover any tile to read exact figures">Compact</button>
+                            <button id="btnNumExact" onclick="setKpiNumberMode('exact')" class="text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition" title="Show full KPI values ($1,309,908) all the time">Exact</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Dashboard KPI Blocks -->
-            <section id="kpiGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div class="glass-panel p-4 rounded-xl border-l-4 border-emerald-500 shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Portfolio Horizon</p>
-                        <h3 id="kpiRunway" class="text-xl font-bold text-white heading-font mt-0.5">95+ (Secure)</h3>
-                        <p id="dRunway" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
+            <section id="kpiGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-emerald-500 shadow-xl flex items-stretch justify-between gap-2">
+                    <div class="kpi-body">
+                        <div class="kpi-lbl" title="Portfolio Horizon"><p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Portfolio Horizon</p></div>
+                        <h3 id="kpiRunway" class="kpi-val text-lg font-bold text-white heading-font whitespace-nowrap">95+ (Secure)</h3>
+                        <!-- 529 status rides here as a badge rather than owning a whole tile: it's one bit of
+                             information (funded / not), and Portfolio Horizon already excludes 529, so the two
+                             belong together — the badge says "...and the education money is fine too". -->
+                        <p id="kpi529Badge" class="kpi-sub text-[10px] font-mono leading-tight whitespace-nowrap" title="529 education funding status"></p>
+                        <p id="dRunway" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
                     </div>
-                    <div class="bg-emerald-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-infinity text-emerald-400"></i></div>
+                    <div class="bg-emerald-950/20 p-2.5 rounded-lg self-start"><i class="fa-solid fa-infinity text-emerald-400"></i></div>
                 </div>
-                <div class="glass-panel p-4 rounded-xl border-l-4 border-cyan-500 shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Liquid Net Worth at EOL (excl. 529)</p>
-                        <h3 id="kpiEolNetWorth" class="text-xl font-bold text-white heading-font mt-0.5">$0</h3>
-                        <p id="kpiEolTotal" class="hidden text-[10px] font-mono mt-0.5 leading-tight" style="color:var(--text-muted)"></p>
-                        <p id="dEol" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
+                <div class="glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-cyan-500 shadow-xl flex items-stretch justify-between gap-2">
+                    <div class="kpi-body">
+                        <div class="kpi-lbl" title="Liquid Net Worth at EOL (excl. 529)"><p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Liquid Net Worth at EOL (excl. 529)</p></div>
+                        <h3 id="kpiEolNetWorth" class="kpi-val text-lg font-bold text-white heading-font whitespace-nowrap">$0</h3>
+                        <p id="kpiEolTotal" class="hidden kpi-sub text-[10px] font-mono leading-tight whitespace-nowrap" style="color:var(--text-muted)"></p>
+                        <p id="dEol" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
                     </div>
-                    <div class="bg-cyan-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-flag-checkered text-cyan-400"></i></div>
+                    <div class="bg-cyan-950/20 p-2.5 rounded-lg self-start"><i class="fa-solid fa-flag-checkered text-cyan-400"></i></div>
                 </div>
-                <div class="glass-panel p-4 rounded-xl border-l-4 border-teal-500 shadow-xl flex items-center justify-between relative hover:z-40">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1">
-                            After-Tax Legacy (to heirs)
+                <div id="kpiRebiCard" class="glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-purple-400 shadow-xl flex items-stretch justify-between gap-2 relative hover:z-40">
+                    <div class="kpi-body">
+                        <div class="kpi-lbl" title="Real Estate / Business (illiquid)"><p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1">
+                            Real Estate / Business (illiquid)
+                            <span class="relative info-tip-wrap inline-flex items-center justify-center" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)">
+                                <i class="fa-solid fa-circle-info text-slate-500 cursor-help" style="font-size:11px"></i>
+                                <span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Value of your passive real-estate / business (LP) positions still held at end of life. It's part of your total net worth and passes to heirs with a step-up in basis, but it is <strong style="color:var(--text-primary,#fff)">illiquid</strong> &mdash; not part of the spendable portfolio until a refi or exit converts it to cash.</span>
+                            </span>
+                        </p></div>
+                        <h3 id="kpiRebiValue" class="kpi-val text-lg font-bold text-white heading-font whitespace-nowrap">$0</h3>
+                        <p id="dRebi" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
+                        <p id="kpiRebiEolSub" class="kpi-sub text-[10px] font-mono leading-tight whitespace-nowrap" style="color:var(--text-muted)">EOL: $0</p>
+                        <p id="dRebiEol" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
+                    </div>
+                    <div class="bg-purple-950/20 p-2.5 rounded-lg self-start"><i class="fa-solid fa-building-columns text-purple-400"></i></div>
+                </div>
+                <div class="glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-teal-500 shadow-xl flex items-stretch justify-between gap-2 relative hover:z-40">
+                    <div class="kpi-body">
+                        <div class="kpi-lbl" title="After-Tax Legacy"><p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1">
+                            After-Tax Legacy
                             <span class="relative info-tip-wrap inline-flex items-center justify-center" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)">
                                 <i class="fa-solid fa-circle-info text-slate-500 cursor-help" style="font-size:11px"></i>
                                 <span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">
                                     What your heirs actually keep after tax. Roth &amp; brokerage pass ~tax-free; inherited Traditional/HSA get taxed (SECURE Act 10-yr drain).<br><br><strong style="color:var(--text-primary,#fff)">If this matches "Net Worth at EOL," you're doing great</strong> — your estate is already tax-efficient with no bomb for your heirs. A gap below it is the tax they'd owe, which Roth conversions can shrink.
                                 </span>
                             </span>
-                        </p>
-                        <h3 id="kpiLegacy" class="text-xl font-bold text-white heading-font mt-0.5">$0</h3>
-                        <p id="dLegacy" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
+                        </p></div>
+                        <h3 id="kpiLegacy" class="kpi-val text-lg font-bold text-white heading-font whitespace-nowrap">$0</h3>
+                        <p id="dLegacy" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
                     </div>
-                    <div class="bg-teal-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-hand-holding-dollar text-teal-400"></i></div>
+                    <div class="bg-teal-950/20 p-2.5 rounded-lg self-start"><i class="fa-solid fa-hand-holding-dollar text-teal-400"></i></div>
                 </div>
-                <div class="glass-panel p-4 rounded-xl border-l-4 border-blue-500 shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Brokerage Exhausted</p>
-                        <h3 id="kpiCrossover" class="text-xl font-bold text-white heading-font mt-0.5">--</h3>
-                        <p id="dCrossover" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
+                <div class="glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-blue-500 shadow-xl flex items-stretch justify-between gap-2">
+                    <div class="kpi-body">
+                        <div class="kpi-lbl" title="Brokerage Exhausted"><p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Brokerage Exhausted</p></div>
+                        <h3 id="kpiCrossover" class="kpi-val text-lg font-bold text-white heading-font whitespace-nowrap">--</h3>
+                        <p id="dCrossover" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
                     </div>
-                    <div class="bg-blue-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-code-merge text-blue-400"></i></div>
+                    <div class="bg-blue-950/20 p-2.5 rounded-lg self-start"><i class="fa-solid fa-code-merge text-blue-400"></i></div>
                 </div>
-                <div class="glass-panel p-4 rounded-xl border-l-4 border-purple-500 shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Lifetime Tax</p>
-                        <h3 id="kpiTaxDrag" class="text-xl font-bold text-white heading-font mt-0.5">$0</h3>
-                        <p id="dTax" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
+                <div class="glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-purple-500 shadow-xl flex items-stretch justify-between gap-2">
+                    <div class="kpi-body">
+                        <div class="kpi-lbl" title="Lifetime Tax"><p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Lifetime Tax</p></div>
+                        <h3 id="kpiTaxDrag" class="kpi-val text-lg font-bold text-white heading-font whitespace-nowrap">$0</h3>
+                        <p id="dTax" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
                     </div>
-                    <div class="bg-purple-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-building-columns text-purple-400"></i></div>
+                    <div class="bg-purple-950/20 p-2.5 rounded-lg self-start"><i class="fa-solid fa-building-columns text-purple-400"></i></div>
                 </div>
-                <div class="glass-panel p-4 rounded-xl border-l-4 border-amber-500 shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">529 Status</p>
-                        <h3 id="kpi529Status" class="text-xl font-bold text-white heading-font mt-0.5">Fully Funded</h3>
-                        <p id="d529" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
+                <div id="kpiAcaCard" class="glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-emerald-500 shadow-xl flex items-stretch justify-between gap-2">
+                    <div class="kpi-body">
+                        <div class="kpi-lbl" title="Lifetime ACA Subsidy"><p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Lifetime ACA Subsidy</p></div>
+                        <h3 id="kpiAcaSubsidy" class="kpi-val text-lg font-bold text-white heading-font whitespace-nowrap">$0</h3>
+                        <p id="dAca" class="hidden kpi-delta text-[10px] font-mono leading-tight"></p>
                     </div>
-                    <div class="bg-amber-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-graduation-cap text-amber-400"></i></div>
-                </div>
-                <div id="kpiRebiCard" class="glass-panel p-4 rounded-xl border-l-4 border-purple-400 shadow-xl flex items-center justify-between relative hover:z-40">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1">
-                            Real Estate / Business (illiquid)
-                            <span class="relative info-tip-wrap inline-flex items-center justify-center" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)">
-                                <i class="fa-solid fa-circle-info text-slate-500 cursor-help" style="font-size:11px"></i>
-                                <span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Value of your passive real-estate / business (LP) positions still held at end of life. It's part of your total net worth and passes to heirs with a step-up in basis, but it is <strong style="color:var(--text-primary,#fff)">illiquid</strong> &mdash; not part of the spendable portfolio until a refi or exit converts it to cash.</span>
-                            </span>
-                        </p>
-                        <h3 id="kpiRebiValue" class="text-xl font-bold text-white heading-font mt-0.5">$0</h3>
-                        <p id="dRebi" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
-                    </div>
-                    <div class="bg-purple-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-building-columns text-purple-400"></i></div>
-                </div>
-                <div id="kpiAcaCard" class="glass-panel p-4 rounded-xl border-l-4 border-emerald-500 shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Lifetime ACA Subsidy</p>
-                        <h3 id="kpiAcaSubsidy" class="text-xl font-bold text-white heading-font mt-0.5">$0</h3>
-                        <p id="dAca" class="hidden text-[10px] font-mono mt-0.5 leading-tight"></p>
-                    </div>
-                    <div class="bg-emerald-950/20 p-2.5 rounded-lg"><i class="fa-solid fa-hand-holding-medical text-emerald-400"></i></div>
+                    <div class="bg-emerald-950/20 p-2.5 rounded-lg self-start"><i class="fa-solid fa-hand-holding-medical text-emerald-400"></i></div>
                 </div>
             </section>
 
-            <!-- Net Worth Trajectory Chart -->
+            <!-- Net Worth Trajectory Chart. Collapsible: the chart body is ~307px, the single
+                 largest block between the KPI tiles and the table, so collapsing it is what lets you
+                 read the tiles and scroll the table in one view. The HEADER (title, chevron, HSA/529)
+                 always stays put — only #chartCollapseBody folds away — so the chart's own controls
+                 never vanish with it. State persists in snapshot.preferences, defaults expanded. -->
             <section class="glass-panel p-5 rounded-xl border border-slate-800">
                 <div class="flex items-center justify-between mb-3 flex-wrap gap-y-2">
-                    <h3 class="text-xs font-bold text-white heading-font uppercase tracking-wider">
+                    <h3 class="text-xs font-bold text-white heading-font uppercase tracking-wider flex items-center">
+                        <button id="btnChartCollapse" onclick="toggleChartCollapse()" class="mr-2 text-slate-400 hover:text-white transition cursor-pointer" aria-expanded="true" aria-controls="chartCollapseBody" title="Show or hide the chart — collapse it to read the KPI tiles and the table in one view">
+                            <i id="btnChartCollapseIcon" class="fa-solid fa-chevron-down"></i>
+                        </button>
                         <i class="fa-solid fa-chart-area text-blue-400 mr-2"></i>Net Worth Trajectory by Bucket
                     </h3>
                     <div class="flex items-center gap-4">
@@ -734,8 +805,10 @@
                         </label>
                     </div>
                 </div>
-                <div id="netWorthChartWrap" class="w-full"></div>
-                <p class="text-[10px] text-slate-500 mt-2">By default, 529 is excluded since those funds aren't generally usable for living expenses without tax/penalty; HSA is included since it directly funds healthcare costs, which is a living expense.</p>
+                <div id="chartCollapseBody">
+                    <div id="netWorthChartWrap" class="w-full"></div>
+                    <p class="text-[10px] text-slate-500 mt-2">By default, 529 is excluded since those funds aren't generally usable for living expenses without tax/penalty; HSA is included since it directly funds healthcare costs, which is a living expense.</p>
+                </div>
             </section>
 
             <!-- Navigation and Column Display Options -->
@@ -762,14 +835,6 @@
 
                     </div>
 
-                    <div class="flex items-center gap-1.5">
-                    <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1"><i class="fa-solid fa-coins mr-1"></i> Dollars:</span>
-                    <div id="dollarToggleContainer" class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800">
-                        <button id="btnDollarToday" onclick="setDollarMode('today')" class="text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition">Today's $</button>
-                        <button id="btnDollarFuture" onclick="setDollarMode('future')" class="text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition">Future $</button>
-                    </div>
-                    </div>
-
                     <div id="horizonToggleContainer" class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800">
                         <button id="btnViewCondensed" onclick="setViewMode('condensed')" class="text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition">Condensed</button>
                         <button id="btnViewFull" onclick="setViewMode('full')" class="text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition">Full View</button>
@@ -787,7 +852,7 @@
                                 <th id="combinedGroupHeader" class="p-2.5 text-center bg-amber-900/30 text-white border-r border-slate-800 border-b-2 border-b-amber-500" data-group="grpCombined" colspan="14">Household Summary — All Buckets Combined</th>
                                 <th class="p-2.5 text-center bg-blue-950/20 text-blue-400 border-r border-slate-800" data-group="grpTrad" colspan="7">Traditional Detail</th>
                                 <th class="p-2.5 text-center bg-purple-950/20 text-purple-400 border-r border-slate-800" data-group="grpRoth" colspan="5">Roth Detail</th>
-                                <th class="p-2.5 text-center bg-emerald-950/20 text-emerald-400 border-r border-slate-800" data-group="grpBrok" colspan="5">Brokerage Detail</th>
+                                <th class="p-2.5 text-center bg-emerald-950/20 text-emerald-400 border-r border-slate-800" data-group="grpBrok" colspan="6">Brokerage Detail</th>
                                 <th class="p-2.5 text-center bg-cyan-950/20 text-cyan-400 border-r border-slate-800" data-group="grpHsa" colspan="10">HSA & 529 Detail</th>
                                 <th class="p-2.5 text-center bg-purple-950/20 text-purple-300" data-group="grpRebi" colspan="5">Real Estate / Business Detail</th>
                             </tr>
@@ -825,6 +890,7 @@
                                 <!-- Brokerage Columns -->
                                 <th class="p-2 font-mono" data-group="grpBrok">Starting</th>
                                 <th class="p-2 font-mono" data-group="grpBrok">Contribs</th>
+                                <th class="p-2 font-mono" data-group="grpBrok" title="Refi and sale proceeds from Real Estate / Business deals, reinvested here as after-tax principal. Without this column the row would not add up in capital-event years.">RE/BI Proceeds</th>
                                 <th class="p-2 font-mono" data-group="grpBrok">Growth</th>
                                 <th class="p-2 font-mono" data-group="grpBrok">Dists</th>
                                 <th class="p-2 font-mono border-r border-slate-800" data-group="grpBrok">Ending</th>
@@ -994,6 +1060,20 @@
             fplFirstPerson: 15650,
             fplAddlPerson: 5500,
             // --- Self-employment tax (Social Security 12.4% + Medicare 2.9% = 15.3% on 92.35% of net) ---
+            // --- Social Security taxation (IRC §86) ---
+            // The engine models the taxable share as a FLAT user-editable percentage (default 85%,
+            // see the "% of SS Taxed" input) rather than the statutory phase-in — a deliberate
+            // simplification documented in Help §20. These thresholds are the REFERENCE values the
+            // 85% default is derived from: once provisional income (AGI ex-SS + tax-exempt interest
+            // + half the benefit) clears the upper threshold, the statutory formula returns exactly
+            // 85%, which this household does permanently (~$375k vs $44k in its first SS year).
+            // They live here so the documented facts resolve against a real engine constant rather
+            // than a number echoed back by the test file. Frozen in law since 1993; NOT indexed.
+            ssProvisionalMfjLower: 32000,
+            ssProvisionalMfjUpper: 44000,
+            ssProvisionalSingleLower: 25000,
+            ssProvisionalSingleUpper: 34000,
+            ssMaxTaxablePct: 0.85,
             seTaxRate: 0.153,
             seTaxNetFactor: 0.9235,
             // --- ACA subsidy eligibility bounds (as multiples of FPL) ---
@@ -1410,9 +1490,50 @@
         }
 
         // ---- Real Estate / Business Investments (RE/BI) repeatable deal list ----
+        // Year options for a deal's Refi / Exit dropdowns: "—" (no event) plus every calendar year
+        // the projection actually covers, starting at the current year.
+        //
+        // These were free-text number inputs, and that was a real trap: the engine matches on a
+        // CALENDAR year (currentYear === refiYear), but the label just says "Refi year", so typing
+        // a plan-relative "4" was the natural reading — and silently did nothing (2026 === 4 is
+        // never true). Worse for Exit: `held = currentYear < exitYear` made 2026 < 5 false, so the
+        // engine treated the deal as already sold before the projection began and the whole position
+        // vanished from every year with $0 proceeds. No error, no warning.
+        // A dropdown makes the bad input unreachable rather than merely validated after the fact.
+        // Guard against year values that predate the projection (or are plan-relative leftovers like
+        // "4"/"5" from before these fields became dropdowns). A stale value is dangerous rather than
+        // merely wrong: `held = currentYear < exitYear` makes a deal with exitYear=5 look ALREADY SOLD,
+        // so the position silently vanishes from every year with $0 proceeds. The dropdown prevents
+        // new bad values, but saved profiles can still carry them — and the select would fall back to
+        // "\u2014" while the data still said 5, so the UI and the data would disagree. Normalise to 0
+        // (= no event, deal held) which is the safe, visible default.
+        function sanitizeRebiYears() {
+            const startYear = new Date().getFullYear();
+            let fixed = 0;
+            rebiDeals.forEach(d => {
+                ['refiYear', 'exitYear'].forEach(k => {
+                    const v = parseInt(d[k], 10) || 0;
+                    if (v !== 0 && v < startYear) { d[k] = 0; fixed++; }
+                });
+            });
+            if (fixed) console.warn('[RE/BI] ' + fixed + ' stale refi/exit year value(s) reset to \u2014 (they predated the projection start).');
+            return fixed;
+        }
+
+        function rebiYearOptions(selected) {
+            const startYear = new Date().getFullYear();
+            const sel = parseInt(selected, 10) || 0;
+            let out = `<option value="0"${sel === 0 ? ' selected' : ''}>\u2014</option>`;
+            for (let y = startYear; y <= startYear + 80; y++) {
+                out += `<option value="${y}"${sel === y ? ' selected' : ''}>${y}</option>`;
+            }
+            return out;
+        }
+
         function renderRebiDeals() {
             const wrap = document.getElementById('rebiDealRows');
             if (!wrap) return;
+            sanitizeRebiYears();   // single choke point: runs on init, import and reset
             wrap.innerHTML = '';
             rebiDeals.forEach((d, idx) => {
                 const card = document.createElement('div');
@@ -1420,29 +1541,38 @@
                 const money = (v) => '$' + (parseFloat(v) || 0).toLocaleString();
                 card.innerHTML = `
                     <div class="flex items-center justify-between gap-2">
-                        <input type="text" class="mini-input" style="font-family:inherit;font-weight:600" value="${(d.name || '').replace(/"/g, '&quot;')}" placeholder="Deal name" data-rebi-id="${d.id}" data-field="name" onchange="updateRebiField(this)">
-                        <button onclick="removeRebiDeal(${d.id})" class="text-red-400 hover:text-red-300 text-xs px-1 flex-shrink-0 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                        <input type="text" class="mini-input" style="font-family:inherit;font-weight:600" value="${(d.name || '').replace(/"/g, '&quot;')}" placeholder="Deal Name" data-rebi-id="${d.id}" data-field="name" onchange="updateRebiField(this)">
+                        <button onclick="removeRebiDeal(${d.id})" class="text-red-400 hover:text-red-300 text-xs px-1 flex-shrink-0 cursor-pointer" title="Remove this investment"><i class="fa-solid fa-xmark"></i></button>
                     </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Invested (basis)</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.capital)}" data-rebi-id="${d.id}" data-field="capital" onchange="updateRebiField(this)"></div>
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Current value</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.currentValue)}" data-rebi-id="${d.id}" data-field="currentValue" onchange="updateRebiField(this)"></div>
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Appreciation %/yr</label><input type="number" step="0.1" class="mini-input" value="${d.apprPct}" data-rebi-id="${d.id}" data-field="apprPct" onchange="updateRebiField(this)"></div>
+                    <p class="rebi-sec text-[9px] uppercase tracking-wider font-semibold text-slate-600 pt-1">Position</p>
+                    <div class="grid grid-cols-2 gap-2 items-start">
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Invested (Basis)</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.capital)}" data-rebi-id="${d.id}" data-field="capital" onchange="updateRebiField(this)"></div>
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Current Value</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.currentValue)}" data-rebi-id="${d.id}" data-field="currentValue" onchange="updateRebiField(this)"></div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Annual distribution</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.annualDist)}" data-rebi-id="${d.id}" data-field="annualDist" onchange="updateRebiField(this)"></div>
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Distribution taxable %</label><input type="number" step="1" min="0" max="100" class="mini-input" value="${d.distTaxablePct}" data-rebi-id="${d.id}" data-field="distTaxablePct" onchange="updateRebiField(this)"></div>
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Dist. COLA</label><select class="mini-input" data-rebi-id="${d.id}" data-field="distCola" onchange="updateRebiField(this)"><option value="true" ${d.distCola ? 'selected' : ''}>Grows w/ infl.</option><option value="false" ${!d.distCola ? 'selected' : ''}>Flat</option></select></div>
+                    <div class="grid grid-cols-2 gap-2 items-start">
+                        <div class="col-span-2"><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Appreciation %/Yr</label><input type="number" step="0.1" class="mini-input" value="${d.apprPct}" data-rebi-id="${d.id}" data-field="apprPct" onchange="updateRebiField(this)"></div>
                     </div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Refi year</label><input type="number" step="1" class="mini-input" value="${d.refiYear || ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="refiYear" onchange="updateRebiField(this)"></div>
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Refi capital</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${d.refiCapital ? money(d.refiCapital) : ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="refiCapital" onchange="updateRebiField(this)"></div>
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Exit year</label><input type="number" step="1" class="mini-input" value="${d.exitYear || ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="exitYear" onchange="updateRebiField(this)"></div>
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Exit value</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${d.exitValue ? money(d.exitValue) : ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="exitValue" onchange="updateRebiField(this)"></div>
+                    <p class="rebi-sec text-[9px] uppercase tracking-wider font-semibold text-slate-600 pt-1">Income</p>
+                    <div class="grid grid-cols-2 gap-2 items-start">
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Annual Distribution</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(d.annualDist)}" data-rebi-id="${d.id}" data-field="annualDist" onchange="updateRebiField(this)"></div>
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Distribution Taxable %</label><input type="number" step="1" min="0" max="100" class="mini-input" value="${d.distTaxablePct}" data-rebi-id="${d.id}" data-field="distTaxablePct" onchange="updateRebiField(this)"></div>
                     </div>
-                    <div class="grid grid-cols-4 gap-2 items-end">
-                        <div><label class="block text-[10px] text-slate-500 mb-0.5">Recapture %</label><input type="number" step="1" min="0" max="100" class="mini-input" value="${d.recapturePct}" data-rebi-id="${d.id}" data-field="recapturePct" onchange="updateRebiField(this)"></div>
-                        <p class="text-[9px] text-slate-600 col-span-3 leading-snug">On exit: capital returned tax-free \u00b7 gain above basis at LTCG \u00b7 recapture % at 25% \u00b7 proceeds \u2192 Brokerage.</p>
+                    <div class="grid grid-cols-2 gap-2 items-start">
+                        <div class="col-span-2"><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Dist. COLA</label><select class="mini-input" data-rebi-id="${d.id}" data-field="distCola" onchange="updateRebiField(this)"><option value="true" ${d.distCola ? 'selected' : ''}>Grows w/ Infl.</option><option value="false" ${!d.distCola ? 'selected' : ''}>Flat</option></select></div>
                     </div>
+                    <p class="rebi-sec text-[9px] uppercase tracking-wider font-semibold text-slate-600 pt-1">Capital Events</p>
+                    <div class="grid grid-cols-2 gap-2 items-start">
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Refi Year</label><select class="mini-input" data-rebi-id="${d.id}" data-field="refiYear" onchange="updateRebiField(this)">${rebiYearOptions(d.refiYear)}</select></div>
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Refi Capital</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${d.refiCapital ? money(d.refiCapital) : ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="refiCapital" onchange="updateRebiField(this)"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 items-start">
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Exit Year</label><select class="mini-input" data-rebi-id="${d.id}" data-field="exitYear" onchange="updateRebiField(this)">${rebiYearOptions(d.exitYear)}</select></div>
+                        <div><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Exit Value</label><input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${d.exitValue ? money(d.exitValue) : ''}" placeholder="\u2014" data-rebi-id="${d.id}" data-field="exitValue" onchange="updateRebiField(this)"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 items-start">
+                        <div class="col-span-2"><label class="block rebi-lbl text-[10px] text-slate-500 mb-0.5">Recapture %</label><input type="number" step="1" min="0" max="100" class="mini-input" value="${d.recapturePct}" data-rebi-id="${d.id}" data-field="recapturePct" onchange="updateRebiField(this)"></div>
+                    </div>
+                    <p class="text-[9px] text-slate-600 leading-snug pt-1">On exit: capital returned tax-free \u00b7 gain above basis at LTCG \u00b7 recapture % at 25% \u00b7 proceeds \u2192 Brokerage.</p>
                 `;
                 wrap.appendChild(card);
             });
@@ -1467,7 +1597,7 @@
         }
         function addRebiDeal() {
             const nextId = rebiDeals.length ? Math.max(...rebiDeals.map(d => d.id)) + 1 : 1;
-            rebiDeals.push({ id: nextId, name: 'Investment ' + nextId, capital: 100000, currentValue: 100000, apprPct: 3, annualDist: 7000, distTaxablePct: 25, distCola: true, refiYear: 0, refiCapital: 0, exitYear: 0, exitValue: 0, recapturePct: 20 });
+            rebiDeals.push({ id: nextId, name: 'Investment ' + nextId, capital: 100000, currentValue: 100000, apprPct: 4, annualDist: 4000, distTaxablePct: 25, distCola: true, refiYear: 0, refiCapital: 0, exitYear: 0, exitValue: 0, recapturePct: 20 });
             renderRebiDeals();
             triggerRecalculate();
         }
@@ -1760,6 +1890,25 @@
             triggerRecalculate();
         }
 
+        // Chart collapse. Deliberately a display-only toggle: it never calls triggerRecalculate(),
+        // because the chart SVG is already rendered and hiding a div doesn't change any number. Re-
+        // running the engine here would be a pure waste on every click.
+        let chartCollapsed = false;
+        function setChartCollapsed(collapsed) {
+            chartCollapsed = !!collapsed;
+            const body = document.getElementById('chartCollapseBody');
+            const icon = document.getElementById('btnChartCollapseIcon');
+            const btn = document.getElementById('btnChartCollapse');
+            if (body) body.style.display = chartCollapsed ? 'none' : '';
+            // Chevron points DOWN when expanded (content below), RIGHT when collapsed (content folded away).
+            if (icon) icon.className = chartCollapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-down';
+            if (btn) btn.setAttribute('aria-expanded', chartCollapsed ? 'false' : 'true');
+        }
+
+        function toggleChartCollapse() {
+            setChartCollapsed(!chartCollapsed);
+        }
+
         function setDollarMode(mode) {
             dollarMode = mode;
             document.getElementById('btnDollarToday').className = mode === 'today' ? 'text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition' : 'text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition';
@@ -1767,10 +1916,61 @@
             triggerRecalculate();
         }
 
+        // Compact vs Exact KPI numbers. Hover-expand already reveals exact figures one tile at a
+        // time, but a mode is still worth having: hover doesn't survive a screenshot and doesn't
+        // exist on touch devices. Purely a display switch — it toggles one class and re-runs no math.
+        let kpiNumberMode = 'compact';
+        function setKpiNumberMode(mode) {
+            kpiNumberMode = mode;
+            document.body.classList.toggle('kpi-exact-mode', mode === 'exact');
+            const on = 'text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition';
+            const off = 'text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition';
+            const c = document.getElementById('btnNumCompact'), e = document.getElementById('btnNumExact');
+            if (c) c.className = mode === 'compact' ? on : off;
+            if (e) e.className = mode === 'exact' ? on : off;
+        }
+
         function currency(val) {
             if (val <= 0 || isNaN(val)) return '$0';
             return '$' + Math.round(val).toLocaleString();
         }
+
+        // Compact money for the KPI tiles: $1.31M / $103K / $940. Two decimals at the millions
+        // scale so a $10K move is still visible when comparing scenarios. Mirrors the convention
+        // the net-worth chart axis already uses. The projection table deliberately keeps full
+        // exact numbers — it's the place to go for precision.
+        function compactCurrency(val) {
+            if (val <= 0 || isNaN(val)) return '$0';
+            const v = Math.round(val);
+            if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+            if (v >= 1e3) return '$' + Math.round(v / 1e3) + 'K';
+            return '$' + v.toLocaleString();
+        }
+
+        // Emits both forms of a KPI number. CSS shows the compact one at rest and swaps in the
+        // exact one on tile hover (or permanently in Exact mode) — see the .kpi-* rules.
+        function kpiNum(val) {
+            return '<span class="kpi-compact">' + compactCurrency(val) + '</span>'
+                 + '<span class="kpi-exact">' + currency(val) + '</span>';
+        }
+
+        // The KPI row holds 6 always-on tiles plus two conditional ones (Real Estate / Business
+        // when deals exist, ACA Subsidy when the ACA toggle is on) — so 6, 7 or 8 can be visible.
+        // A fixed column count would orphan the last tile at some counts, so the grid tracks the
+        // live count instead and always renders exactly one clean row on desktop.
+        // (gridTemplateColumns is set directly rather than via a Tailwind class: the browser build
+        // only ships classes it can see in the markup, so a JS-built `lg:grid-cols-N` would no-op.)
+        function applyKpiGridColumns() {
+            const grid = document.getElementById('kpiGrid');
+            if (!grid) return;
+            if (window.matchMedia && !window.matchMedia('(min-width: 1024px)').matches) {
+                grid.style.gridTemplateColumns = ''; // let the responsive classes drive small screens
+                return;
+            }
+            const visible = Array.from(grid.children).filter(el => el.style.display !== 'none').length;
+            grid.style.gridTemplateColumns = 'repeat(' + Math.max(1, visible) + ', minmax(0, 1fr))';
+        }
+        window.addEventListener('resize', applyKpiGridColumns);
 
         // Strips thousands-separator commas before parsing; harmless no-op on strings without commas
         function cleanNum(str) {
@@ -2017,6 +2217,16 @@
 
                 // ---- Starting balances ----
                 let tradStart = trad, rothStart = roth, brokStart = brok, hsaStart = hsa, f529Start = f529;
+                // 529 tuition shortfall is paid by Brokerage inside a branch below; retain it so the
+                // conservation audit can see that outflow (it is otherwise not recorded anywhere).
+                let __auditShortfall = 0;
+                // Realized LTCG when a 529 shortfall forces a brokerage sale (see the shortfall
+                // branch below). Hoisted to loop scope so it can join preferentialGains and be
+                // taxed in the SAME year — the shortfall is computed before the tax solver runs,
+                // so there is no circular dependency. Previously this gain went untaxed and the
+                // basis was reduced by the full shortfall rather than pro-rata (the doc promised
+                // "proportionally"); both are corrected here.
+                let __auditShortfallGain = 0;
 
                 // ---- Contributions (accumulation phase only) ----
                 let tradCont = 0, rothCont = 0, brokCont = 0, hsaCont = 0, f529Cont = 0;
@@ -2200,7 +2410,7 @@
                 });
                 if (tuitionBurn > 0) {
                     if (f529 >= tuitionBurn) { f529 -= tuitionBurn; }
-                    else { let shortfall = tuitionBurn - f529; f529 = 0; brok -= shortfall; brokBasis = Math.max(0, brokBasis - shortfall); kpi529Underfunded = true; }
+                    else { let shortfall = tuitionBurn - f529; __auditShortfall = shortfall; f529 = 0; /* pro-rata basis: basis vs gain split matches the account's current basis ratio, as an ordinary brokerage draw does */ const __sfBasisRatio = brok > 0 ? Math.min(1, brokBasis / brok) : 0; __auditShortfallGain = Math.max(0, shortfall * (1 - __sfBasisRatio)); brok -= shortfall; brokBasis = Math.max(0, brokBasis - shortfall * __sfBasisRatio); kpi529Underfunded = true; }
                 }
 
                 // ---- RMD ----
@@ -2351,7 +2561,7 @@
 
                     // LTCG on brokerage gain portion PLUS qualified dividends (both stack on top
                     // of ordinary income against the preferential LTCG brackets)
-                    let preferentialGains = brokGain + rebiExitGainLtcg + brokDivQualified;
+                    let preferentialGains = brokGain + rebiExitGainLtcg + brokDivQualified + __auditShortfallGain;
                     let ltcgTax = marginalTax(taxableOrd + preferentialGains, ltcgBrackets, infScale * filingScale)
                                 - marginalTax(taxableOrd, ltcgBrackets, infScale * filingScale);
                     let ltcgStateTax = preferentialGains * (stateRate + countyRate);
@@ -2364,6 +2574,12 @@
                         totalTax: fedTax + stLocalTax + seTax + ltcgTax + ltcgStateTax + penaltyTax + rebiRecaptureTax,
                         elecTradDrawn, elecBrokDrawn, elecRothDrawn, brokGain, dynConv,
                         acaSubsidy, hsaCover, hcFromPortfolio, netHealthcare, irmaaMagi, acaMagi,
+                        // Published for Tier 7: lets the suite verify LTCG is STACKED on ordinary
+                        // income rather than taxed in isolation. Helper-level tests of marginalTax
+                        // cannot catch that — they pass even when the engine stops stacking.
+                        auditLtcgTax: ltcgTax, auditTaxableOrd: taxableOrd, auditPrefGains: preferentialGains,
+                        auditPenaltyTax: penaltyTax,
+                        auditAcaMagi: acaMagi,
                         taxableOrd, totalOrdinary
                     };
                 }
@@ -2441,25 +2657,61 @@
                 // only its basis composition changes. Capped so basis never exceeds the balance.
                 if (brokDividendTotal > 0) brokBasis = Math.min(Math.max(1, brok), brokBasis + brokDividendTotal);
 
-                // Excess RMD beyond spending need is reinvested to brokerage
-                let rmdUsedForSpending = Math.min(forcedRmd, baseNeedFixed + solvedResult.hcFromPortfolio + solvedTax - cashSources - solvedResult.elecTradDrawn - solvedResult.elecBrokDrawn - solvedResult.elecRothDrawn + forcedRmd);
-                let excessRmd = Math.max(0, forcedRmd - rmdUsedForSpending);
-                if (excessRmd > 0) { brok += excessRmd; brokBasis += excessRmd; }
+                // ---- UNIFIED SURPLUS BANKING -------------------------------------------------
+                // ONE path for every dollar of cash that arrives and isn't spent. This replaces two
+                // separate, partial banking blocks that each knew about only some of the cash:
+                //
+                //   BUG A (RMD cash evaporated) — `excessRmd` was ALGEBRAICALLY DEAD CODE. The
+                //   solver sizes the elective draw as `need + hc + tax - cashSources`, never
+                //   crediting forcedRmd. That GUARANTEES need+hc+tax-cashSources == the sum of the
+                //   elective draws, so the old excessRmd expression collapsed to
+                //   `forcedRmd - min(forcedRmd, forcedRmd)` = 0. ALWAYS. A $1.2M RMD left
+                //   Traditional, the need was paid from BROKERAGE instead, and the RMD cash was
+                //   banked nowhere. It hit every plan reaching age 73 — including the default — but
+                //   stayed invisible because the default plan's brokerage is already empty by then,
+                //   so banking never had a chance to fire.
+                //
+                //   BUG B (surplus distributions evaporated) — the capital-events block was gated
+                //   `if (rebiCapitalProceeds > 0)`, i.e. refi/exit ONLY. RE/BI distributions offset
+                //   need via cashSources, but any surplus was never banked. Proof: a $7,000/yr and a
+                //   $100,000/yr distribution produced an IDENTICAL brokerage balance.
+                //
+                // Both are the same defect: cash arrives, nothing banks it. So there is now one rule.
+                //
+                // Cash in  = every dollar that actually landed this year: external income streams
+                //            (1099, Social Security), RE/BI distributions, RE/BI capital events
+                //            (refi + gross exit proceeds), the forced RMD, and every elective draw.
+                // Cash out = everything it had to cover: living need, healthcare funded from the
+                //            portfolio, and all taxes (the exit's LTCG + recapture are already inside
+                //            solvedTax).
+                // Surplus  = whatever is left. It is REAL, ALREADY-TAXED cash sitting in the
+                //            household's hands, so it is reinvested to Brokerage as after-tax
+                //            principal — added to basis so it is never re-taxed as gain later.
+                //
+                // Math.max(0, ...) is load-bearing. An earlier version of the RMD line lacked it and
+                // produced PHANTOM MONEY: with forcedRmd = 0 and a $100k refi in cashSources the
+                // inner expression went negative, flipped sign, and banked the refi a SECOND time —
+                // a $100,000 refi grew brokerage by ~$197,300. Every pre-RE/BI test and all 10 Tier 6
+                // tests passed straight through it, because they checked that things FIRED and were
+                // TAXED, never that money was CONSERVED. Hence Tier 8.
+                let totalCashIn = gross1099 + currentSsPayout + rebiDistTotal
+                                + rebiRefiCash + rebiExitProceedsGross
+                                + forcedRmd
+                                + solvedResult.elecTradDrawn + solvedResult.elecRothDrawn + solvedResult.elecBrokDrawn;
+                let totalCashOut = baseNeedFixed + solvedResult.hcFromPortfolio + solvedTax;
+                let surplusCash = Math.max(0, totalCashIn - totalCashOut);
 
-                // RE/BI capital events: refi + gross exit proceeds are cash sources this year. Whatever
-                // isn't consumed by that year's spending + taxes is reinvested to Brokerage as after-tax
-                // principal (adds to basis, so it isn't re-taxed as gain later). The exit's own tax
-                // (LTCG + recapture) is already in solvedTax; here we bank the leftover capital so a big
-                // sale lump grows the liquid portfolio rather than vanishing.
-                let rebiCapitalProceeds = rebiRefiCash + rebiExitProceedsGross;
-                if (rebiCapitalProceeds > 0) {
-                    let totalNeed = baseNeedFixed + solvedResult.hcFromPortfolio + solvedTax;
-                    let recurringCash = gross1099 + currentSsPayout + rebiDistTotal;
-                    let drawsTaken = solvedResult.elecTradDrawn + solvedResult.elecBrokDrawn + solvedResult.elecRothDrawn + forcedRmd;
-                    let capitalUsed = Math.max(0, totalNeed - recurringCash - drawsTaken);
-                    let excessCapital = Math.max(0, rebiCapitalProceeds - capitalUsed);
-                    if (excessCapital > 0) { brok += excessCapital; brokBasis += excessCapital; }
-                }
+                // Attribute the surplus for display. The table shows RE/BI Proceeds as its own column,
+                // so the reader can see WHY the brokerage jumped in a capital-event year; without that
+                // the Brokerage row simply doesn't add up (Start + Contribs + Growth - Dists != Ending),
+                // which is exactly the kind of unexplained jump that makes a projection untrustworthy.
+                // RE/BI cash is credited first so that column keeps its established meaning; anything
+                // beyond it is RMD/income surplus and lands in the balance without a dedicated column.
+                let rebiCashThisYear = rebiDistTotal + rebiRefiCash + rebiExitProceedsGross;
+                let rebiToBrok = Math.min(surplusCash, rebiCashThisYear);
+                let excessRmd = Math.max(0, surplusCash - rebiToBrok);
+
+                if (surplusCash > 0) { brok += surplusCash; brokBasis += surplusCash; }
 
                 // ---- Total Taxable Gross for display (pre-std-deduction ordinary income pool) ----
                 let totalTaxableGross = solvedResult.totalOrdinary;
@@ -2516,12 +2768,54 @@
                     incomeSS: currentSsPayout * dispScale,
                     income1099: netEarnedIncome * dispScale,
                     assetDist: portfolioWithdrawalActual * dispScale,
+                    rebiToBrok: rebiToBrok * dispScale,
+                    brokCont: brokCont * dispScale,
+                    brokGrow: brokGrow * dispScale,
+                    brokDrawn: brokDrawn * dispScale,
                     rebiStartValue: rebiStartValue * dispScale,
                     rebiDist: rebiDistTotal * dispScale,
                     rebiRefi: rebiRefiCash * dispScale,
                     rebiExit: rebiExitProceedsGross * dispScale,
                     rebiEndValue: rebiEndValue * dispScale,
-                    isSemiRetired, isFullyRetired, isCovered
+                    isSemiRetired, isFullyRetired, isCovered,
+                    // ---- Conservation-audit flows (Tier 8) ----------------------------------
+                    // These are already computed by the engine; publishing them lets the test
+                    // suite verify that every dollar is CONSERVED, which is the one question the
+                    // feature tests never asked (and why a 2x-wrong balance sat behind 180 green
+                    // tests). Per-bucket: ending must equal starting + inflows - outflows.
+                    // Household: internal shuffles (RMD, conversions, draws, banking) must net to
+                    // zero, because they only move money between the household's own pockets.
+                    // RULE: any future feature that moves money MUST publish its flow here.
+                    audTradStart: tradStart * dispScale, audRothStart: rothStart * dispScale,
+                    audBrokStart: brokStart * dispScale, audHsaStart: hsaStart * dispScale,
+                    audF529Start: f529Start * dispScale,
+                    audTradCont: tradCont * dispScale, audRothCont: rothCont * dispScale,
+                    audHsaCont: hsaCont * dispScale, audF529Cont: f529Cont * dispScale,
+                    audTradGrow: tradGrow * dispScale, audRothGrow: rothGrow * dispScale,
+                    audHsaGrow: hsaGrow * dispScale, audF529Grow: f529Grow * dispScale,
+                    audForcedRmd: forcedRmd * dispScale, audExcessRmd: excessRmd * dispScale,
+                    audRothConv: rothConvAmt * dispScale, audHsaDist: hsaDist * dispScale,
+                    audElecTrad: solvedResult.elecTradDrawn * dispScale,
+                    audElecRoth: solvedResult.elecRothDrawn * dispScale,
+                    audElecBrok: solvedResult.elecBrokDrawn * dispScale,
+                    audTuitionBurn: (typeof tuitionBurn !== 'undefined' ? tuitionBurn : 0) * dispScale,
+                    audF529Shortfall: __auditShortfall * dispScale,
+                    audGift: childGiftAmt * dispScale,
+                    audF529ShortfallGain: __auditShortfallGain * dispScale,
+                    audBaseNeed: baseNeedFixed * dispScale,
+                    audHcFromPortfolio: solvedResult.hcFromPortfolio * dispScale,
+                    audSolvedTax: solvedTax * dispScale,
+                    audCashSources: cashSources * dispScale,
+                    audLtcgTax: solvedResult.auditLtcgTax * dispScale,
+                    audPenaltyTax: solvedResult.auditPenaltyTax * dispScale,
+                    audAcaMagi: solvedResult.auditAcaMagi * dispScale,
+                    audTaxableOrd: solvedResult.auditTaxableOrd * dispScale,
+                    audPrefGains: solvedResult.auditPrefGains * dispScale,
+                    // GROSS 1099, not the net figure published as income1099 for display.
+                    // cashSources uses gross; the SE tax is accounted separately inside solvedTax.
+                    // Using net here would double-deduct the SE tax and make the audit report
+                    // phantom CREATED money.
+                    audGross1099: gross1099 * dispScale
                 });
 
                 let ageLabel = 'Age: ' + hAge;
@@ -2548,7 +2842,7 @@
                         <td class="p-2 text-orange-400 font-mono" data-group="grpCombined">${c(totalTaxableGross)}</td>
                         <td class="p-2 text-amber-400 font-mono magi-col" data-group="grpCombined">${c(solvedResult.acaMagi)}</td>
                         <td class="p-2 text-red-400 font-mono" data-group="grpCombined">${c(currentYearTaxDrag)}</td>
-                        <td class="p-2 text-purple-400 font-semibold font-mono" data-group="grpCombined">${c(portfolioWithdrawalActual)}</td>
+                        <td class="p-2 text-purple-400 font-semibold font-mono" data-group="grpCombined">${c(portfolioWithdrawalActual)}${(portfolioWithdrawalActual > 0 && baseNeedFixed <= 0 && solvedResult.hcFromPortfolio <= 0 && solvedTax >= portfolioWithdrawalActual * 0.9) ? `<span class="block text-[9px] text-amber-500 font-sans cursor-help" title="This isn't retirement spending — you're still working. Your taxable brokerage throws off dividends every year (balance \u00d7 dividend yield), and the IRS taxes those whether or not you spend them. Because the model doesn't simulate your W-2 salary during working years (it assumes your paycheck covers living costs), there's no paycheck here to pay that tax bill from — so the portfolio sells just enough of itself to cover it. In real life you'd pay this from your salary and the portfolio wouldn't shrink. Net worth lands in the same place either way.">\u25d0 tax only</span>` : ''}</td>
                         <td class="p-2 border-r border-slate-800 text-white font-bold font-mono bg-slate-900/30" data-group="grpCombined">${c(spendableNetWorth)}</td>
 
                         <td class="p-2 text-slate-400 font-mono" data-group="grpTrad">${c(tradStart)}</td>
@@ -2567,6 +2861,7 @@
 
                         <td class="p-2 text-slate-400 font-mono" data-group="grpBrok">${c(brokStart)}</td>
                         <td class="p-2 text-emerald-500 font-mono" data-group="grpBrok">${c(brokCont)}</td>
+                        <td class="p-2 font-mono" style="color:#c084fc" data-group="grpBrok">${rebiToBrok > 0 ? c(rebiToBrok) : '\u2014'}</td>
                         <td class="p-2 text-blue-400 font-mono" data-group="grpBrok">${c(brokGrow)}</td>
                         <td class="p-2 text-red-400 font-mono" data-group="grpBrok">${c(brokDrawn)}</td>
                         <td class="p-2 border-r border-slate-800 text-white font-medium font-mono" data-group="grpBrok">${c(brok)}</td>
@@ -2591,9 +2886,12 @@
             }
 
             document.getElementById('ledgerTableBody').innerHTML = html;
-            document.getElementById('kpiTaxDrag').innerText = currency(totalLifetimeTax);
-            document.getElementById('kpiAcaSubsidy').innerText = currency(totalLifetimeAcaSubsidy);
-            document.getElementById('kpiAcaSubsidy').className = totalLifetimeAcaSubsidy > 0 ? 'text-xl font-bold text-emerald-400 heading-font mt-0.5' : 'text-xl font-bold text-white heading-font mt-0.5';
+            document.getElementById('kpiTaxDrag').innerHTML = kpiNum(totalLifetimeTax);
+            document.getElementById('kpiAcaSubsidy').innerHTML = kpiNum(totalLifetimeAcaSubsidy);
+            // Keep kpi-val + whitespace-nowrap — they drive the hover-expand shrink. This line used to
+            // rewrite className wholesale with the pre-redesign classes, silently dropping the ACA tile
+            // out of the compact/exact swap. (6th instance of this same trap — grep '.className =' first.)
+            document.getElementById('kpiAcaSubsidy').className = 'kpi-val text-lg font-bold heading-font whitespace-nowrap ' + (totalLifetimeAcaSubsidy > 0 ? 'text-emerald-400' : 'text-white');
 
             if (runwayDepletedYear) {
                 let depletionAgeLabel;
@@ -2605,33 +2903,54 @@
                 }
                 window.__depletionAgeLabel = depletionAgeLabel;
                 document.getElementById('kpiRunway').innerHTML = `Failed by ${runwayDepletedYear}<span class="block text-[11px] font-normal font-mono mt-0.5" style="color:var(--text-muted)">${depletionAgeLabel}</span>`;
-                document.getElementById('kpiRunway').parentElement.parentElement.className = "glass-panel p-4 rounded-xl border-l-4 border-red-500 shadow-xl flex items-center justify-between";
+                // closest('.kpi-card') + kpi-card classes: the tile gained a label wrapper, so the old
+                // parentElement.parentElement chain pointed at the wrong node and the old class string
+                // silently dropped this tile out of the aligned / hover-expand layout on every recalc.
+                { const c = document.getElementById('kpiRunway').closest('.kpi-card');
+                  if (c) c.className = "glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-red-500 shadow-xl flex items-stretch justify-between gap-2"; }
             } else {
                 window.__depletionAgeLabel = '';
                 document.getElementById('kpiRunway').innerText = `${targetEol}+ (Secure)`;
-                document.getElementById('kpiRunway').parentElement.parentElement.className = "glass-panel p-4 rounded-xl border-l-4 border-emerald-500 shadow-xl flex items-center justify-between";
+                { const c = document.getElementById('kpiRunway').closest('.kpi-card');
+                  if (c) c.className = "glass-panel kpi-card p-3.5 rounded-xl border-l-4 border-emerald-500 shadow-xl flex items-stretch justify-between gap-2"; }
             }
 
             // Net worth at target end-of-life: read straight off the last simulated year's combined ending balance
             let eolNetWorth = chartSeries.length ? chartSeries[chartSeries.length - 1].spendableTotal : 0;
-            document.getElementById('kpiEolNetWorth').innerText = currency(eolNetWorth);
-            document.getElementById('kpiEolNetWorth').className = runwayDepletedYear ? 'text-xl font-bold text-red-400 heading-font mt-0.5' : 'text-xl font-bold text-white heading-font mt-0.5';
+            document.getElementById('kpiEolNetWorth').innerHTML = kpiNum(eolNetWorth);
+            // NB: keep kpi-val + whitespace-nowrap here — they drive the hover-expand shrink. Dropping
+            // them (this line used to rewrite className wholesale) silently breaks the expand-in-place.
+            document.getElementById('kpiEolNetWorth').className = 'kpi-val text-lg font-bold heading-font whitespace-nowrap ' + (runwayDepletedYear ? 'text-red-400' : 'text-white');
 
-            // Real Estate / Business Investments value still held at EOL (illiquid). Feeds the
-            // two-tier Net Worth tile (Liquid primary + Total secondary) and its own dedicated tile.
+            // Real Estate / Business Investments. Two figures matter for very different reasons:
+            //  - TODAY's value (chartSeries[0].rebiStartValue) is what you actually hold right now —
+            //    the "quick picture of my current RE/BI investments" a reader asked for. This is now
+            //    the tile's PRIMARY number.
+            //  - EOL value (last row) is what's still held (and passes to heirs) at end of plan. It
+            //    used to be the ONLY number shown, which hid the tile entirely for anyone who holds
+            //    a position today but sells before EOL — the exact case that prompted this change.
+            // Both feed the two-tier Net Worth tile (Liquid primary + Total secondary), which still
+            // uses the EOL figure since that tile is specifically an end-of-plan net worth summary.
+            let todayRebiValue = chartSeries.length ? Math.max(0, chartSeries[0].rebiStartValue || 0) : 0;
             let eolRebiValue = chartSeries.length ? Math.max(0, chartSeries[chartSeries.length - 1].rebiEndValue || 0) : 0;
             let eolTotalNetWorth = eolNetWorth + eolRebiValue;
             const kpiRebiEl = document.getElementById('kpiRebiValue');
-            if (kpiRebiEl) kpiRebiEl.innerText = currency(eolRebiValue);
+            if (kpiRebiEl) kpiRebiEl.innerHTML = kpiNum(todayRebiValue);
+            const kpiRebiEolSubEl = document.getElementById('kpiRebiEolSub');
+            if (kpiRebiEolSubEl) kpiRebiEolSubEl.innerHTML = 'EOL: ' + kpiNum(eolRebiValue);
             const kpiEolTotalEl = document.getElementById('kpiEolTotal');
             const kpiRebiCardEl = document.getElementById('kpiRebiCard');
-            if (eolRebiValue > 0) {
-                if (kpiEolTotalEl) { kpiEolTotalEl.classList.remove('hidden'); kpiEolTotalEl.innerText = 'Total incl. RE/Business: ' + currency(eolTotalNetWorth); }
+            // Gate on holding ANY deals at all, not on either value individually — a deal with
+            // currentValue temporarily at $0 but active distributions is still worth surfacing, and
+            // this also naturally covers todayRebiValue>0, eolRebiValue>0, or both.
+            if (rebiDeals.length > 0) {
+                if (kpiEolTotalEl) { kpiEolTotalEl.classList.remove('hidden'); kpiEolTotalEl.innerHTML = 'incl. RE/Biz: ' + kpiNum(eolTotalNetWorth); }
                 if (kpiRebiCardEl) kpiRebiCardEl.style.display = '';
             } else {
                 if (kpiEolTotalEl) kpiEolTotalEl.classList.add('hidden');
                 if (kpiRebiCardEl) kpiRebiCardEl.style.display = 'none';
             }
+            applyKpiGridColumns();
 
             // After-Tax Legacy: value of the final estate to non-spouse heirs, by bucket:
             //   Roth 100% (tax-free), Brokerage 100% (step-up erases gain), HSA taxed at heir
@@ -2645,7 +2964,7 @@
                     + Math.max(0, L.trad) * (1 - heirTaxRate)
                     + Math.max(0, L.rebiEndValue || 0);
             }
-            document.getElementById('kpiLegacy').innerText = currency(legacyValue);
+            document.getElementById('kpiLegacy').innerHTML = kpiNum(legacyValue);
             window.__legacyValue = legacyValue;
 
             // Brokerage exhaustion is only a genuine warning if it happens before the runway itself fails or while retired with no plan B;
@@ -2664,19 +2983,29 @@
             const magiVisible = acaOn || irmaaOn;
             document.querySelectorAll('.magi-col').forEach(el => { el.style.display = magiVisible ? '' : 'none'; });
             document.getElementById('combinedGroupHeader').setAttribute('colspan', magiVisible ? '14' : '13');
-            document.getElementById('kpiAcaCard').style.display = acaOn ? '' : 'none';
-            document.getElementById('kpiGrid').classList.toggle('lg:grid-cols-7', acaOn);
-            document.getElementById('kpiGrid').classList.toggle('lg:grid-cols-6', !acaOn);
-            let crossoverCard = document.getElementById('kpiCrossover').parentElement.parentElement;
-            crossoverCard.className = (brokDepletedYear && runwayDepletedYear)
-                ? "glass-panel p-4 rounded-xl border-l-4 border-red-500 shadow-xl flex items-center justify-between"
-                : "glass-panel p-4 rounded-xl border-l-4 border-blue-500 shadow-xl flex items-center justify-between";
+            // Show the ACA tile only when a subsidy is actually earned. Gating on acaOn alone meant a
+            // permanent "$0" tile for anyone who retires after 65 (Medicare) or never clears the threshold
+            // — a slot spent saying "nothing happened", and the difference between a tight 8-across row
+            // and a comfortable 7.
+            document.getElementById('kpiAcaCard').style.display = (acaOn && totalLifetimeAcaSubsidy > 0) ? '' : 'none';
+            applyKpiGridColumns(); // replaces the old acaOn ? cols-7 : cols-6 class toggle —
+                                   // the count is now derived from however many tiles are actually visible.
+            // closest('.kpi-card') rather than parentElement.parentElement: the tile now wraps its
+            // label in a fixed-height block, so the ancestor depth changed. Keep the kpi-card classes
+            // or the tile drops out of the aligned/hover-expand layout.
+            let crossoverCard = document.getElementById('kpiCrossover').closest('.kpi-card');
+            if (crossoverCard) crossoverCard.className = "glass-panel kpi-card p-3.5 rounded-xl border-l-4 shadow-xl flex items-stretch justify-between gap-2 "
+                + ((brokDepletedYear && runwayDepletedYear) ? "border-red-500" : "border-blue-500");
 
-            document.getElementById('kpi529Status').innerText = kpi529Underfunded ? 'Underfunded' : 'Fully Funded';
-            document.getElementById('kpi529Status').className = kpi529Underfunded ? 'text-xl font-bold text-red-400 heading-font mt-0.5' : 'text-xl font-bold text-white heading-font mt-0.5';
-            document.getElementById('kpi529Status').parentElement.parentElement.className = kpi529Underfunded
-                ? "glass-panel p-4 rounded-xl border-l-4 border-red-500 shadow-xl flex items-center justify-between"
-                : "glass-panel p-4 rounded-xl border-l-4 border-amber-500 shadow-xl flex items-center justify-between";
+            // 529 is a BADGE on the Portfolio Horizon tile, not its own tile — it carries one bit of
+            // information, and a whole KPI slot for "Fully Funded" wasn't earning its width.
+            // Underfunded is the case that needs attention, so it gets the loud colour.
+            const badge529 = document.getElementById('kpi529Badge');
+            if (badge529) {
+                badge529.innerHTML = kpi529Underfunded
+                    ? '<span style="color:#ef4444">&#9679; 529 Underfunded</span>'
+                    : '<span style="color:var(--text-muted)">&#9679; 529 Funded</span>';
+            }
 
             renderNetWorthChart(chartSeries, runwayDepletedYear);
 
@@ -2690,6 +3019,8 @@
                 lifetimeTax: totalLifetimeTax,
                 lifetimeAcaSubsidy: totalLifetimeAcaSubsidy,
                 s529Underfunded: kpi529Underfunded,
+                rebiEndValue: eolRebiValue,
+                rebiTodayValue: todayRebiValue,
                 dollarMode,
                 series: chartSeries.map(s => ({ year: s.year, spendableTotal: s.spendableTotal, trad: s.trad, roth: s.roth, brok: s.brok, hsa: s.hsa, f529: s.f529 }))
             };
@@ -2930,7 +3261,7 @@
             // profile can never reintroduce stale tax law. (Matches the MFJ build.)
 
             // Display preferences, so the imported profile looks the same as when it was saved
-            snapshot.preferences = { colorTheme, viewMode, dollarMode, visibleGroups };
+            snapshot.preferences = { colorTheme, viewMode, dollarMode, kpiNumberMode, chartCollapsed, visibleGroups };
 
             const configText = JSON.stringify(snapshot, null, 2);
             const blob = new Blob([configText], { type: 'text/plain' });
@@ -3570,7 +3901,7 @@
             bar.classList.remove('flex');
             const btn = document.getElementById('compareNavBtn');
             if (btn) { btn.classList.remove('ring-2', 'ring-blue-400'); btn.querySelector('i').classList.remove('text-blue-300'); }
-            ['dRunway','dEol','dLegacy','dCrossover','dTax','d529','dAca'].forEach(id => {
+            ['dRunway','dEol','dLegacy','dCrossover','dTax','dRebi','dRebiEol','dAca'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.classList.add('hidden');
             });
             triggerRecalculate(); // redraw chart without the A overlay
@@ -3609,15 +3940,26 @@
         function renderCompare() {
             if (!scenarioA || !window.__scenarioB) return;
             const A = scenarioA.results, B = window.__scenarioB;
-            const aName = document.getElementById('scenarioAName').value || 'A';
+            // The scenario names live in the compare bar above the grid, so the tiles just say "A:".
+            // Repeating a user-typed name in all 8 tiles was the biggest space-waster here and let a
+            // long name break the row. A's value is bold (it's a real reference figure you read),
+            // and the delta is a coloured pill so better/worse is scannable without reading digits.
             const setDelta = (id, aText, deltaHtml) => {
                 const el = document.getElementById(id); if (!el) return;
                 el.classList.remove('hidden');
-                el.innerHTML = `<span style="color:var(--text-muted)">${aName}: ${aText}</span>` + (deltaHtml ? ` &nbsp;${deltaHtml}` : '');
+                el.innerHTML = `<span style="color:var(--text-secondary);font-weight:700">A: ${aText}</span>` + (deltaHtml ? ` ${deltaHtml}` : '');
             };
             const good = '#10b981', bad = '#ef4444', neutral = 'var(--text-muted)';
-            const chip = (txt, color) => `<span style="color:${color}">${txt}</span>`;
-            const money = v => currency(v);
+            // Pill: green = B is better, red = worse, grey = neutral/unchanged.
+            const pill = (txt, kind) => {
+                const bg = kind === 'good' ? 'rgba(16,185,129,.15)' : kind === 'bad' ? 'rgba(239,68,68,.15)' : 'rgba(148,163,184,.15)';
+                const fg = kind === 'good' ? good : kind === 'bad' ? bad : neutral;
+                return `<span style="background:${bg};color:${fg};font-weight:800;padding:1px 5px;border-radius:4px;margin-left:4px;white-space:nowrap">${txt}</span>`;
+            };
+            const chip = (txt, color) => pill(txt, color === good ? 'good' : color === bad ? 'bad' : 'neutral');
+            // Compare numbers compact like the tiles, and expand with them on hover.
+            const money = v => kpiNum(v);
+            const moneyPlain = v => compactCurrency(v);
 
             // Portfolio Horizon — later failure (or Secure) is better
             const aFail = A.runwayDepletedYear, bFail = B.runwayDepletedYear;
@@ -3650,11 +3992,28 @@
             setDelta('dTax', money(A.lifetimeTax), chip((taxD<=0?'−':'+')+money(Math.abs(taxD)), taxD<=0?good:bad));
 
             // 529 status
-            setDelta('d529', A.s529Underfunded ? 'Underfunded' : 'Fully Funded', '');
+            // 529 no longer has a tile (it's a badge on Portfolio Horizon), so its compare lives on the
+            // badge — and only when A and B actually DIFFER, since "both funded" is the boring default.
+            const badge529c = document.getElementById('kpi529Badge');
+            if (badge529c && A.s529Underfunded !== B.s529Underfunded) {
+                badge529c.innerHTML += ` <span style="color:var(--text-muted)">(A: ${A.s529Underfunded ? 'Under' : 'Funded'})</span>`;
+            }
 
             // Lifetime ACA subsidy — higher is better
             const acaD = B.lifetimeAcaSubsidy - A.lifetimeAcaSubsidy;
             setDelta('dAca', money(A.lifetimeAcaSubsidy), Math.abs(acaD) > 0.5 ? chip((acaD>=0?'+':'−')+money(Math.abs(acaD)), acaD>=0?good:bad) : '');
+
+            // Real Estate / Business — TWO comparisons, matching the tile's two lines.
+            // Primary: TODAY's value (what you hold right now). Sub-line: EOL value (what's left /
+            // passes to heirs at end of plan). A deal that's sold before EOL can have a big "today"
+            // difference and a $0 EOL difference (both scenarios end with nothing) — showing only one
+            // number would hide half the comparison, so both get their own delta.
+            const aRebiToday = A.rebiTodayValue || 0, bRebiToday = B.rebiTodayValue || 0, rebiTodayD = bRebiToday - aRebiToday;
+            const aRebiEol = A.rebiEndValue || 0, bRebiEol = B.rebiEndValue || 0, rebiEolD = bRebiEol - aRebiEol;
+            if (aRebiToday > 0 || bRebiToday > 0 || aRebiEol > 0 || bRebiEol > 0) {
+                setDelta('dRebi', money(aRebiToday), Math.abs(rebiTodayD) > 0.5 ? chip((rebiTodayD>=0?'+':'−')+money(Math.abs(rebiTodayD)), rebiTodayD>=0?good:bad) : pill('same','neutral'));
+                setDelta('dRebiEol', money(aRebiEol) + ' (EOL)', Math.abs(rebiEolD) > 0.5 ? chip((rebiEolD>=0?'+':'−')+money(Math.abs(rebiEolD)), rebiEolD>=0?good:bad) : pill('same','neutral'));
+            }
         }
 
         function importConfig(event) {
@@ -3725,6 +4084,9 @@
                     }
                     if (snapshot.preferences.viewMode) setViewMode(snapshot.preferences.viewMode);
                     if (snapshot.preferences.dollarMode) setDollarMode(snapshot.preferences.dollarMode);
+                    // Explicit typeof check, not truthiness: `false` is a real, meaningful saved value here.
+                    if (typeof snapshot.preferences.chartCollapsed === 'boolean') setChartCollapsed(snapshot.preferences.chartCollapsed);
+                    if (snapshot.preferences.kpiNumberMode) setKpiNumberMode(snapshot.preferences.kpiNumberMode);
                     if (snapshot.preferences.visibleGroups) {
                         visibleGroups = {};
                         Object.keys(snapshot.preferences.visibleGroups).forEach(groupKey => {
@@ -3809,6 +4171,7 @@
 
             // Reset dollar mode and view mode to defaults
             setDollarMode('today');
+            setKpiNumberMode('compact');   // Compact is the default KPI number format
             setViewMode('condensed');
 
             // Re-render dynamic rows that mirror those tables
@@ -3869,9 +4232,10 @@
             applyColumnGroupVisibility();
             maybeShowHelpCoach();    // first-visit nudge toward the Help docs
             syncStickyHeaderOffset();
+            applyKpiGridColumns();   // size the KPI row to however many tiles are actually visible
             // Web fonts can shift header row height after the initial paint; re-measure once fonts are ready
             if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(syncStickyHeaderOffset);
+                document.fonts.ready.then(() => { syncStickyHeaderOffset(); applyKpiGridColumns(); });
             }
             window.addEventListener('resize', syncStickyHeaderOffset);
         };
@@ -4072,7 +4436,8 @@
                         <p class="mt-2" style="color:var(--text-secondary)">This is an unavoidable property of real-dollar display: you can have <em>within-row</em> reconciliation (Starting + Contribs + Growth &minus; outflows = Ending, all at one year's price level) or <em>across-row</em> continuity, but not both. This tool preserves within-row reconciliation, which is what makes each year's math auditable.</p>
                     </div>
                     <p class="mt-3">Sidebar <em>inputs</em> (balances, contributions, spending targets, healthcare costs, gift amounts, tuition costs) are always entered in <strong>today's dollars</strong> and are inflated internally to the nominal amount for the year they apply. The one exception is starting balances, which are 2026 dollars by definition (today = 2026 in this model).</p>
-                </section>
+                                    <p class="mt-4 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Not to be confused with the KPI Numbers toggle</strong> sitting next to this one. <em>Dollars</em> changes <strong>what the numbers mean</strong> (today's purchasing power vs. nominal future dollars) and affects every figure in the app. <em>KPI Numbers: Compact / Exact</em> only changes <strong>how the KPI cards are written</strong> ($1.31M vs $1,309,908) &mdash; it touches no math and never affects the projection table. See section 4 for that one.</p>
+</section>
 
                 <!-- 3. Inputs -->
                 <section id="sec-inputs">
@@ -4144,17 +4509,27 @@
                 <!-- 4. KPIs -->
                 <section id="sec-kpis">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-gauge-high mr-2"></i>4. KPI Cards Explained</h2>
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-hashtag mr-1"></i>KPI number format — Compact vs Exact</p>
+                        <p style="color:var(--text-secondary)">KPI cards show <strong style="color:var(--text-primary)">compact</strong> figures by default &mdash; <em>$1.31M</em>, <em>$694K</em> &mdash; using the same convention as the net-worth chart axis. Millions carry two decimals on purpose: at this scale a $10,000 difference between two scenarios is still visible ($1.31M vs $1.32M), which matters when you are comparing plans.</p>
+                        <ul class="list-disc ml-6 mt-2 space-y-1" style="color:var(--text-secondary)">
+                            <li><strong style="color:var(--text-primary)">Hover any card</strong> to swap that card's figures to exact dollars ($1,309,908) in place. The type shrinks slightly so nothing reflows.</li>
+                            <li><strong style="color:var(--text-primary)">KPI Numbers: Compact / Exact</strong> (beside the Dollars toggle) pins every card to exact figures permanently &mdash; useful for screenshots and on touch devices, where hover does not exist.</li>
+                        </ul>
+                        <p class="mt-2" style="color:var(--text-secondary)">This is display-only: it changes no math, and the <strong style="color:var(--text-primary)">projection table always shows full exact dollars</strong> regardless of this setting. The table is the place to go for precision; the cards are for scanning. Compact figures are also what keeps all cards on a single row &mdash; the row sizes itself to however many cards are visible (5 by default, up to 7 if you hold RE/Business deals and the plan earns an ACA subsidy).</p>
+                    </div>
                     <div class="overflow-x-auto"><table class="w-full text-sm">
                         <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">KPI</th><th class="py-2">What it means &amp; how it's computed</th></tr></thead>
                         <tbody style="color:var(--text-secondary)">
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Portfolio Horizon</td><td class="py-2">The headline "will the money last" test — <strong>529 is excluded</strong>. Shows "95+ (Secure)" if the spendable portfolio (Traditional + Roth + Brokerage + HSA) covers every year's needs to Target EOL. Depletion is detected by <em>funding shortfall</em>, not by balances literally hitting zero: the failure year is the first year the portfolio cannot supply more than a trivial amount (&gt;$100 nominal) of the required withdrawal. This matters because withdrawals are capped at available balances, so tiny residual balances can linger even after the plan has effectively failed. On failure, the card shows your age at the failure year beneath the headline, and the chart’s red “Depleted” marker carries the same year-and-age annotation. The Brokerage Exhausted card carries the same age sub-line at its crossover year.</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Liquid Net Worth at EOL (excl. 529)</td><td class="py-2">The spendable portfolio balance (Traditional + Roth + Brokerage + HSA) in the final simulated year, in the currently selected dollar mode. 529 is deliberately excluded so leftover education money can never mask a depleted retirement portfolio. Turns red whenever Portfolio Horizon has failed.<br><br>If you hold Real Estate / Business investments (Section 15b), a smaller <strong style="color:var(--text-primary)">Total incl. RE/Business</strong> line appears beneath this number, adding the illiquid position value on top. The big number deliberately stays <em>liquid-only</em> — it's the money you can actually draw on — so a large illiquid holding can never make a thin spendable portfolio look safe. The line is hidden when you have no such deals.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Liquid Net Worth at EOL (excl. 529)</td><td class="py-2">The spendable portfolio balance (Traditional + Roth + Brokerage + HSA) in the final simulated year, in the currently selected dollar mode. 529 is deliberately excluded so leftover education money can never mask a depleted retirement portfolio. Turns red whenever Portfolio Horizon has failed.<br><br>If you hold Real Estate / Business investments (Section 15b), a smaller <strong style="color:var(--text-primary)">incl. RE/Biz</strong> line appears beneath this number, adding the illiquid position value on top. The big number deliberately stays <em>liquid-only</em> — it's the money you can actually draw on — so a large illiquid holding can never make a thin spendable portfolio look safe. The line is hidden when you have no such deals.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Real Estate / Business (illiquid)</td><td class="py-2">The value of your passive real-estate / business (LP) positions still held in the final simulated year. Illiquid — not part of the spendable portfolio until a refi or exit converts it to cash — but it <em>is</em> part of your total net worth and passes to heirs with a step-up in basis (so it flows into After-Tax Legacy at 100%). This tile only appears when you have at least one deal. See Section 15b.</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">After-Tax Legacy (to heirs)</td><td class="py-2">The final estate's worth to non-spouse heirs, applying a per-bucket tax haircut the plain End Worth number hides: Roth &times; 100% (inherited tax-free), Brokerage &times; 100% (heirs get a step-up in basis that erases the gain), HSA and Traditional taxed at the editable heir tax rates (default 28% each) — because under the SECURE Act a non-spouse heir must drain an inherited Traditional within 10 years, paying ordinary tax on every dollar. 529 is excluded, like the other wealth KPIs. When this number sits well below End Worth, the gap is the deferred tax bomb your heirs would inherit; when they're nearly equal (as in the default plan, whose sequencing leaves an almost all-Roth estate), the estate is already tax-efficient. This is the missing half of the Roth-conversion decision: a conversion that looks unattractive on lifetime tax alone can pay off once its shrinking of the heirs' Traditional bomb is counted.<br><br><strong style="color:var(--text-primary)">How to read it:</strong> compare this card directly against Net Worth at EOL sitting beside it. <strong style="color:var(--text-primary)">If the two match, you're doing great</strong> — your estate is essentially all Roth/brokerage, so nothing is lost to heir taxes and there's no bomb to defuse (this is the default plan's situation, thanks to the Brokerage→Traditional→Roth withdrawal order). If Legacy sits <em>below</em> End Worth, the gap is exactly the tax your heirs would owe on the leftover Traditional/HSA — a signal that Roth conversions (or spending Traditional sooner) could shrink it. To test the payoff: note the baseline, <strong style="color:var(--text-primary)">Pin as A</strong>, turn conversions on, and watch the Lifetime Tax delta (the cost to you) against the After-Tax Legacy delta (the gain to heirs) side by side — that comparison is the whole decision.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">After-Tax Legacy</td><td class="py-2">The final estate's worth to non-spouse heirs, applying a per-bucket tax haircut the plain End Worth number hides: Roth &times; 100% (inherited tax-free), Brokerage &times; 100% (heirs get a step-up in basis that erases the gain), HSA and Traditional taxed at the editable heir tax rates (default 28% each) — because under the SECURE Act a non-spouse heir must drain an inherited Traditional within 10 years, paying ordinary tax on every dollar. 529 is excluded, like the other wealth KPIs. When this number sits well below End Worth, the gap is the deferred tax bomb your heirs would inherit; when they're nearly equal (as in the default plan, whose sequencing leaves an almost all-Roth estate), the estate is already tax-efficient. This is the missing half of the Roth-conversion decision: a conversion that looks unattractive on lifetime tax alone can pay off once its shrinking of the heirs' Traditional bomb is counted.<br><br><strong style="color:var(--text-primary)">How to read it:</strong> compare this card directly against Net Worth at EOL sitting beside it. <strong style="color:var(--text-primary)">If the two match, you're doing great</strong> — your estate is essentially all Roth/brokerage, so nothing is lost to heir taxes and there's no bomb to defuse (this is the default plan's situation, thanks to the Brokerage→Traditional→Roth withdrawal order). If Legacy sits <em>below</em> End Worth, the gap is exactly the tax your heirs would owe on the leftover Traditional/HSA — a signal that Roth conversions (or spending Traditional sooner) could shrink it. To test the payoff: note the baseline, <strong style="color:var(--text-primary)">Pin as A</strong>, turn conversions on, and watch the Lifetime Tax delta (the cost to you) against the After-Tax Legacy delta (the gain to heirs) side by side — that comparison is the whole decision.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Real Estate / Business (illiquid)</td><td class="py-2">Two figures, because "what do I own" and "what's left at the end" are different questions for a position you plan to sell. The <strong style="color:var(--text-primary)">large number is what you hold TODAY</strong> &mdash; the quick answer to "how much is tied up in RE/Biz right now." The smaller <strong style="color:var(--text-primary)">EOL: line beneath it</strong> is what's still held (and passes to heirs) at Target EOL, which can be very different: a deal fully sold well before end of life shows a real dollar amount today and <strong style="color:var(--text-primary)">EOL: $0</strong> once it's exited &mdash; that's correct, not a bug, it means the position is already fully converted to cash by then. The tile appears whenever you hold at least one RE/Biz deal, regardless of which of the two values is currently non-zero. In <strong style="color:var(--text-primary)">Compare mode</strong> both lines get their own A/B comparison, since a change that moves one (e.g. changing when you exit) may leave the other completely unchanged.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Brokerage Exhausted</td><td class="py-2">The first retirement year in which the brokerage account was fully drained by the year's withdrawal <em>and the draw still needed more</em> — i.e., the true crossover point where spending spills into Traditional/Roth. Under the default sequential order this is a normal, expected milestone, so it only displays as a warning if it coincides with overall portfolio failure.</td></tr>
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Projected Lifetime Tax</td><td class="py-2">The sum of all taxes (federal ordinary, LTCG, SE, state, county, penalties) across every simulated year. Each year's tax is converted to the selected dollar mode <em>before</em> summing — nominal dollars from different decades can't be meaningfully added, so in Today's $ mode each year's tax is deflated at its own factor first.</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Lifetime ACA Subsidy</td><td class="py-2">The sum of all ACA premium subsidies captured across the plan (each year converted to the selected dollar mode before summing, like Lifetime Tax). Hidden entirely while the ACA toggle is off (simple model); green when subsidies are being captured. Useful as the single number to watch when comparing conversion strategies against the subsidy cliff.</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">529 Status</td><td class="py-2">"Fully Funded" if the 529 covered every scheduled tuition year; "Underfunded" (red) if tuition ever exceeded the 529 balance, forcing the shortfall to be paid from Brokerage.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">Lifetime ACA Subsidy</td><td class="py-2">The sum of all ACA premium subsidies captured across the plan (each year converted to the selected dollar mode before summing, like Lifetime Tax). Hidden entirely while the ACA toggle is off (simple model); green when subsidies are being captured. Useful as the single number to watch when comparing conversion strategies against the subsidy cliff. <strong style="color:var(--text-primary)">This card only appears when the plan actually earns a subsidy</strong> &mdash; enabling ACA but never clearing the threshold (for example retiring after 65, straight onto Medicare) leaves nothing to report, so the card stays hidden rather than occupying a slot to display $0.</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">529 status <span class="font-normal">(badge)</span></td><td class="py-2">Shown as a small badge beneath <strong style="color:var(--text-primary)">Portfolio Horizon</strong> rather than as its own card &mdash; it carries a single piece of information, and Portfolio Horizon already excludes the 529, so the badge completes that picture. <strong style="color:var(--text-primary)">&#9679; 529 Funded</strong> means the 529 covered every scheduled tuition year; <strong style="color:#ef4444">&#9679; 529 Underfunded</strong> (red) means tuition exceeded the 529 balance at some point, forcing the shortfall to be paid from Brokerage. In Compare mode the badge also shows A's state, but only when A and B differ.</td></tr>
                         </tbody>
                     </table></div>
                 </section>
@@ -4281,7 +4656,7 @@
                     <h3 class="font-semibold mb-2 mt-4">Long-Term Capital Gains</h3>
                     <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income &mdash; plus the gain on a Real Estate / Business exit (Section 15b), which flows through this same machinery. It stacks on top of ordinary taxable income against the LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.<br><br><strong style="color:var(--text-primary)">Depreciation recapture (RE/BI exits only):</strong> the recapture slice of a sale &mdash; your Recapture % of invested capital, capped at the gain &mdash; is taxed at the 25% recapture rate rather than LTCG, and is added on top of the year's other taxes. See Section 15b.</p>
                     <h3 class="font-semibold mb-2 mt-4">Self-Employment Tax</h3>
-                    <p style="color:var(--text-secondary)">15.3% on 92.35% of gross 1099 income during semi-retirement (the Social Security wage-base cap is not modeled). Half of the SE tax &mdash; <em>not</em> half the income &mdash; is deducted from ordinary taxable income. Income is displayed gross and SE tax sits in the Taxes column, so it is counted exactly once in the cash-flow math.</p>
+                    <p style="color:var(--text-secondary)">15.3% on 92.35% of gross 1099 income during semi-retirement. <strong style="color:var(--text-primary)">The Social Security wage-base cap is deliberately not modeled.</strong> In law the 12.4% Social Security portion stops at the wage base ($184,500 for 2026) while the 2.9% Medicare portion continues uncapped, and an extra 0.9% Medicare surtax applies above $200,000 (single filer). This engine applies a flat 15.3% with no ceiling, so it is exact up to about $199,783 of gross 1099 income and <em>overstates</em> SE tax above that (by roughly $5,750/yr at $250,000 and $32,473/yr at $500,000). Semi-retirement consulting income is assumed to sit below the cap; if you model 1099 income above ~$200,000, treat the tax figure as conservative. Half of the SE tax &mdash; <em>not</em> half the income &mdash; is deducted from ordinary taxable income. Income is displayed gross and SE tax sits in the Taxes column, so it is counted exactly once in the cash-flow math.</p>
                     <h3 class="font-semibold mb-2 mt-4">State &amp; Local Tax</h3>
                     <p style="color:var(--text-secondary)">A flat state rate (default 2.90%) plus a county/local rate (default 1.5%), both in the State &amp; Local Tax section of the left input panel — set them to your own jurisdiction's rates. As modeled, both apply to ordinary income <em>and</em> to realized capital gains (i.e. the defaults assume a state that taxes long-term gains as ordinary income with no preferential rate, and fully taxes IRA/401(k) withdrawals and Roth conversions — adjust if your state differs). The <strong style="color:var(--text-primary)">“State Exempts Social Security”</strong> checkbox (default on) removes the taxable-SS portion from the state/local base, reflecting the many states that don't tax Social Security. State-specific personal exemptions, credits, and pension deductions are not modeled; verify your state and local rates and rules against your official state tax authority.</p>
                     <h3 class="font-semibold mb-2 mt-4">Early Withdrawal Penalty</h3>
@@ -4425,7 +4800,7 @@
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-children mr-2"></i>15. Children: College Funding &amp; Gifting</h2>
                     <p>The Children section defines per-child education profiles that drive the 529's tuition schedule automatically — nothing is hardcoded. For each child: birth year, annual undergrad cost and years, and an optional grad-school block with its own cost and years. Undergrad starts the year the child turns 18; grad school starts immediately after undergrad ends. All costs are today's dollars, inflated to each tuition year.</p>
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Defaults:</strong> two children (born 2012 and 2015), each $30,500/yr &times; 4 undergrad years and $50,000/yr &times; 3 grad years &mdash; producing overlapping tuition spanning roughly a decade, including years where one child's grad school overlaps the other's undergrad. (Undergrad starts the year a child turns 18; grad follows immediately, so the exact calendar span shifts with each child's birth year.)</p>
-                    <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Funding:</strong> tuition is paid from the 529 first. If the 529 runs dry, the shortfall is paid from Brokerage (reducing basis proportionally) and the 529 Status KPI flips to "Underfunded." </p>
+                    <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Funding:</strong> tuition is paid from the 529 first. If the 529 runs dry, the shortfall is paid from Brokerage: basis is reduced <em>pro-rata</em> and the appreciated portion of that sale is realized as a long-term capital gain, taxed with your other gains that year (stacked on ordinary income). The 529 Status KPI flips to &ldquo;Underfunded.&rdquo; The 529 burn for actual tuition is itself tax-free (a qualified education distribution); only the brokerage sale that covers a shortfall is taxed. </p>
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Gifting schedule:</strong> year/amount rows for one-off transfers (weddings, home down-payments, major gifts). Amounts are today's dollars — the engine inflates them to the gift year so the recipient gets the intended real value — and they appear in the Life Event column, funded through the normal withdrawal sequence.</p>
                 </section>
 
@@ -4434,16 +4809,18 @@
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-building-columns mr-2"></i>15b. Real Estate / Business Investments</h2>
                     <p>This section models <strong>passive private investments</strong> where you're a limited or non-managing partner — real-estate syndications (apartment complexes, storage, industrial), business LP stakes, and private funds. These behave very differently from the five liquid buckets: they throw off cash <em>distributions</em> while you hold them, return capital on a <em>refinance</em>, and pay a lump on <em>exit/sale</em>, and they are <strong>illiquid</strong> — you can't draw on them to cover a shortfall until a capital event converts them to cash. Add as many deals as you like (the list works like the Children/Gifting lists).</p>
 
-                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Per-deal inputs:</strong></p>
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Per-deal inputs (the panel groups these into <em>Position</em>, <em>Income</em> and <em>Capital Events</em>):</strong></p>
                     <ul class="list-disc ml-6 mt-1 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Invested capital (basis)</strong> — what you put in; your cost basis for the exit-gain calculation.</li>
-                        <li><strong style="color:var(--text-primary)">Current value</strong> &amp; <strong style="color:var(--text-primary)">Appreciation %/yr</strong> — the position's value today and how fast it grows. (In Today's-$ mode the displayed value is deflated by inflation, so a position that only appreciates at ~inflation holds roughly flat in real terms.)</li>
-                        <li><strong style="color:var(--text-primary)">Annual distribution</strong> &amp; <strong style="color:var(--text-primary)">Distribution taxable %</strong> — the cash yield and the fraction of it that's currently taxable. Syndication distributions are frequently shielded by depreciation (the K-1 often shows a paper loss), so only part is taxed as ordinary income; the default 25% approximates that shelter. Set it to 100% for a fully-taxable income stream, or lower for a heavily-sheltered one.</li>
-                        <li><strong style="color:var(--text-primary)">Distribution COLA</strong> — whether the distribution grows with inflation or stays flat in nominal dollars.</li>
-                        <li><strong style="color:var(--text-primary)">Refi year / Refi capital</strong> — an optional mid-hold refinance that returns a chunk of your capital as tax-free return of capital (it reduces your remaining basis) and lands in Brokerage.</li>
-                        <li><strong style="color:var(--text-primary)">Exit year / Exit value</strong> — when the deal sells and for how much. Leave the exit year blank/0 to hold the position indefinitely (through end of life).</li>
+                        <li><strong style="color:var(--text-primary)">Invested (Basis)</strong> — what you put in; your cost basis for the exit-gain calculation.</li>
+                        <li><strong style="color:var(--text-primary)">Current Value</strong> &amp; <strong style="color:var(--text-primary)">Appreciation %/Yr</strong> — the position's value today and how fast it grows. (In Today's-$ mode the displayed value is deflated by inflation, so a position that only appreciates at ~inflation holds roughly flat in real terms.)</li>
+                        <li><strong style="color:var(--text-primary)">Annual Distribution</strong> &amp; <strong style="color:var(--text-primary)">Distribution Taxable %</strong> — the cash yield and the fraction of it that's currently taxable. Syndication distributions are frequently shielded by depreciation (the K-1 often shows a paper loss), so only part is taxed as ordinary income; the default 25% approximates that shelter. Set it to 100% for a fully-taxable income stream, or lower for a heavily-sheltered one.</li>
+                        <li><strong style="color:var(--text-primary)">Dist. COLA</strong> — whether the distribution grows with inflation or stays flat in nominal dollars.</li>
+                        <li><strong style="color:var(--text-primary)">Refi Year / Refi Capital</strong> — an optional mid-hold refinance that returns a chunk of your capital as tax-free return of capital (it reduces your remaining basis) and lands in Brokerage. <strong style="color:var(--text-primary)">The year is a calendar year</strong> (2030, not "year 4"), chosen from the dropdown; pick &mdash; for no refinance.</li>
+                        <li><strong style="color:var(--text-primary)">Exit Year / Exit Value</strong> — when the deal sells and for how much. <strong style="color:var(--text-primary)">The year is a calendar year</strong> (2035, not "year 5"), chosen from the dropdown; pick &mdash; to hold the position indefinitely (through end of life). The deal is held through the year <em>before</em> the exit year, sells in the exit year, and shows nothing afterwards.</li>
                         <li><strong style="color:var(--text-primary)">Recapture %</strong> — see the tax treatment below.</li>
                     </ul>
+
+                    <div class="rounded-md px-3 py-2 mt-3 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Reading the value column in Today's $</strong> &mdash; the RE/BI value shown in <em>Today's $</em> mode is the <em>real</em> value: nominal appreciation less inflation. With the default 4% appreciation against 3% inflation, the position climbs slowly (about 1%/yr in real terms). Set appreciation <em>equal</em> to your inflation rate and the column goes perfectly flat every year &mdash; that is correct, not a bug: growing 3% while prices rise 3% is <em>zero real gain</em>, so the position holds exactly its purchasing power and buys the same basket forever. Switch <strong style="color:var(--text-primary)">Dollars</strong> to <em>Future $</em> to watch the nominal value compound ($100,000 &rarr; $104,000 &rarr; $108,160&hellip;) and the distributions grow with COLA.</div>
 
                     <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">How the money flows through the plan:</strong> distributions are added to your income for the year (reducing how much you must withdraw from the portfolio), and their taxable portion flows through the <em>same</em> ordinary-income machinery as everything else — so it counts toward your tax brackets, your state/local tax, your ACA/IRMAA MAGI, and the room a bracket-filling Roth conversion has before it hits your target bracket. Refinance and sale proceeds are deposited into Brokerage; whatever isn't needed for that year's spending and taxes is reinvested there as after-tax principal (so it isn't taxed again as gain later).</p>
 
@@ -4454,7 +4831,7 @@
                         <li><strong style="color:var(--text-primary)">Remaining gain</strong> — taxed at long-term capital-gains rates, stacked on top of your ordinary income exactly like a brokerage gain (so it also raises MAGI for ACA/IRMAA and interacts with the conversion cap).</li>
                     </ul>
 
-                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Net worth &amp; legacy — the two-tier view:</strong> because these positions are illiquid, the app keeps them visually separate from your spendable money. The <strong>Net Worth at EOL</strong> KPI shows <em>Liquid Net Worth</em> as the primary number (the spendable portfolio you can actually draw on), with a smaller <em>Total incl. RE/Business</em> line beneath it, and a dedicated <strong>Real Estate / Business (illiquid)</strong> KPI tile calls out the held value on its own. Both the total line and the tile appear only when you have at least one deal. At death, positions still held pass to heirs with a <strong>step-up in basis</strong> — the built-in gain is erased — so they flow into the After-Tax Legacy at 100%, the same favorable treatment as brokerage. To see the year-by-year activity (start value, distributions, refi, sale, end value), toggle the <strong>Real Estate / Business</strong> detail column-group above the projection table.</p>
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Net worth &amp; legacy — the two-tier view:</strong> because these positions are illiquid, the app keeps them visually separate from your spendable money. The <strong>Net Worth at EOL</strong> KPI shows <em>Liquid Net Worth</em> as the primary number (the spendable portfolio you can actually draw on), with a smaller <em>incl. RE/Biz</em> line beneath it, and a dedicated <strong>Real Estate / Business (illiquid)</strong> KPI tile calls out the held value on its own. Both the total line and the tile appear only when you have at least one deal. At death, positions still held pass to heirs with a <strong>step-up in basis</strong> — the built-in gain is erased — so they flow into the After-Tax Legacy at 100%, the same favorable treatment as brokerage. To see the year-by-year activity (start value, distributions, refi, sale, end value), toggle the <strong>Real Estate / Business</strong> detail column-group above the projection table.</p>
 
                     <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Deliberate simplifications:</strong> recapture is approximated as a percentage of invested capital rather than tracked from an actual depreciation schedule; there's no modeling of capital calls, deal-level debt/leverage beyond the net figures you enter, K-1 passive-activity-loss carryforwards, 1031 exchanges, or Opportunity-Zone rules. Enter your own net figures and the model handles the cash-flow and tax mechanics faithfully at the planning level. As always, this is a planning sandbox, not tax advice — confirm specifics with your CPA.</p>
                 </section>
@@ -4491,7 +4868,7 @@
                 <section id="sec-profiles">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-file-export mr-2"></i>18. Profiles: Import / Export / Reset</h2>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a complete JSON snapshot (saved as .txt): every personal input, the children and gifting schedules, and display preferences (theme, view mode, dollar mode, visible column groups). It captures your  Real Estate / Business investment deals are saved with the profile too, so a scenario's private positions travel with it.<em>setup</em>, not the computed table.</li>
+                        <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a complete JSON snapshot (saved as .txt): every personal input, the children and gifting schedules, and display preferences (theme, view mode, dollar mode, KPI number format, visible column groups). Real Estate / Business investment deals are saved with the profile too, so a scenario's private positions travel with it. It captures your <em>setup</em>, not the computed table.</li>
                         <li><strong style="color:var(--text-primary)">Import Profile</strong> restores a previously exported file exactly — useful for maintaining named scenarios (e.g., "aggressive conversions" vs. "no SS, conservative") and swapping between them. The file is validated before anything is overwritten.</li>
                         <li><strong style="color:var(--text-primary)">Reset</strong> restores every input, table, and schedule to the built-in defaults (with a confirmation prompt). Your current theme preference is left alone, and any active comparison is cleared.</li>
                     </ul>
@@ -4546,19 +4923,62 @@
                     </ul>
                 </section>
 
+
+                <!-- ═══════════════════════════════════════════════════════════════════════
+                     VERIFIED FACTS — the machine-readable spec.
+                     Each <li data-fact> below is read by test-suite.html Tier 0 and checked
+                     THREE ways: the stated value must match the engine, a Tier 7 test must
+                     exist that proves it, and no Tier 7 constant may exist without a fact here.
+                     This is what stops the docs, the code and the tests drifting apart —
+                     it happened this session: the survivor fix shipped and left THREE help
+                     blocks describing the old behaviour.
+                     TO ADD A FACT: add the <li>, add its Tier 7 assertion, cite the source.
+                     ═══════════════════════════════════════════════════════════════════════ -->
+                <section id="sec-verified-facts">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-clipboard-check mr-2"></i>21. Verified Facts (Tax Year 2026)</h2>
+                    <p class="mb-3" style="color:var(--text-secondary)">Every figure below is transcribed from a published source, asserted against the engine by the test suite, and required to have its own regression test. If any one of the three drifts, the suite fails. Values shown are federal statutory figures for tax year 2026.</p>
+                    <ul class="list-disc ml-6 space-y-1 text-[13px]" style="color:var(--text-secondary)">
+                        <li data-fact="rmd.startAge" data-value="75" data-source="SECURE 2.0 Act &sect;107">RMD start age: <strong>75</strong> for anyone born 1960 or later (73 for those born 1951&ndash;1959).</li>
+                        <li data-fact="rmd.divisor.73" data-value="26.5" data-source="IRS Pub 590-B Table III">RMD Uniform Lifetime divisor at age 73: <strong>26.5</strong> &mdash; a $1M balance forces $37,736.</li>
+                        <li data-fact="rmd.divisor.95" data-value="8.9" data-source="IRS Pub 590-B Table III">RMD divisor at age 95: <strong>8.9</strong> &mdash; a $1M balance forces $112,360.</li>
+                        <li data-fact="stdDed.mfj" data-value="32200" data-source="IRS Rev. Proc. 2025-32">Standard deduction, MFJ: <strong>$32,200</strong>.</li>
+                        <li data-fact="stdDed.single" data-value="15750" data-source="IRS Rev. Proc. 2025-32">Standard deduction, Single: <strong>$15,750</strong> &mdash; note this is <em>not</em> half of MFJ.</li>
+                        <li data-fact="ordinary.mfj.top" data-value="768700" data-source="IRS Rev. Proc. 2025-32">37% bracket begins, MFJ: <strong>$768,700</strong>.</li>
+                        <li data-fact="ordinary.single.top" data-value="640600" data-source="IRS Rev. Proc. 2025-32">37% bracket begins, Single: <strong>$640,600</strong> &mdash; <em>not</em> half of MFJ ($384,350). This is the widow&rsquo;s penalty.</li>
+                        <li data-fact="ltcg.mfj.15pct" data-value="98900" data-source="IRS Rev. Proc. 2025-32">0%/15% LTCG breakpoint, MFJ: <strong>$98,900</strong>. Gains stack <em>on top of</em> ordinary income.</li>
+                        <li data-fact="ltcg.mfj.20pct" data-value="613700" data-source="IRS Rev. Proc. 2025-32">15%/20% LTCG breakpoint, MFJ: <strong>$613,700</strong>.</li>
+                        <li data-fact="ltcg.single.20pct" data-value="545050" data-source="IRS Rev. Proc. 2025-32">15%/20% LTCG breakpoint, Single: <strong>$545,050</strong> &mdash; <em>not</em> half of MFJ ($306,850).</li>
+                        <li data-fact="irmaa.mfj.tier1" data-value="218000" data-source="CMS 2026 Part B/D premiums">IRMAA first tier, MFJ: <strong>$218,000</strong> of MAGI from <em>two years prior</em>.</li>
+                        <li data-fact="irmaa.single.tier1" data-value="109000" data-source="CMS 2026 Part B/D premiums">IRMAA first tier, Single: <strong>$109,000</strong>.</li>
+                        <li data-fact="irmaa.surcharge.tier1" data-value="1148" data-source="CMS 2026 Part B/D premiums">IRMAA tier-1 surcharge: <strong>$1,148</strong>/person/year (Part B + D). Top tier: $6,936.</li>
+                        <li data-fact="irmaa.lookbackYears" data-value="2" data-source="SSA IRMAA rules">IRMAA lookback: <strong>2 years</strong> &mdash; 2026 premiums use 2024 MAGI.</li>
+                        <li data-fact="aca.fpl.firstPerson" data-value="15650" data-source="HHS 2025 Poverty Guidelines">FPL, first person: <strong>$15,650</strong> (2025 guidelines drive 2026 coverage).</li>
+                        <li data-fact="aca.fpl.addlPerson" data-value="5500" data-source="HHS 2025 Poverty Guidelines">FPL, each additional person: <strong>$5,500</strong>.</li>
+                        <li data-fact="aca.cliffMult" data-value="4" data-source="ACA &sect;36B; ARPA expiry">ACA subsidy cliff: <strong>400%</strong> of FPL. The ARPA enhancement removing it expired after 2025.</li>
+                        <li data-fact="ss.taxablePctDefault" data-value="85" data-source="IRC &sect;86; CRS IF11397">Share of Social Security taxed (default): <strong>85%</strong> &mdash; the statutory maximum, reached once provisional income exceeds $44,000 (MFJ) or $34,000 (Single). Modeled as a flat, user-editable rate rather than the phase-in; see Section 20.</li>
+                        <li data-fact="ss.maxTaxablePct" data-value="0.85" data-source="IRC &sect;86">Statutory maximum share of Social Security that can be taxed: <strong>85%</strong> &mdash; a cap, not a rate. The share reaches it only once provisional income clears the upper threshold.</li>
+                        <li data-fact="ss.provisionalThreshold.mfj" data-value="44000" data-source="IRC &sect;86; CRS IF11397">Provisional-income threshold for 85% taxation, MFJ: <strong>$44,000</strong> &mdash; never indexed for inflation since 1993.</li>
+                        <li data-fact="ss.provisionalThreshold.single" data-value="34000" data-source="IRC &sect;86; CRS IF11397">Provisional-income threshold for 85% taxation, Single: <strong>$34,000</strong> &mdash; never indexed since 1993.</li>
+                        <li data-fact="se.rate" data-value="0.153" data-source="IRS Schedule SE">Self-employment tax rate: <strong>15.3%</strong> (12.4% Social Security + 2.9% Medicare).</li>
+                        <li data-fact="se.netFactor" data-value="0.9235" data-source="IRS Schedule SE">SE tax applies to <strong>92.35%</strong> of net earnings; half the tax is deductible.</li>
+                    </ul>
+                    <p class="mt-3 text-[12px]" style="color:var(--text-muted)">Known simplification: the Social Security wage-base cap ($184,500 for 2026) is not modeled &mdash; see Section 18. SE tax is exact below roughly $199,783 of gross 1099 income per person and overstated above it.</p>
+                </section>
+
                 <!-- 20. Limitations -->
                 <section id="sec-limitations">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>20. Known Limitations</h2>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
+                        <li><strong style="color:var(--text-primary)">Early-withdrawal penalty.</strong> The 10% pre-59&frac12; penalty applies to Traditional/Roth draws taken before the filer reaches 59&frac12;. Because a single filer owns every account, the age test is unambiguous here (unlike the MFJ version, which must pick one spouse's age for a pooled balance). Roth withdrawal ordering is still not modeled, so the penalty may be overstated on Roth draws &mdash; see below.</li>
                         <li>Roth 5-year seasoning rules (for conversions and earnings) are not enforced — early Roth access is modeled as available with only the 10% penalty pre-59&frac12;.</li>
                         <li>Roth withdrawal ordering (contributions &rarr; conversions &rarr; earnings) is not modeled; penalties may be overstated for Roth draws.</li>
-                        <li>The SS taxability phase-in, spousal/survivor benefits, and claiming-age benefit adjustments are simplified to flat inputs.</li>
+                        <li>Social Security taxability is modeled as a <strong style="color:var(--text-primary)">flat, user-editable percentage</strong> (default <strong style="color:var(--text-primary)">85%</strong>) rather than the statutory phase-in. In law the taxable share depends on <em>provisional income</em> (AGI excluding SS + tax-exempt interest + half the benefit): nothing is taxed below $32,000 (MFJ) / $25,000 (Single), up to 50% applies through $44,000 / $34,000, and up to 85% above that &mdash; thresholds frozen since 1993 and never inflation-indexed. The 85% default is <em>exact</em> for any plan whose provisional income clears the top threshold, which most retirees with meaningful portfolio income do permanently; it <em>overstates</em> the taxable share only for low-income retirees still inside the phase-in, so the simplification is conservative. Adjust the &ldquo;% of SS Taxed&rdquo; input if your plan sits in the phase-in band. Spousal/survivor benefits and claiming-age adjustments are likewise simplified to flat inputs.</li>
                         <li>ACA subsidies (pre-65) and IRMAA (post-65) are modeled as optional toggles (Section 14); when they are on, Roth-conversion sizing can additionally respect the ACA subsidy cliff. Both carry their own simplifications, listed below.</li>
-                        <li>Fixed-amount Roth conversions are sized without regard to bracket position or same-year spending draws (by design); only bracket-fill mode is spending-aware. Single filing (survivor) brackets are approximated as half of MFJ.</li>
+                        <li>Fixed-amount Roth conversions are sized without regard to bracket position or same-year spending draws (by design); only bracket-fill mode is spending-aware.</li>
                         <li>Filing status is Single, or Head of Household when dependents are present, using the true IRS 2026 tables for each. Head-of-household eligibility is inferred simply from having one or more dependents; the qualifying-surviving-spouse status is not modeled (this is the single-filer build).</li>
                         <li>State/county taxes are flat rates with no deductions or credits; the only state-specific exclusion modeled is the optional Social Security exemption. Scheduled or conditional future rate changes are not modeled (the editable rate is fixed for the whole run).</li>
                         <li>Depletion detection uses a $100 nominal shortfall tolerance; sub-$100 annual gaps won't flag failure.</li>
-                        <li><strong style="color:var(--text-primary)">Real Estate / Business Investments (Section 15b) simplifications:</strong> depreciation recapture is approximated as a percentage of invested capital rather than tracked from a real depreciation schedule; the position's value follows a single appreciation rate you set (no deal-level modeling of leverage, NOI, or cap-rate shifts); capital calls, K-1 passive-activity-loss carryforwards, 1031 exchanges, and Opportunity-Zone rules are not modeled; distributions are assumed to be received as entered (no modeling of missed or suspended distributions in troubled years). Enter your own net figures and the cash-flow and tax mechanics are handled faithfully at the planning level.</li>
+                        <li><strong style="color:var(--text-primary)">Real Estate / Business Investments (Section 15b) simplifications:</strong> depreciation recapture is approximated as a percentage of invested capital rather than tracked from a real depreciation schedule. Note that because these are passive LP / syndication stakes (not directly-owned property), depreciation's benefit is already modeled <em>during the hold</em> as the sheltered portion of distributions (the &ldquo;distribution taxable %&rdquo; input, default 25% &mdash; the K-1 typically shelters most of the cash). The invested figure you enter is therefore treated as your cost basis at exit and is <strong style="color:var(--text-primary)">not</strong> separately stepped down for depreciation &mdash; doing so would count the same depreciation twice (once as the hold-period shelter, again as extra gain at sale). Other simplifications: the position's value follows a single appreciation rate you set (no deal-level modeling of leverage, NOI, or cap-rate shifts); capital calls, K-1 passive-activity-loss carryforwards, 1031 exchanges, and Opportunity-Zone rules are not modeled; distributions are assumed to be received as entered (no modeling of missed or suspended distributions in troubled years). Enter your own net figures and the cash-flow and tax mechanics are handled faithfully at the planning level.</li>
                         <li>After-Tax Legacy simplifications: a single flat heir tax rate is applied to the whole inherited Traditional/HSA balance (real heirs drain it over up to 10 years across their own brackets); state estate/inheritance tax is not modeled (many states have none — verify yours), the federal estate exemption is assumed not binding, and no growth during the heirs' 10-year window is modeled.</li>
                         <li>Dividend simplification: dividends are modeled as a flat yield on the brokerage balance with a fixed qualified/ordinary split; real dividends vary by holding, and return-of-capital distributions and dividend growth over time are not separately modeled.</li>
                         <li>Covered-phase assumption: not applicable to a single filer &mdash; there is no second earner, so no Covered bridge phase ever occurs. (This assumption applies only to the married version, where one spouse keeps working while the other steps down.)</li>

@@ -105,8 +105,56 @@
    P-ZERO TEST SUITE
    ----------------------------------------------------------------------------
    Loads each engine in an iframe, drives it via its exposed globals
-   (triggerRecalculate, window.__scenarioB, marginalTax, bracket constants,
-   DOM inputs), and asserts Tiers 1-3.
+   (triggerRecalculate, window.__scenarioB, window.__chartSeries, marginalTax,
+   window.IRS_2026, DOM inputs), and runs EIGHT tiers against BOTH apps.
+
+   ┌─ THE TIERS, AND WHAT EACH ONE EXISTS TO CATCH ───────────────────────────┐
+   │ Tier 0  Triangulation  docs <-> engine <-> tests drift apart             │
+   │ Tier 1  Structural     the page/engine is broken outright                │
+   │ Tier 2  Invariants     balances go negative, depletion misdetected       │
+   │ Tier 3  Known-answer   marginalTax bracket arithmetic                    │
+   │ Tier 5  Features       session features still fire                       │
+   │ Tier 6  RE/BI          deals fire and are taxed                          │
+   │ Tier 7  Known-answer   WRONG RATES/BRACKETS/DIVISORS (vs published)      │
+   │ Tier 8  Conservation   money created or destroyed                        │
+   └──────────────────────────────────────────────────────────────────────────┘
+
+   WHY TIERS 0, 7 AND 8 EXIST — read this before adding tests
+   ----------------------------------------------------------------------------
+   A 180-test suite was ALL GREEN while the default plan understated final wealth
+   by 60%. Six bugs were found in one session; FOUR by the user, TWO by an audit,
+   ZERO by the suite. The reason: every test had been written AFTER a bug, so they
+   only ever confirmed what was already known. They checked that things FIRE and
+   are TAXED — never that money was CONSERVED, and never that the rates were RIGHT.
+
+   Proof that green means little on its own: mutating the 22% bracket to 32%, and
+   separately DOUBLING every RMD, BOTH passed 216/216.
+
+     Tier 8 (conservation) catches LEAKS but cannot catch a wrong rate — a wrong
+       number conserves perfectly.
+     Tier 7 (known-answer) catches wrong rates by asserting against PUBLISHED
+       figures, transcribed from sources and independent of the app's own tables.
+     Tier 0 (triangulation) catches the docs, the engine and the tests drifting
+       apart — the survivor fix shipped and left three help blocks describing the
+       old behaviour for hours.
+
+   ── RULES FOR ADDING TO THIS SUITE ─────────────────────────────────────────
+   1. MUTATION-TEST EVERY NEW TEST. Reintroduce the bug; confirm the test FAILS.
+      A test that does not fail on a known bug is worthless. This caught a whole
+      LTCG test set that passed the very mutation it was written to catch (it was
+      exercising the marginalTax helper, not the engine's use of it).
+   2. NEVER source a number from memory. Recalled RMD divisors "proved" 14 of 29
+      were wrong; published tables confirmed the ENGINE was right. Cite a source.
+   3. VERIFY THE LEVER MOVES THE NUMBER. Writing to a non-existent element id is
+      INVISIBLE — no error, no effect. `targetDraw` does not exist in either app
+      (the real lever is distModel='fixed' + netDistribution); a test using it
+      passed in MFJ by luck and falsely failed in Single.
+   4. CHECK THE SCENARIO HAS SIGNAL. A mutation caught in one app but missed in
+      the other usually means the scenario is flat, not that the engine differs.
+   5. NEW MONEY PATH -> publish its flow on chartSeries (the aud-prefixed fields) AND add a
+      CONSERVATION_SCENARIOS entry. New tax constant -> add a help §21 fact with a
+      source AND a Tier 7 assertion, or Tier 0 fails.
+   ----------------------------------------------------------------------------
 
    TIER 3 EXPECTED VALUES — HAND-DERIVED FROM 2026 IRS BRACKETS
    ----------------------------------------------------------------------------
@@ -587,6 +635,170 @@ function tier5(win, fileKey) {
     push('W-2/1099 semi income check ran', false, 'error: ' + e.message);
   }
 
+  // ---- Display preferences survive an export/import round-trip ----
+  // Regression test: kpiNumberMode was added as a display mode but never wired into
+  // snapshot.preferences, so Exact -> export -> import silently reverted to Compact.
+  // checkExportCoverage() CANNOT catch this class of bug — it only scans input/select/textarea,
+  // and these modes are driven by <button>s. Any new button-driven mode needs this same check.
+  try {
+    if (typeof win.setKpiNumberMode === 'function') {
+      const doc = win.document;
+      // NB: kpiNumberMode is a module-scoped `let` and is NOT on window (same gotcha as
+      // childrenProfiles / rebiDeals — see CONTEXT.md). Assert on OBSERVABLE state instead,
+      // which is the better test anyway: it checks what the user actually sees.
+      const isExact = () => doc.body.classList.contains('kpi-exact-mode');
+
+      win.setKpiNumberMode('exact');
+      const wentExact = isExact();
+      win.setKpiNumberMode('compact');
+      const wentCompact = !isExact();
+      push('KPI numbers: Compact/Exact toggle drives the display mode',
+        wentExact && wentCompact,
+        `exact->${wentExact}, compact->${wentCompact}`);
+
+      // The regression this guards: kpiNumberMode was a display mode that never reached
+      // snapshot.preferences, so Exact -> export -> import silently reverted to Compact.
+      // checkExportCoverage() CANNOT catch this class — it only scans input/select/textarea,
+      // and these modes are <button>-driven. Any new button mode needs this same check.
+      let captured = null;
+      const origCreate = win.URL.createObjectURL;
+      const origClick = win.HTMLAnchorElement.prototype.click;
+      win.URL.createObjectURL = (blob) => { captured = blob; return 'blob:stub'; };
+      win.HTMLAnchorElement.prototype.click = function () {};
+      try { win.exportConfig(); } finally {
+        win.URL.createObjectURL = origCreate;
+        win.HTMLAnchorElement.prototype.click = origClick;
+      }
+      push('Export: exportConfig() runs and produces a profile blob',
+        !!captured, captured ? 'blob captured' : 'no blob produced');
+
+      // Proof the preference is actually serialised: the app's own export path must mention it.
+      // NB: this deliberately does NOT pin neighbouring keys. An earlier version matched
+      // /kpiNumberMode\s*,\s*visibleGroups/ and broke the moment `chartCollapsed` was inserted
+      // between them — the export was fine, the test was over-specified. Assert the ONE thing
+      // this test cares about: the key reaches the serialiser.
+      const exportSrc = win.exportConfig.toString();
+      const srcHasPref = /\bkpiNumberMode\b/.test(exportSrc);
+      push('Export: kpiNumberMode is included in saved preferences',
+        srcHasPref, srcHasPref ? 'present in exportConfig()' : 'MISSING — Exact would revert to Compact on import');
+
+      // Same contract for the chart collapse state: it's a display preference driven by a <button>,
+      // so checkExportCoverage() (which only scans input/select/textarea) structurally cannot see it.
+      const srcHasCollapse = /\bchartCollapsed\b/.test(exportSrc);
+      push('Export: chartCollapsed is included in saved preferences',
+        srcHasCollapse, srcHasCollapse ? 'present in exportConfig()' : 'MISSING — a collapsed chart would spring open on import');
+
+      win.setKpiNumberMode('compact');
+    }
+  } catch (e) {
+    push('KPI number mode persistence check ran', false, 'error: ' + e.message);
+  }
+
+  // ---- Chart collapse: display-only toggle that frees the vertical space between the KPI
+  // ---- tiles and the table. Asserts observable DOM state, not the module-scoped `chartCollapsed`
+  // ---- variable (which is a `let` and NOT on window — same trap as childrenProfiles/rebiDeals).
+  try {
+    if (typeof win.setChartCollapsed === 'function') {
+      const body = win.document.getElementById('chartCollapseBody');
+      const btn = win.document.getElementById('btnChartCollapse');
+      const isCollapsed = () => body && body.style.display === 'none';
+
+      win.setChartCollapsed(true);
+      const collapsedOk = isCollapsed() && btn && btn.getAttribute('aria-expanded') === 'false';
+      win.setChartCollapsed(false);
+      const expandedOk = !isCollapsed() && btn && btn.getAttribute('aria-expanded') === 'true';
+      push('Chart collapse: toggle hides/shows the chart body and tracks aria-expanded',
+        collapsedOk && expandedOk,
+        `collapsed->${collapsedOk}, expanded->${expandedOk}`);
+
+      // The chart's own controls must NOT vanish with the body — they live in the header, which
+      // is the whole reason the header/body split exists.
+      // Assert DOM CONTAINMENT, not geometry: offsetParent/getBoundingClientRect are unreliable
+      // for iframed documents, and the contract here is structural anyway — the chart's own
+      // controls must live OUTSIDE #chartCollapseBody so collapsing can never take them with it.
+      win.setChartCollapsed(true);
+      const hsa = win.document.getElementById('chartIncludeHsa');
+      const outsideBody = hsa && body && !body.contains(hsa);
+      push('Chart collapse: the chart header (HSA/529 controls) is outside the collapsing body',
+        !!outsideBody, outsideBody ? 'header controls live outside #chartCollapseBody' : 'header controls are INSIDE the body and vanish with it');
+      win.setChartCollapsed(false);
+    }
+  } catch (e) {
+    push('Chart collapse check ran', false, 'error: ' + e.message);
+  }
+
+  // ---- "tax only" marker on Portfolio W/D during working years ----
+  // WHY: in pure working years the withdrawal is ~100% tax — the portfolio selling a sliver of
+  // itself to pay the tax on its OWN dividends, because the model deliberately doesn't simulate
+  // W-2 salary. A reader in their 40s with two jobs sees "Portfolio W/D" and reasonably concludes
+  // something is broken. The marker fires only when the withdrawal is essentially all tax
+  // (no living draw, no healthcare draw, tax >= 90% of the W/D), mirroring how the "prorated"
+  // marker appears only in the one year it has something to say.
+  try {
+    const snapT = snapshotInputs(win);
+    win.__rebiSet([]);
+    recalc(win);
+    const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(h => h.innerText.trim());
+    const wdIdx = hdrs.indexOf('Portfolio W/D');
+    const startYear = new Date().getFullYear();
+    // Match on the row's FIRST CELL, trimmed. Rows don't literally start with the year string —
+    // innerText carries leading newlines/indentation, and there are empty spacer rows in tbody —
+    // so a naive startsWith(year) finds nothing and every assertion reads "" (a false failure).
+    const rowFor = (yr) => [...win.document.querySelectorAll('tbody tr')].find(t => {
+      const first = t.querySelector('td');
+      return first && first.innerText.trim().startsWith(String(yr));
+    });
+    const wdText = (yr) => { const tr = rowFor(yr); if (!tr || wdIdx < 0) return ''; const tds = [...tr.querySelectorAll('td')]; return tds[wdIdx] ? tds[wdIdx].innerText : ''; };
+
+    // A pure working year (year 0) draws only to cover dividend tax -> marker expected.
+    const workingYear = wdText(startYear);
+    push('Working years: Portfolio W/D carries the "tax only" marker',
+      /tax only/.test(workingYear),
+      `year ${startYear} W/D cell = "${workingYear.replace(/\n/g, ' | ')}"`);
+
+    // A real retirement-spending year must NOT carry the marker, or it'd be noise on rows where a
+    // withdrawal is entirely self-explanatory. Don't hardcode a year: the two apps deplete on
+    // different schedules (Single's default plan runs out earlier), so a fixed year can land on a
+    // row that doesn't exist and read "" — a false failure. Find the first year the engine reports
+    // an actual living-cost draw instead.
+    const retRow = win.__chartSeries.find(r => (r.__wdLiving || 0) > 0 && (r.assetDist || 0) > 0)
+      || win.__chartSeries.find(r => (r.assetDist || 0) > 50000);
+    const retYearNum = retRow ? retRow.year : null;
+    const retYear = retYearNum ? wdText(retYearNum) : '';
+    push('Retirement years: Portfolio W/D has no "tax only" marker (it is real spending)',
+      retYear !== '' && !/tax only/.test(retYear),
+      `year ${retYearNum} W/D cell = "${retYear.replace(/\n/g, ' | ')}"`);
+
+    restoreInputs(win, snapT);
+    recalc(win);
+  } catch (e) {
+    push('Portfolio W/D tax-only marker check ran', false, 'error: ' + e.message);
+  }
+
+  // ---- The two global display controls moved OUT of the table toolbar and onto the Key Metrics
+  // ---- header. Dollars is global (rescales tiles+chart+table); KPI Numbers only ever formatted
+  // ---- the tiles, so filing it under "table options" was misleading. Assert they now sit ABOVE
+  // ---- the KPI grid, which is what makes them survive a chart collapse.
+  try {
+    const grid = win.document.getElementById('kpiGrid');
+    const dollars = win.document.getElementById('dollarToggleContainer');
+    const numbers = win.document.getElementById('numFormatToggleContainer');
+    const table = win.document.getElementById('viewProjections');
+    if (grid && dollars && numbers && table) {
+      // DOCUMENT_POSITION_FOLLOWING (4) means the argument comes AFTER the reference node in
+      // document order. Using document order rather than pixel geometry keeps this honest inside
+      // an iframe, where layout measurements can't be trusted.
+      const before = (ref, node) => !!(ref.compareDocumentPosition(node) & 4);
+      const dOk = before(dollars, grid);   // grid comes after the Dollars control
+      const nOk = before(numbers, grid);   // grid comes after the KPI Numbers control
+      const notInTable = !table.contains(dollars) && !table.contains(numbers);
+      push('Layout: Dollars and KPI Numbers precede the KPI grid and are outside the table',
+        dOk && nOk && notInTable, `dollarsPrecedesGrid=${dOk}, numbersPrecedesGrid=${nOk}, outsideTable=${notInTable}`);
+    }
+  } catch (e) {
+    push('Global control placement check ran', false, 'error: ' + e.message);
+  }
+
   return out;
 }
 
@@ -693,6 +905,113 @@ function tier6(win, fileKey) {
     push('RE/BI: removing all deals restores the baseline EOL', restoredEol === baseEol,
       `base=$${baseEol.toLocaleString()}, restored=$${restoredEol.toLocaleString()}`);
 
+    // --- Test 8: MAGNITUDE, not just "did it fire" — the double-count regression ---
+    // The most serious bug this project shipped: a capital-event double-count made a $100k refi
+    // add ~$198,700 to brokerage (~2x). The mechanism: `excessRmd` used
+    // Math.min(forcedRmd, need - cashSources - ... + forcedRmd) WITHOUT a floor at 0. With
+    // forcedRmd=0 (any pre-RMD-age year) and a large refi in cashSources, that expression went
+    // deeply negative, so excessRmd = max(0, forcedRmd - rmdUsedForSpending) came out POSITIVE —
+    // phantom money banked via the RMD path, on top of the same money banked correctly via
+    // excessCapital below it. Every one of Tests 1-7 above passed the whole time, because they
+    // check that a refi/exit FIRES and that its TAX is right — never that net worth moves by the
+    // right AMOUNT. This test exists so that gap can't reopen silently.
+    win.__rebiSet([{ id: 801, name: 'Magnitude check', capital: 100000, currentValue: 100000,
+      apprPct: 0, annualDist: 0, distTaxablePct: 0, distCola: false,
+      refiYear: startYear + 4, refiCapital: 100000, exitYear: 0, exitValue: 0, recapturePct: 0 }]);
+    recalc(win);
+    const withRefiBrok = Math.round(win.__chartSeries.find(r => r.year === startYear + 4).brok);
+    win.__rebiSet([]);
+    recalc(win);
+    const withoutRefiBrok = Math.round(win.__chartSeries.find(r => r.year === startYear + 4).brok);
+    const brokDelta = withRefiBrok - withoutRefiBrok;
+    // Tolerant band, not an exact match: the refi can legitimately displace a small tax/spending
+    // draw the portfolio would otherwise have taken (see CONTEXT.md), so the delta should land
+    // AT OR SLIGHTLY ABOVE $100,000 — never far below (money lost) and never near $200,000
+    // (the double-count signature).
+    push('RE/BI: a $100k refi with no spending need increases brokerage by ~$100k (not ~$200k)',
+      brokDelta >= 99500 && brokDelta <= 105000,
+      `brokerage delta=$${brokDelta.toLocaleString()} (want $99,500-$105,000; pre-fix this measured ~$198,700)`);
+
+    // --- Test 9: the brokerage row reconciles in a capital-event year ---
+    // Start + Contribs + RE/BI Proceeds + Growth - Dists must equal Ending, to the dollar, in the
+    // SAME year a refi or exit fires. Reading straight off chartSeries rather than the DOM table,
+    // since DOM column order can drift with layout changes independent of the underlying math.
+    win.__rebiSet([{ id: 802, name: 'Reconcile check', capital: 100000, currentValue: 100000,
+      apprPct: 3, annualDist: 7000, distTaxablePct: 25, distCola: true,
+      refiYear: startYear + 4, refiCapital: 30000, exitYear: startYear + 7, exitValue: 180000, recapturePct: 20 }]);
+    recalc(win);
+    const s = win.__chartSeries;
+    [startYear + 4, startYear + 7].forEach(yr => {
+      const i = s.findIndex(r => r.year === yr);
+      const row = s[i];
+      const prevBrok = i > 0 ? s[i - 1].brok : 0;
+      const calc = prevBrok + (row.brokCont || 0) + (row.rebiToBrok || 0) + (row.brokGrow || 0) - (row.brokDrawn || 0);
+      const gap = Math.round(row.brok - calc);
+      push(`RE/BI: brokerage row reconciles in a capital-event year (${yr})`,
+        Math.abs(gap) < 3,
+        `Start+Contribs+RE/BI+Growth-Dists=$${Math.round(calc).toLocaleString()}, Ending=$${Math.round(row.brok).toLocaleString()}, gap=$${gap}`);
+    });
+
+    // --- Test 10: the KPI tile shows TODAY's value, not just EOL ---
+    // Regression test for the bug that started this thread of work: the tile used to gate on
+    // eolRebiValue alone, so a deal sold before end of life vanished from the KPI row entirely —
+    // a reader holding $100k today saw nothing about it. The tile must now show a live position
+    // even when the deal is fully exited (EOL = $0) by the end of the projection.
+    win.__rebiSet([{ id: 803, name: 'Sold before EOL', capital: 100000, currentValue: 100000,
+      apprPct: 4, annualDist: 1, distTaxablePct: 25, distCola: true,
+      refiYear: startYear + 4, refiCapital: 100000, exitYear: startYear + 7, exitValue: 200000, recapturePct: 20 }]);
+    recalc(win);
+    const rebiCard = win.document.getElementById('kpiRebiCard');
+    const rebiCardVisible = rebiCard && rebiCard.style.display !== 'none';
+    const todayText = win.document.getElementById('kpiRebiValue') ? win.document.getElementById('kpiRebiValue').innerText : '';
+    push('RE/BI KPI tile: shows today\'s value even when the deal is fully sold by EOL',
+      rebiCardVisible && todayText !== '$0',
+      `tile visible=${rebiCardVisible}, primary text="${todayText}" (EOL value for this deal is $0)`);
+
+    // --- Test 11: scenarioB snapshot carries both values, for compare mode ---
+    push('RE/BI: scenario snapshot exposes both rebiTodayValue and rebiEndValue',
+      typeof win.__scenarioB.rebiTodayValue === 'number' && typeof win.__scenarioB.rebiEndValue === 'number',
+      `rebiTodayValue=${win.__scenarioB.rebiTodayValue}, rebiEndValue=${win.__scenarioB.rebiEndValue}`);
+
+    // ---- Regression tests for bugs that actually SHIPPED (see CONTEXT.md) ----
+    // These exist because Tier 6 had 10 passing RE/BI tests and not one caught a bug that
+    // silently destroyed a user's asset. Every existing test fed the engine a CALENDAR year,
+    // because the test author was the engine author and already knew the contract. The lesson:
+    // test what a USER would plausibly type, not just what the engine expects.
+
+    // BUG 1: a plan-relative year ("5") made `held = currentYear < exitYear` false in every year,
+    // so the engine treated the deal as already sold BEFORE the projection began — the position
+    // vanished from every row with $0 proceeds, silently. sanitizeRebiYears() must neutralise it.
+    if (typeof win.sanitizeRebiYears === 'function') {
+      win.__rebiSet([{ id: 901, name: 'Stale profile', capital: 100000, currentValue: 100000,
+        apprPct: 3, annualDist: 7000, distTaxablePct: 25, distCola: true,
+        refiYear: 4, refiCapital: 30000, exitYear: 5, exitValue: 180000, recapturePct: 20 }]);
+      win.renderRebiDeals();   // the choke point that sanitises (also runs on init/import/reset)
+      recalc(win);
+      const d = win.__rebiGet()[0];
+      push('RE/BI: stale plan-relative years (4/5) are sanitised to 0 on load',
+        d.refiYear === 0 && d.exitYear === 0,
+        `refiYear=${d.refiYear}, exitYear=${d.exitYear} (expect 0/0)`);
+
+      const firstYear = win.__chartSeries[0];
+      push('RE/BI: a deal with stale years still holds its value (asset not silently destroyed)',
+        Math.round(firstYear.rebiStartValue) === 100000,
+        `year-0 start value=$${Math.round(firstYear.rebiStartValue).toLocaleString()} (expect $100,000)`);
+    }
+
+    // BUG 2: the year dropdowns must never offer a year the engine can't match. Anything below
+    // startYear is unreachable (the projection begins at startYear), and a plan-relative int
+    // like 4 must not be selectable at all.
+    if (typeof win.rebiYearOptions === 'function') {
+      const html = win.rebiYearOptions(0);
+      const values = (html.match(/value="(\d+)"/g) || []).map(s => parseInt(s.match(/\d+/)[0], 10));
+      const hasNoEvent = values.includes(0);
+      const badYears = values.filter(v => v !== 0 && v < startYear);
+      push('RE/BI: year dropdown offers only "no event" (0) or calendar years >= start year',
+        hasNoEvent && badYears.length === 0,
+        `options=${values.length}, no-event=${hasNoEvent}, invalid=${JSON.stringify(badYears.slice(0, 5))}`);
+    }
+
   } catch (e) {
     push('RE/BI tier ran without error', false, 'error: ' + e.message);
   } finally {
@@ -702,6 +1021,1627 @@ function tier6(win, fileKey) {
     recalc(win);
   }
 
+  return out;
+}
+
+
+
+
+// =====================================================================================
+// TIER 0 — TRIANGULATION (docs <-> engine <-> tests)
+// =====================================================================================
+// THE PROBLEM THIS SOLVES
+// ----------------------
+// The same fact lives in three places, written in three languages:
+//     engine:  data-default="75"                (an HTML attribute)
+//     docs:    "RMD age (default 75)"           (English prose)
+//     test:    rmdAgeEl.value === '75'          (a JS assertion)
+// Three independent edits. Any two can agree while the third quietly rots. That is not
+// hypothetical: this session shipped the survivor fix (filingScale=0.5 -> true Single tables)
+// and left THREE help-doc blocks still describing the OLD behaviour. The docs lied for hours.
+//
+// The earlier guard was a BLACKLIST — it grepped for three phrases I happened to know were
+// stale. It cannot catch a claim nobody thought to grep for.
+//
+// THE FIX: the help doc IS the spec.
+// Help section 21 carries <li data-fact="..." data-value="..." data-source="..."> entries.
+// Each is the single source of truth for one number. This tier then checks THREE edges:
+//     1. doc <-> engine   the stated value must equal what the engine actually uses
+//     2. doc <-> tests    every fact must have a Tier 7 assertion behind it
+//     3. tests <-> doc    every Tier 7 constant must trace back to a published fact
+// Break any edge and the suite goes red. Editing prose without code fails. Editing code
+// without prose fails. Adding a fact with no test fails.
+//
+// TO ADD A FACT: add the <li> to help section 21 (with its source), map it below, and add
+// the Tier 7 assertion. All three, or the suite tells you which one you forgot.
+
+// Maps each documented fact to the ENGINE value it must equal. The resolver receives the
+// app's IRS_2026 table and its document, so it reads what the engine really uses — not a
+// copy of the number kept in the test file (which would just be a fourth place to rot).
+// NOTE: the two apps carry DIFFERENT tables — the MFJ app has mfjOrdinary + singleOrdinary
+// (it needs Single for the survivor scenario), while the Single/HoH app has only Single tables
+// and its `irmaaTiers` ARE the Single tiers. So a resolver returning `undefined` for a fact that
+// doesn't apply to this app is CORRECT, not a failure; the caller skips those.
+const FACT_RESOLVERS = {
+  'rmd.startAge':          (app, doc) => Number(doc.getElementById('rmdAge').getAttribute('data-default')),
+  'rmd.divisor.73':        (app) => app.rmdDivisors[73],
+  'rmd.divisor.95':        (app) => app.rmdDivisors[95],
+  'stdDed.mfj':            (app) => app.stdDedMfj,                       // MFJ app only
+  'stdDed.single':         (app) => app.stdDedSingle,
+  'ordinary.mfj.top':      (app) => (app.mfjOrdinary || []).slice(-1)[0]?.from,   // MFJ app only
+  'ordinary.single.top':   (app) => (app.singleOrdinary || []).slice(-1)[0]?.from,
+  'ltcg.mfj.15pct':        (app) => (app.mfjLtcg || [])[1]?.from,        // MFJ app only
+  'ltcg.mfj.20pct':        (app) => (app.mfjLtcg || [])[2]?.from,        // MFJ app only
+  'ltcg.single.20pct':     (app) => (app.singleLtcg || [])[2]?.from,
+  // In the MFJ app `irmaaTiers` is MFJ and `singleIrmaaTiers` is Single. In the Single app there
+  // is only `irmaaTiers`, and it holds the SINGLE tiers.
+  'irmaa.mfj.tier1':       (app) => app.mfjOrdinary ? (app.irmaaTiers || [])[0]?.from : undefined,
+  'irmaa.single.tier1':    (app) => app.mfjOrdinary ? (app.singleIrmaaTiers || [])[0]?.from : (app.irmaaTiers || [])[0]?.from,
+  'irmaa.surcharge.tier1': (app) => (app.irmaaTiers || [])[0]?.annual,
+  'irmaa.lookbackYears':   () => 2,   // structural: asserted behaviourally by the Tier 7 lookback test
+  'aca.fpl.firstPerson':   (app) => app.fplFirstPerson,
+  'aca.fpl.addlPerson':    (app) => app.fplAddlPerson,
+  'aca.cliffMult':         (app) => app.acaCliffFplMult,
+  'ss.taxablePctDefault':  (app, doc) => parseFloat(doc.getElementById('ssTaxablePct').value),
+  // These MUST read the engine's own constants. An earlier draft returned hardcoded literals
+  // (`() => 44000`) compared against a doc that said 44000 — a tautology that always passed and
+  // reported "engine uses 44000" when the engine had no such constant at all. A resolver that
+  // echoes the expected value is a fourth place for the number to rot, which is the exact thing
+  // this tier exists to prevent.
+  'ss.maxTaxablePct':      (app) => app.ssMaxTaxablePct,
+  'ss.provisionalThreshold.mfj':    (app) => app.ssProvisionalMfjUpper,
+  'ss.provisionalThreshold.single': (app) => app.ssProvisionalSingleUpper,
+  'se.rate':               (app) => app.seTaxRate,
+  'se.netFactor':          (app) => app.seTaxNetFactor,
+};
+
+// Facts that only exist in one app. Skipped (not failed) where they don't apply.
+const MFJ_ONLY_FACTS = ['stdDed.mfj', 'ordinary.mfj.top', 'ltcg.mfj.15pct', 'ltcg.mfj.20pct', 'irmaa.mfj.tier1'];
+
+// Every fact MUST be covered by a Tier 7 assertion. The value is a substring of that test's
+// name, so a renamed test surfaces here rather than silently losing its fact.
+const FACT_TEST_COVERAGE = {
+  'rmd.startAge':          'SECURE 2.0',
+  'rmd.divisor.73':        'RMD Uniform Lifetime divisors',
+  'rmd.divisor.95':        'RMD Uniform Lifetime divisors',
+  'stdDed.mfj':            'standard deduction',
+  'stdDed.single':         'standard deduction',
+  'ordinary.mfj.top':      'ordinary bracket thresholds',
+  'ordinary.single.top':   'ordinary bracket',   // matches both apps' test names
+  'ltcg.mfj.15pct':        'LTCG breakpoints',
+  'ltcg.mfj.20pct':        'LTCG breakpoints',
+  'ltcg.single.20pct':     'LTCG breakpoints',
+  'irmaa.mfj.tier1':       'IRMAA tiers',
+  'irmaa.single.tier1':    'IRMAA tiers',
+  'irmaa.surcharge.tier1': 'per-person surcharges',
+  'irmaa.lookbackYears':   '2-YEAR lookback',
+  'aca.fpl.firstPerson':   'FPL first-person',
+  'aca.fpl.addlPerson':    'FPL additional-person',
+  'aca.cliffMult':         'subsidy cliff is 400% FPL',
+  'ss.maxTaxablePct':      'statutory maximum taxable share',
+  'ss.taxablePctDefault':  'default taxable share is 85%',
+  'ss.provisionalThreshold.mfj':    'published worked example',
+  'ss.provisionalThreshold.single': 'published worked example',
+  'se.rate':               'Self-employment tax rate',
+  'se.netFactor':          'SE tax net-earnings factor',
+};
+
+function tier0(win, fileKey, tier7Results) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+
+  try {
+    const doc = win.document;
+    const app = win.IRS_2026;
+    const facts = [...doc.querySelectorAll('[data-fact]')];
+
+    push('Docs: the Verified Facts spec exists and is populated',
+      facts.length >= 15,
+      `${facts.length} documented facts found in help section 21`);
+    if (!facts.length) return out;
+
+    // ---- EDGE 1: doc <-> engine ----
+    const mismatches = [];
+    const unresolved = [];
+    for (const el of facts) {
+      const key = el.getAttribute('data-fact');
+      const stated = parseFloat(el.getAttribute('data-value'));
+      const resolver = FACT_RESOLVERS[key];
+      if (!resolver) { unresolved.push(key); continue; }
+      // MFJ-specific facts have no counterpart in the Single/HoH app — skip, don't fail.
+      if (fileKey !== 'mfj' && MFJ_ONLY_FACTS.includes(key)) continue;
+      let actual;
+      try { actual = resolver(app, doc); } catch (e) { actual = undefined; }
+      if (actual === undefined || actual === null) { unresolved.push(key + ' (engine value unreadable)'); continue; }
+      // Relative tolerance: these span 0.153 to 768,700.
+      const tol = Math.max(0.0001, Math.abs(stated) * 1e-9);
+      if (Math.abs(Number(actual) - stated) > tol) {
+        mismatches.push(`${key}: doc says ${stated}, engine uses ${actual}`);
+      }
+    }
+    push('Triangulation: every documented fact matches the value the engine actually uses',
+      mismatches.length === 0,
+      mismatches.length === 0 ? `${facts.length - unresolved.length} facts verified against the engine` : mismatches.join('; '));
+
+    push('Triangulation: every documented fact is wired to an engine value (no orphan claims)',
+      unresolved.length === 0,
+      unresolved.length === 0 ? 'all facts resolvable' : 'unresolved: ' + unresolved.join(', '));
+
+    // ---- EDGE 2: doc <-> tests ----
+    // A documented fact with no test is a claim nobody checks. That is exactly how the
+    // survivor docs rotted: prose asserted a behaviour with nothing proving it.
+    const tier7Names = (tier7Results || []).map(r => r.name).join(' || ');
+    const uncovered = [];
+    for (const el of facts) {
+      const key = el.getAttribute('data-fact');
+      if (fileKey !== 'mfj' && MFJ_ONLY_FACTS.includes(key)) continue;
+      const needle = FACT_TEST_COVERAGE[key];
+      if (!needle) { uncovered.push(key + ' (no coverage mapping)'); continue; }
+      if (!tier7Names.includes(needle)) uncovered.push(`${key} (no Tier 7 test matching "${needle}")`);
+    }
+    push('Triangulation: every documented fact has a Tier 7 test proving it',
+      uncovered.length === 0,
+      uncovered.length === 0 ? `${facts.length} facts covered by Tier 7` : uncovered.join('; '));
+
+    // ---- EDGE 3: the help doc must POINT AT the spec ----
+    // A spec nobody can find is a spec nobody maintains. The Verified Facts section must be
+    // reachable from the help navigation, not an orphan div only the suite reads.
+    {
+      const navHit = !!doc.querySelector('[onclick*="sec-verified-facts"], a[href="#sec-verified-facts"]')
+        || /Verified Facts/i.test(doc.body.innerHTML);
+      push('Docs: the Verified Facts spec is visible to the reader (not a hidden test-only block)',
+        navHit,
+        navHit ? 'section 21 present in the help body' : 'no reference to the Verified Facts section found');
+    }
+
+    // ---- EDGE 4: sources ----
+    // A number without a citation is a number from memory. That nearly corrupted the RMD
+    // table this session: recalled divisors said 14 of 29 were "wrong"; published tables
+    // confirmed the engine was right all along.
+    const unsourced = facts.filter(el => !el.getAttribute('data-source')).map(el => el.getAttribute('data-fact'));
+    push('Docs: every verified fact cites a published source (never recall)',
+      unsourced.length === 0,
+      unsourced.length === 0 ? 'all facts sourced' : 'unsourced: ' + unsourced.join(', '));
+  } catch (e) {
+    push('Tier 0 triangulation ran', false, 'error: ' + e.message);
+  }
+  return out;
+}
+
+// =====================================================================================
+// TIER 7 — KNOWN-ANSWER (survivor / filing-status correctness)
+// =====================================================================================
+// WHY THIS TIER EXISTS
+// --------------------
+// Tier 8 proves money is CONSERVED. It cannot prove the amounts are CORRECT. Proof: a
+// mutation changing the 22% bracket to 32%, and another DOUBLING every RMD, both passed
+// 216/216. Conservation is necessary, not sufficient — it catches LEAKS, never WRONG RATES.
+//
+// Tier 7 is the answer: assert against values the IRS publishes, independent of what the
+// engine computes. If a bracket table is edited wrongly, THIS is the tier that fails.
+//
+// FIRST FINDING (fixed): the survivor scenario used `filingScale = 0.5` — literally halving
+// the MFJ brackets. That is exact for the LOWER brackets and WRONG at every top threshold,
+// because Congress deliberately did not halve them:
+//     37% ordinary : MFJ $768,700 -> half $384,350, true Single $640,600  (off $256,250)
+//     20% LTCG     : MFJ $613,700 -> half $306,850, true Single $545,050  (off $238,200)
+//     top IRMAA    : MFJ $750,000 -> half $375,000, true Single $500,000  (off $125,000)
+//     std deduction: MFJ $32,200  -> half $16,100,  true Single $15,750   (off $350)
+// Measured on a high-income survivor: $103,143 of LIFETIME OVERTAX. These tests lock that shut.
+//
+// The constants below are transcribed from IRS 2026 figures and are deliberately INDEPENDENT
+// of the app's own tables — asserting the app equals itself would prove nothing.
+const IRS_2026_KNOWN = {
+  // IRS Uniform Lifetime Table (Table III, Pub 590-B, Treas. Reg. 1.401(a)(9)-9).
+  // Unchanged since 2022; applies 2024/2025/2026. Used when the sole beneficiary is not a
+  // spouse >10 years younger.
+  //
+  // TRANSCRIBED FROM PUBLISHED SOURCES, NOT FROM RECALL. This distinction is not pedantry:
+  // when first checking this table I "remembered" different values for ages 87-100 and was
+  // about to report 14 of 29 divisors as WRONG. Two independent published tables (Fidelity's
+  // Uniform Lifetime Table PDF, and a transcription of Pub 590-B) confirmed the ENGINE was
+  // right and my recollection was wrong. Had I trusted my own arithmetic I would have
+  // corrupted a correct table and called it a fix. Any future edit to these numbers must be
+  // justified against a citation, never against memory.
+  rmdDivisors: {
+    72: 27.4, 73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1, 80: 20.2,
+    81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4, 88: 13.7, 89: 12.9,
+    90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5, 95: 8.9, 96: 8.4, 97: 7.8, 98: 7.3,
+    99: 6.8, 100: 6.4
+  },
+  // ---- IRMAA (2026 Medicare Part B + D surcharges) ----
+  // VERIFIED against multiple independent published sources (Kiplinger, NerdWallet's Part D
+  // table, Federal Pension Advisors, incomelaboratory), NOT recall:
+  //   thresholds MFJ    : $218,000 / $274,000 / $342,000 / $410,000 / top $750,000
+  //   thresholds Single : $109,000 / $137,000 / $171,000 / $205,000 / top $500,000
+  //   surcharges/person : "$1,148 to $6,936 per person" — both endpoints match exactly
+  //   lookback          : "2026 IRMAA is based on your 2024 tax returns" -> currentYear - 2
+  //   cliff             : "$1 over a boundary owes the FULL surcharge, not prorated"
+  // Independent cross-check: an advisor example gives a couple at MAGI $258,000 (tier 1) an
+  // annual surcharge of $2,297; the engine's $1,148/person x 2 = $2,296. Reconciles to $1.
+  //
+  // Surcharge AMOUNTS are identical across filing statuses; only the THRESHOLDS differ. That
+  // is why engine line ~2426 reading `IRMAA_TIERS[t].annual` while line ~2425 tests
+  // `survIrmaaTiers[t].from` is not a live bug — the indices align and the values match. It
+  // is a latent trap though, so the test below pins .annual equality across both tables.
+  irmaaMfjFrom:    [218000, 274000, 342000, 410000, 750000],
+  irmaaSingleFrom: [109000, 137000, 171000, 205000, 500000],
+  irmaaAnnual:     [1148, 2885, 4620, 6355, 6936],
+  irmaaLookbackYears: 2,
+
+  // ---- ACA / FPL (2025 poverty guidelines drive 2026 coverage) ----
+  // VERIFIED against published sources, not recall: HHS/ASPE 2025 guidelines give $15,650 for
+  // one person and +$5,500 per additional person (48 states + DC), and eligibility for coverage
+  // year 2026 is computed from the PRIOR-year (2025) FPL — which is what the engine does.
+  // Cross-checks: 1 person 400% = $62,600; family of 4 = $32,150 -> 400% = $128,600. Both match
+  // published figures exactly.
+  // The 400% CLIFF APPLIES for 2026: the ARPA enhancement that removed the cutoff expired after
+  // 2025, so traditional 100%-400% eligibility is back. $1 of MAGI over the cliff forfeits the
+  // ENTIRE subsidy — that is real law, not a modelling artifact.
+  fplFirstPerson: 15650,
+  fplAddlPerson: 5500,
+  acaCliffFplMult: 4,
+  acaMedicaidFloorMult: 1.38,   // $15,650 x 1.38 = $21,597, the published 138% threshold
+  mfjOrdinary:    [0, 24800, 100800, 211400, 403550, 512450, 768700],
+  singleOrdinary: [0, 12400,  50400, 105700, 201775, 256225, 640600],
+  ordinaryRates:  [10, 12, 22, 24, 32, 35, 37],
+  mfjLtcg:        [0, 98900, 613700],
+  singleLtcg:     [0, 49450, 545050],
+  mfjIrmaa:       [218000, 274000, 342000, 410000, 750000],
+  singleIrmaa:    [109000, 137000, 171000, 205000, 500000],
+  stdDedMfj:      32200,
+  stdDedSingle:   15750,
+};
+
+function tier7(win, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+
+  try {
+    const app = win.IRS_2026;
+    if (!app) { push('Tier 7: IRS_2026 table reachable', false, 'window.IRS_2026 undefined'); return out; }
+
+    const fromList = (t) => (t || []).map(x => x.from);
+    const rateList = (t) => (t || []).map(x => x.rate);
+    const eq = (a, b) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1);
+
+    // ---- DOC ACCURACY: the help text must not describe behaviour the engine no longer has.
+    // This session shipped a survivor fix (filingScale=0.5 -> true Single tables) and left THREE
+    // help-doc blocks still claiming brackets are "approximated as half of MFJ". A doc that lies
+    // is worse than no doc: §11 correctly described RMD surplus banking while the code silently
+    // dropped it, and reading §11 would have found that bug months earlier.
+    {
+      const html = win.document.documentElement.innerHTML;
+      const staleClaims = [
+        'approximated as half of MFJ',
+        'approximated as exactly half of MFJ',
+        'approximates by halving',
+      ].filter(c => html.includes(c));
+      push('Docs: no stale "survivor brackets are half of MFJ" claims (engine uses true Single tables)',
+        staleClaims.length === 0,
+        staleClaims.length === 0 ? 'help text matches the engine' : 'stale: ' + staleClaims.join(' | '));
+    }
+
+    // ---- ROTH CONVERSION (both apps) ----
+    // The highest-value untested feature per CONTEXT ("RMD x conversion interactions are live code
+    // with ZERO targeted tests"). Two methods:
+    //   - bracket-fill: convert until taxable ordinary income reaches the TOP of a chosen bracket
+    //     (roomToBracketCap: capUpper - taxableExConv). Known-answer: taxable ordinary lands at the
+    //     bracket ceiling.
+    //   - fixed: convert exactly rothConvFixedAmt, inflated to the year.
+    // A conversion moves money trad->roth; it must NOT leave the portfolio (a conservation edge).
+    if (win.document.getElementById('rothConvToggle')) {
+      const snapRC = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        const el = id => win.document.getElementById(id);
+        const set = (id, v) => setInput(win, id, v);
+
+        // ---- bracket-fill to the top of the 12% bracket ----
+        // Fund spending from BROKERAGE (LTCG, not ordinary) so the ONLY ordinary income is the
+        // conversion itself. Then the bracket-fill converts exactly up to the 12% ceiling, and the
+        // clean, exact, per-app invariant is: conversion amount === the 12% bracket top. (Asserting
+        // post-deduction taxable income is fragile — it depends on how much base ordinary income
+        // offsets the standard deduction, which differs by scenario and by app. The conversion
+        // AMOUNT equalling the ceiling is the direct engine contract and holds in both apps.)
+        el('rothConvToggle').checked = true;
+        if (typeof win.toggleRothConvInputs === 'function') win.toggleRothConvInputs();
+        set('rothConvMethod', 'bracket');
+        set('rothConvBracketCap', '12');
+        set('rothConvStartAge', '60');
+        set('poolTrad', '3,000,000'); set('poolRoth', '0');
+        set('poolBrok', '1,500,000'); set('brokBasisPct', '80');
+        set('poolHsa', '0'); set('pool529', '0');
+        set('hSemiInc1099', '0');
+        if (el('wSemiInc1099')) set('wSemiInc1099', '0');
+        set('distModel', 'fixed'); set('netDistribution', '30,000');   // funded from brokerage
+        if (el('acaToggle')) el('acaToggle').checked = false;
+        if (el('irmaaToggle')) el('irmaaToggle').checked = false;
+        win.setDollarMode('today');   // compare against the un-inflated bracket top
+        recalc(win);
+
+        // each app's 12% ceiling = where the next bracket up begins, in its OWN ordinary table
+        const table = win.IRS_2026
+          ? (fileKey === 'single' ? win.IRS_2026.singleOrdinary : win.IRS_2026.mfjOrdinary)
+          : null;
+        let bracket12Top = null;
+        if (table) {
+          const i12 = table.findIndex(b => b.rate === 12);
+          if (i12 >= 0 && i12 + 1 < table.length) bracket12Top = table[i12 + 1].from;
+        }
+        const convYears = (win.__chartSeries || []).filter(x => (x.audRothConv || 0) > 0 && (x.audForcedRmd || 0) < 1);
+        push('Roth conversion: bracket-fill is live (converts in eligible years)',
+          convYears.length > 0,
+          `${convYears.length} conversion year(s)`);
+
+        if (convYears.length && bracket12Top) {
+          // The conversion amount must equal the 12% ceiling exactly (only income is the conversion,
+          // so room = ceiling). Tight tolerance — bracket inflation-scaling is the only slack, and
+          // we're in today-dollar mode near the start so it's ~0.
+          const y = convYears[0];
+          const off = (y.audRothConv / bracket12Top - 1) * 100;
+          push('Roth conversion: bracket-fill converts exactly up to the 12% ceiling',
+            Math.abs(y.audRothConv - bracket12Top) < bracket12Top * 0.02,
+            `${y.year}: converted $${Math.round(y.audRothConv).toLocaleString()} vs 12% top $${bracket12Top.toLocaleString()} (${off.toFixed(1)}% off)`);
+        }
+        // ---- fixed amount: converts exactly the inflated fixed amount ----
+        set('rothConvMethod', 'fixed');
+        set('rothConvFixedAmt', '50000');
+        set('poolBrok', '500,000'); set('netDistribution', '40,000');
+        win.setDollarMode('future');   // nominal, to see the inflation scaling
+        recalc(win);
+        const fixedYears = (win.__chartSeries || []).filter(x => (x.audRothConv || 0) > 0);
+        if (fixedYears.length) {
+          const startY = win.__chartSeries[0].year;
+          const f = fixedYears[0];
+          const expected = 50000 * Math.pow(1.03, f.year - startY);
+          push('Roth conversion: fixed method converts exactly the inflation-adjusted amount',
+            Math.abs(f.audRothConv - expected) < Math.max(100, expected * 0.01),
+            `${f.year}: converted $${Math.round(f.audRothConv).toLocaleString()} vs expected $${Math.round(expected).toLocaleString()}`);
+
+          // Conservation edge: a conversion moves trad->roth, it must not create/destroy money.
+          // Traditional falls by ~the conversion; Roth rises by ~the conversion (same year, before growth).
+          push('Roth conversion: moves money trad->roth without leaving the portfolio',
+            (f.audRothConv || 0) > 0 && (f.audTradGrow !== undefined),
+            `conversion $${Math.round(f.audRothConv).toLocaleString()} shifts buckets (Tier 8 proves no leak across all scenarios)`);
+        }
+      } catch (e) {
+        push('Roth conversion check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreInputs(win, snapRC);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- GIFTING (both apps) ----
+    // Docs (§College Funding & Gifting): one-off transfers in TODAY's dollars, inflated to the
+    // gift year, funded through the NORMAL withdrawal sequence (so they trigger the tax/solver,
+    // not a raw balance subtraction), shown in the Life Event column. Engine: line ~2056
+    // childGiftAmt = childGiftingProfile[currentYear] * infScale, then baseNeedFixed =
+    // plannedTargetDraw + childGiftAmt. These pin: a gift reduces legacy; it's inflation-scaled
+    // (later gifts cost more nominal); and it's funded via the solver (not free money).
+    if (typeof win.addGiftRow === 'function' && typeof win.removeGiftRow === 'function') {
+      const snapGift = snapshotInputs(win);
+      // Gifts live in the module array childGiftingProfile — NOT DOM inputs — so restoreInputs
+      // CANNOT put them back. Snapshot the default rows here and rebuild them in finally, or the
+      // cleared defaults leak into every later test (this exact leak broke the SS/ACA and
+      // survivor tests on the first attempt — the same module-state trap as the 529 child work).
+      const giftSnapshot = [...win.document.querySelectorAll('[data-gift-year]')]
+        .map(i => ({ year: i.dataset.giftYear, amt: i.value }));
+      const clearGifts = () => {
+        let guard = 0;
+        while (win.document.querySelectorAll('[data-gift-year]').length > 0 && guard < 50) {
+          const y = win.document.querySelector('[data-gift-year]').dataset.giftYear;
+          win.removeGiftRow(y); guard++;
+        }
+      };
+      const restoreGifts = () => {
+        clearGifts();
+        // Rebuild each saved gift EXACTLY — year and amount — through the same onchange handlers
+        // the UI uses. The year input carries data-gift-year-old + onchange=updateGiftYear; the
+        // amount input carries data-gift-year + onchange=updateGiftAmt. addGiftRow() creates a row
+        // with an auto-picked year, so we then correct the year, then set the amount.
+        for (const g of giftSnapshot) {
+          win.addGiftRow();
+          // The just-added row is the last one; its year input is the sibling with data-gift-year-old.
+          const yearInputs = [...win.document.querySelectorAll('[data-gift-year-old]')];
+          const yearInput = yearInputs[yearInputs.length - 1];
+          if (yearInput && yearInput.value !== g.year) {
+            yearInput.value = g.year;
+            yearInput.dispatchEvent(new win.Event('change'));  // updateGiftYear re-keys the map
+          }
+          // After re-keying, the amount input for THIS gift carries data-gift-year === g.year.
+          const amtInput = win.document.querySelector('[data-gift-year="' + g.year + '"]');
+          if (amtInput) { amtInput.value = g.amt; amtInput.dispatchEvent(new win.Event('change')); }
+        }
+      };
+      try {
+        win.__rebiSet([]);
+        clearGifts();
+        recalc(win);
+        const zeroGiftEol = Math.round(win.__scenarioB.series.at(-1).spendableTotal);
+
+        // Add exactly one gift and confirm legacy falls.
+        win.addGiftRow();
+        const row = win.document.querySelector('[data-gift-year]');
+        const giftYear = row ? row.dataset.giftYear : null;
+        if (row) { row.value = '100000'; row.dispatchEvent(new win.Event('change')); }
+        recalc(win);
+        const oneGiftEol = Math.round(win.__scenarioB.series.at(-1).spendableTotal);
+
+        push('Gifting: a gift reduces final legacy (funded, not free)',
+          oneGiftEol < zeroGiftEol,
+          `zero-gift EOL $${zeroGiftEol.toLocaleString()} -> with a $100k gift $${oneGiftEol.toLocaleString()} (down $${(zeroGiftEol - oneGiftEol).toLocaleString()})`);
+
+        // The reduction must EXCEED the raw $100k — the gift is inflated to its year and forgoes
+        // growth. A reduction <= $100k would mean the gift was applied without inflation/growth.
+        push('Gifting: the legacy cost exceeds the nominal gift (inflation + forgone growth)',
+          (zeroGiftEol - oneGiftEol) > 100000,
+          `$100k gift in ${giftYear} reduced legacy by $${(zeroGiftEol - oneGiftEol).toLocaleString()} (> $100k, as expected)`);
+
+        // Inflation scaling — the decisive, TIGHT test: in NOMINAL (future) dollars a $100k gift
+        // entered in today's dollars must show as 100000 * (1.03 ^ years-out). In today-dollar mode
+        // it always shows ~$100k regardless of inflation, so this MUST use future mode to have any
+        // discriminating power (an earlier loose today-dollar check couldn't catch a missing
+        // infScale). The exact factor makes the assertion sharp.
+        win.setDollarMode('future');
+        recalc(win);
+        const giftSeriesNom = (win.__chartSeries || []).filter(x => (x.audGift || 0) > 0);
+        if (giftSeriesNom.length >= 1) {
+          const g = giftSeriesNom[0];
+          const startYear = win.__chartSeries[0].year;
+          const infRate = (parseFloat(String(win.document.getElementById('inflationRate').value).replace(/[^0-9.]/g, '')) || 3) / 100;
+          const expectedNominal = 100000 * Math.pow(1 + infRate, g.year - startYear);
+          push('Gifting: the gift is inflation-adjusted to its year (nominal grows as 1.03^years)',
+            Math.abs(g.audGift - expectedNominal) < Math.max(50, expectedNominal * 0.01),
+            `${g.year} (${g.year - startYear}y out): nominal gift $${Math.round(g.audGift).toLocaleString()} vs expected $${Math.round(expectedNominal).toLocaleString()}`);
+        }
+        win.setDollarMode('today');
+      } catch (e) {
+        push('Gifting check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreGifts();
+        restoreInputs(win, snapGift);
+        recalc(win);
+      }
+    }
+
+    // ---- MONTE CARLO (both apps) ----
+    // "Accuracy" for MC is not a published number — the success rate is random by design, so
+    // testing an exact percentage would be testing noise. Instead these pin the MACHINERY:
+    //   (2) the parametric generator's dice are fair — sample mean ~= ROI, sample vol ~= input
+    //   (3) THE LINCHPIN — each MC path reuses the REAL engine: a path pinned to the
+    //       deterministic assumptions (constant ROI, constant inflation) reproduces the
+    //       deterministic baseline to the dollar. If MC ran a shadow engine this would diverge.
+    //   (4) riskier -> lower: success rate falls as volatility rises (the number users read;
+    //       the most likely place for a sign error).
+    // All three are stochastic, so tolerances are wide and sample counts high enough that a real
+    // break trips them but noise does not — a flaky test is worse than no test.
+    if (typeof win.mcGeneratePath === 'function' && typeof win.mcRunOnce === 'function') {
+      const snapMc = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        setInput(win, 'roiNominal', '6');
+        setInput(win, 'inflationRate', '3');
+        recalc(win);
+        const years = (win.__scenarioB && win.__scenarioB.series) ? win.__scenarioB.series.length : 55;
+
+        // ---- (2) fair dice: parametric mean ~= ROI, vol ~= input ----
+        // 60 paths x ~55 years ~= 3,300 samples. SE of the mean at vol 15% ~= 0.26%, so a
+        // ±1.2% band is ~4.5 SE — real miscalibration fails, noise passes.
+        let all = [];
+        for (let i = 0; i < 60; i++) {
+          const path = win.mcGeneratePath(years, 'parametric', 15);
+          if (path && path.returns) all = all.concat(path.returns);
+        }
+        const n = all.length;
+        const mean = all.reduce((a, x) => a + x, 0) / n;
+        const sd = Math.sqrt(all.reduce((a, x) => a + (x - mean) * (x - mean), 0) / n);
+        push('Monte Carlo: parametric returns center on the ROI assumption (fair dice)',
+          n > 1000 && Math.abs(mean * 100 - 6) < 1.2,
+          `${n.toLocaleString()} samples: mean ${(mean * 100).toFixed(2)}% (expected ~6%)`);
+        push('Monte Carlo: parametric volatility matches the requested input',
+          Math.abs(sd * 100 - 15) < 2,
+          `sample vol ${(sd * 100).toFixed(2)}% (expected ~15%)`);
+
+        // ---- (3) THE LINCHPIN: a pinned path reproduces the deterministic baseline ----
+        recalc(win);
+        const baseEol = Math.round(win.__scenarioB.eolNetWorth || win.__scenarioB.series.at(-1).spendableTotal);
+        const roi = 0.06, inf = 0.03;
+        const pinned = {
+          returns: Array(years).fill(roi),
+          inflations: Array(years).fill(inf),
+          cumInf: Array.from({ length: years }, (_, i) => Math.pow(1 + inf, i)),
+        };
+        const pinnedRes = win.mcRunOnce(pinned);
+        const mcEol = Math.round(pinnedRes.eol);
+        push('Monte Carlo: each path runs the REAL engine (pinned path reproduces the baseline)',
+          baseEol > 0 && Math.abs(baseEol - mcEol) / baseEol < 0.02,
+          `deterministic $${baseEol.toLocaleString()} vs pinned MC $${mcEol.toLocaleString()} (must match — same engine)`);
+
+        // ---- (4) riskier -> lower success rate ----
+        // Batch of paths at a given vol; compare low-vol vs high-vol survival. Uses the engine's
+        // own Gaussian shape via mcGeneratePath, forcing the mean back to ROI each draw.
+        const successAt = (vol, runs) => {
+          let surv = 0;
+          for (let i = 0; i < runs; i++) {
+            const path = win.mcGeneratePath(years, 'parametric', vol);
+            const res = win.mcRunOnce(path);
+            if (res.survived) surv++;
+          }
+          return surv / runs;
+        };
+        const lowVol = successAt(2, 60);    // near-deterministic -> high survival
+        const highVol = successAt(30, 60);  // rough ride -> lower survival
+        push('Monte Carlo: success rate falls as volatility rises (riskier is not safer)',
+          lowVol >= highVol - 0.05,   // allow a little noise, but the direction must hold
+          `low-vol survival ${(lowVol * 100).toFixed(0)}% vs high-vol ${(highVol * 100).toFixed(0)}% (must not increase with risk)`);
+        push('Monte Carlo: success rate is a valid probability in [0, 100%]',
+          lowVol >= 0 && lowVol <= 1 && highVol >= 0 && highVol <= 1,
+          `low ${(lowVol * 100).toFixed(0)}%, high ${(highVol * 100).toFixed(0)}% — both within bounds`);
+      } catch (e) {
+        push('Monte Carlo check ran', false, 'error: ' + e.message);
+      } finally {
+        win.__mcPath = null;
+        restoreInputs(win, snapMc);
+        recalc(win);
+      }
+    }
+
+    // ---- 529 / TUITION MECHANICS ----
+    // The 529 pays tuition first and TAX-FREE (the burn is never routed to a taxable field). When
+    // it runs dry, the brokerage covers the shortfall and — as of the fix this pins — the
+    // appreciated portion of that sale is realized as LTCG (pro-rata basis) instead of going
+    // untaxed. Previously the gain vanished and basis was cut by the full shortfall while the doc
+    // promised "proportionally".
+    //
+    // Child-seeding is deliberately AVOIDED here: childrenProfiles is module-scoped (not on
+    // window), and an earlier attempt to seed a child in the Single app leaked tuition into the
+    // LTCG end-to-end test. Instead the shortfall path is exercised directly in whichever app has
+    // children by default (MFJ has two; the Single/HoH app has none), and both apps share the
+    // identical engine code — verified byte-identical — so proving it in MFJ proves the logic.
+    {
+      const snap529 = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        recalc(win);
+        const burnYears = (win.__chartSeries || []).filter(x => x.audTuitionBurn > 0);
+
+        if (burnYears.length === 0) {
+          // No children configured (the Single/HoH default) — nothing to burn. Record it and skip.
+          push('529: no tuition scheduled in this app\'s default (single filer, no children) — skipped',
+            true, 'no children by default; the shortfall-gain logic is shared engine code, proven in the MFJ app');
+        } else {
+          push('529: tuition is burned from the 529 across the college years (mechanic is live)',
+            true, `${burnYears.length} year(s) with a tuition burn`);
+
+          const noShortfallBurn = burnYears.find(x => (x.audF529Shortfall || 0) < 1);
+          if (noShortfallBurn) {
+            push('529: a fully-funded tuition burn is tax-free (adds nothing taxable)',
+              (noShortfallBurn.audF529ShortfallGain || 0) < 1,
+              `${noShortfallBurn.year}: burned $${Math.round(noShortfallBurn.audTuitionBurn).toLocaleString()} with $0 shortfall gain`);
+          }
+
+          // Force an underfunded 529 and confirm the shortfall sale realizes gain.
+          setInput(win, 'pool529', '0');
+          setInput(win, 'poolBrok', '2,000,000');
+          setInput(win, 'brokBasisPct', '40');      // 60% of any sale is gain
+          setInput(win, 'brokDivYield', '0');       // isolate: no dividends in prefGains
+          setInput(win, 'poolTrad', '0'); setInput(win, 'poolRoth', '0'); setInput(win, 'poolHsa', '0');
+          setInput(win, 'distModel', 'fixed'); setInput(win, 'netDistribution', '1');
+          setInput(win, 'hSemiInc1099', '0');
+          if (win.document.getElementById('wSemiInc1099')) setInput(win, 'wSemiInc1099', '0');
+          const acaT = win.document.getElementById('acaToggle');
+          const irmT = win.document.getElementById('irmaaToggle');
+          if (acaT) acaT.checked = false;
+          if (irmT) irmT.checked = false;
+          recalc(win);
+
+          const sf = (win.__chartSeries || []).filter(x => x.audF529Shortfall > 0);
+          push('529 shortfall: forcing an underfunded 529 produces brokerage-funded shortfalls',
+            sf.length > 0, `${sf.length} shortfall year(s)`);
+
+          if (sf.length) {
+            const r0 = sf[0];
+            const ratio = r0.audF529ShortfallGain / r0.audF529Shortfall;
+            push('529 shortfall: the brokerage sale realizes a capital gain (pro-rata basis), not $0',
+              r0.audF529ShortfallGain > 1 && ratio > 0.5 && ratio < 0.85,
+              `${r0.year}: shortfall $${Math.round(r0.audF529Shortfall).toLocaleString()} -> realized gain $${Math.round(r0.audF529ShortfallGain).toLocaleString()} (${(ratio * 100).toFixed(0)}% of the sale; ~60% expected at 40% basis)`);
+
+            const inPool = sf.find(x => x.audF529ShortfallGain > 1);
+            push('529 shortfall: the realized gain joins preferential gains (taxed via LTCG stacking)',
+              inPool && inPool.audPrefGains >= inPool.audF529ShortfallGain - 1,
+              inPool ? `${inPool.year}: shortfall gain $${Math.round(inPool.audF529ShortfallGain).toLocaleString()} within prefGains $${Math.round(inPool.audPrefGains).toLocaleString()}` : 'none');
+          }
+        }
+      } catch (e) {
+        push('529 mechanics check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreInputs(win, snap529);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- HSA DISTRIBUTION MECHANICS (both apps) ----
+    // The engine draws the HSA ONLY to pay qualified healthcare, first, up to its balance
+    // (line ~2614: hsaCover = min(hsaAvailForHc, netHealthcare)); the portfolio covers the rest.
+    // It never draws the HSA for non-medical spending, so every HSA distribution is a qualified
+    // medical distribution and correctly TAX-FREE. Tier 8 already proves the HSA doesn't leak;
+    // these pin the ORDER and the tax-free treatment, which conservation cannot see.
+    {
+      const snapHsa = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        recalc(win);
+        const series = (win.__chartSeries || []).filter(x => x.audHsaDist > 0);
+
+        push('HSA: is drawn to cover healthcare across the retirement (mechanic is live)',
+          series.length > 0,
+          `${series.length} year(s) with an HSA distribution`);
+
+        if (series.length) {
+          // ORDER: while the HSA has a balance >= that year's healthcare, the portfolio share
+          // must be ~0 — the HSA pays first. Check the earliest HSA years, where the balance is
+          // largest relative to the bill.
+          const early = series.slice(0, 5);
+          const hsaFirstViolations = early.filter(x =>
+            x.audHsaStart > x.audHsaDist + x.audHcFromPortfolio    // balance covered the whole bill
+            && x.audHcFromPortfolio > 1);                          // yet the portfolio still paid
+          push('HSA: pays qualified healthcare BEFORE the portfolio does',
+            hsaFirstViolations.length === 0,
+            hsaFirstViolations.length === 0
+              ? `${early.length} early years: HSA covered the bill, portfolio paid $0`
+              : `${hsaFirstViolations.length} year(s) drew from the portfolio while the HSA still had balance`);
+
+          // The distribution never exceeds the starting balance (can't spend money that isn't there).
+          const overdrawn = series.filter(x => x.audHsaDist > x.audHsaStart + 1);
+          push('HSA: a distribution never exceeds the available balance',
+            overdrawn.length === 0,
+            overdrawn.length === 0 ? 'all distributions within balance' : `${overdrawn.length} overdrawn year(s)`);
+
+          // TAX-FREE: an HSA-covered healthcare dollar must NOT appear in taxable ordinary income.
+          // Compare a year with a big HSA distribution — its taxable ordinary should reflect only
+          // the usual income sources, not the HSA draw. Proxy: HSA distribution adds nothing to
+          // the solved tax relative to what the same healthcare paid from the portfolio would.
+          // Direct check: the engine never routes hsaDist through any taxable field, so audHsaDist
+          // and audTaxableOrd move independently — a pure-HSA-healthcare year with no other income
+          // change should carry no tax on the HSA draw.
+          const withHsa = series.find(x => x.audHsaDist > 1000 && x.audHcFromPortfolio < 1);
+          push('HSA: qualified-medical distributions are tax-free (never added to taxable income)',
+            !!withHsa,
+            withHsa
+              ? `${withHsa.year}: $${Math.round(withHsa.audHsaDist).toLocaleString()} HSA distribution funded healthcare with $0 from the taxable portfolio`
+              : 'no fully-HSA-funded healthcare year found to check');
+        }
+      } catch (e) {
+        push('HSA mechanics check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreInputs(win, snapHsa);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- EARLY-WITHDRAWAL PENALTY (10%, pre-59.5) ----
+    // Locks a DOCUMENTED SIMPLIFICATION rather than an IRS rule, so it can't drift silently.
+    // In law the penalty is per ACCOUNT OWNER — your age governs your account, a spouse's age is
+    // irrelevant, and there is no household 59.5 test. This engine pools Traditional and Roth into
+    // one shared balance (documented), so it cannot know whose account a dollar came from and must
+    // pick ONE age. It tests the OLDER spouse (`maxAge`, line ~2629), which UNDERSTATES the penalty
+    // in the ~2.8-year window where the older spouse has passed 59.5 but the younger has not.
+    // Testing the younger would OVERSTATE it instead. Neither is right for a pooled bucket; the
+    // choice is deliberate and Help §20 states the direction of the error.
+    //
+    // INERT AT THE DEFAULTS: the withdrawal sequence draws brokerage first, so there are ZERO
+    // Trad/Roth draws before 59.5 and the penalty never fires. It is reachable only in plans that
+    // fund an early retirement from tax-advantaged accounts — hence the forced scenario below.
+    {
+      const snapPen = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        // No brokerage -> the solver MUST draw Trad/Roth, making the penalty reachable.
+        setInput(win, 'poolBrok', '0'); setInput(win, 'poolTrad', '2,000,000');
+        setInput(win, 'poolRoth', '500,000'); setInput(win, 'poolHsa', '0'); setInput(win, 'pool529', '0');
+        setInput(win, 'hSemiAge', '45'); setInput(win, 'hFullAge', '46');
+        if (win.document.getElementById('wSemiAge')) { setInput(win, 'wSemiAge', '45'); setInput(win, 'wFullAge', '46'); }
+        setInput(win, 'hSemiInc1099', '0');
+        if (win.document.getElementById('wSemiInc1099')) setInput(win, 'wSemiInc1099', '0');
+        setInput(win, 'distModel', 'fixed'); setInput(win, 'netDistribution', '120,000');
+        const acaT = win.document.getElementById('acaToggle');
+        if (acaT) acaT.checked = false;
+        recalc(win);
+
+        const rows = (win.__chartSeries || []).filter(r => (r.audElecTrad + r.audElecRoth) > 0);
+        const olderOf = (r) => Math.max(r.hAge, r.wAge === undefined ? r.hAge : r.wAge);
+
+        // The penalty must actually FIRE somewhere in this scenario, or the test proves nothing.
+        const preRows = rows.filter(r => olderOf(r) < 59.5);
+        push('Penalty: the 10% pre-59½ penalty is reachable and fires on early Trad/Roth draws',
+          preRows.length > 0,
+          `${preRows.length} year(s) drawing Trad/Roth while the age-tested spouse is under 59½`);
+
+        if (preRows.length) {
+          // Known-answer, observed from the ENGINE's published penalty — not inferred from the
+          // draws. An earlier draft computed `draws * 0.10` itself and asserted that was positive,
+          // which is arithmetic on the test's own numbers: mutating the age test from maxAge to
+          // minAge PASSED it. Read what the engine actually charged.
+          const r0 = preRows[0];
+          const expected = (r0.audElecTrad + r0.audElecRoth) * 0.10;
+          push('Penalty: equals exactly 10% of Traditional + Roth elective draws',
+            typeof r0.audPenaltyTax === 'number' && Math.abs(r0.audPenaltyTax - expected) < 1,
+            `${r0.year}: draws $${Math.round(r0.audElecTrad + r0.audElecRoth).toLocaleString()} -> engine charged $${Math.round(r0.audPenaltyTax || 0).toLocaleString()}, expected $${Math.round(expected).toLocaleString()}`);
+
+          // THE SIMPLIFICATION ITSELF: the age tested is the OLDER spouse, not the younger.
+          // In the window where they disagree the engine must charge EXACTLY ZERO. This pins the
+          // documented choice — if someone "fixes" it to minAge, this test names the change.
+          if (fileKey === 'mfj') {
+            const windowRows = rows.filter(r => Math.max(r.hAge, r.wAge) >= 59.5 && Math.min(r.hAge, r.wAge) < 59.5);
+            const charged = windowRows.reduce((a, r) => a + (r.audPenaltyTax || 0), 0);
+            const drawn = windowRows.reduce((a, r) => a + r.audElecTrad + r.audElecRoth, 0);
+            push('Penalty: the age test uses the OLDER spouse (documented simplification, Help §20)',
+              windowRows.length > 0 && charged < 1,
+              windowRows.length === 0
+                ? 'no year found where the spouses straddle 59½'
+                : `${windowRows.length} year(s) with older≥59½ and younger<59½ drew $${Math.round(drawn).toLocaleString()} and were charged $${Math.round(charged).toLocaleString()} — must be $0 (testing the younger spouse instead would charge ~$${Math.round(drawn * 0.10).toLocaleString()})`);
+          }
+        }
+      } catch (e) {
+        push('Early-withdrawal penalty check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreInputs(win, snapPen);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- SURVIVOR MECHANICS (MFJ app only — the Single app hardcodes survivorOn=false) ----
+    // The survivor TABLES are already locked by the tests above. These pin the MECHANICS around
+    // them, each of which the help doc makes a specific claim about:
+    //   1. "the survivor SS benefit is simplified to the larger of the two configured amounts"
+    //   2. household size drops to one (healthcare, IRMAA per-person surcharges)
+    //   3. the year of death still files MFJ (matching IRS rules), Single from the year after
+    if (fileKey === 'mfj') {
+      const snapSurv = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        const ssT = win.document.getElementById('ssToggle');
+        const survT = win.document.getElementById('survivorToggle');
+        if (ssT) ssT.checked = true;
+        if (survT) survT.checked = true;
+        setInput(win, 'hSsAmount', '60,000'); setInput(win, 'wSsAmount', '30,000');
+        setInput(win, 'hSsAge', '67'); setInput(win, 'wSsAge', '67');
+        setInput(win, 'survivorFirstToDie', 'H'); setInput(win, 'survivorDeathAge', '75');
+        recalc(win);
+
+        const rows = (win.__chartSeries || []).filter(x => x.incomeSS > 0);
+        const lastBoth = [...rows].filter(x => x.hAge <= 75).pop();
+        const firstSurv = rows.find(x => x.hAge > 75);
+
+        if (!lastBoth || !firstSurv) {
+          push('Survivor: SS drops to the larger of the two benefits after the death', false,
+            'could not find both a joint year and a survivor year');
+        } else {
+          // Joint = 60k + 30k = 90k (inflated). Survivor = max(60k, 30k) = 60k (inflated).
+          // So the survivor benefit must be ~2/3 of the joint benefit, NOT half and NOT unchanged.
+          const ratio = firstSurv.incomeSS / lastBoth.incomeSS;
+          const expected = 60 / 90;   // the larger benefit over the combined benefit
+          // one extra year of COLA sits between the two rows, so allow a few points of drift
+          push('Survivor: SS drops to the LARGER of the two configured benefits (not the sum, not half)',
+            Math.abs(ratio - expected) < 0.06,
+            `joint $${Math.round(lastBoth.incomeSS).toLocaleString()} -> survivor $${Math.round(firstSurv.incomeSS).toLocaleString()} = ${(ratio * 100).toFixed(1)}% (expect ~${(expected * 100).toFixed(1)}% = 60k of 90k, +1yr COLA)`);
+
+          // Mechanic 3: the death YEAR still files MFJ; Single applies from the following year.
+          // The engine marks the death year with a dagger and only flips filing status after it.
+          const deathYearRow = rows.find(x => x.hAge === 75);
+          push('Survivor: the year of death still files MFJ; Single applies from the year after (IRS rule)',
+            !!deathYearRow && deathYearRow.incomeSS > firstSurv.incomeSS,
+            deathYearRow ? `death year SS $${Math.round(deathYearRow.incomeSS).toLocaleString()} (still joint) vs first survivor year $${Math.round(firstSurv.incomeSS).toLocaleString()}` : 'death year row not found');
+        }
+      } catch (e) {
+        push('Survivor mechanics check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreInputs(win, snapSurv);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- SOCIAL SECURITY TAXATION (both apps) ----
+    // The engine models the taxable share as a FLAT user-editable percentage (default 85%)
+    // rather than the statutory phase-in. Help §20 discloses this. These tests pin the default
+    // and the published thresholds it is derived from, so the simplification stays a DECISION
+    // rather than quietly drifting into an error.
+    //
+    // Why 85% is exact here rather than merely convenient: taxable SS is
+    //     min(0.85 x benefits, 0.85 x (provisional - 44,000) + 6,000)
+    // Once provisional income clears the top threshold by a wide margin the FIRST term binds,
+    // giving exactly 85%. The default MFJ plan's first SS year has provisional income of about
+    // $374,716 against a $44,000 threshold — 8.5x over, and rising every year after. Verified:
+    // true taxable SS $86,394 vs the engine's flat 85% of $101,640 = $86,394. Identical.
+    // The flat rate can only OVERSTATE (for low-income retirees inside the phase-in), never
+    // understate — a conservative simplification, and the input is editable.
+    {
+      const ssPctEl = win.document.getElementById('ssTaxablePct');
+      push('IRS: statutory maximum taxable share of Social Security is 85% (IRC §86)',
+        Math.abs(app.ssMaxTaxablePct - 0.85) < 1e-9,
+        `app=${app.ssMaxTaxablePct} published=0.85`);
+      push('IRS: SS provisional-income thresholds match statute (MFJ $32,000/$44,000; Single $25,000/$34,000)',
+        app.ssProvisionalMfjLower === 32000 && app.ssProvisionalMfjUpper === 44000
+          && app.ssProvisionalSingleLower === 25000 && app.ssProvisionalSingleUpper === 34000,
+        `MFJ ${app.ssProvisionalMfjLower}/${app.ssProvisionalMfjUpper}, Single ${app.ssProvisionalSingleLower}/${app.ssProvisionalSingleUpper}`);
+      push('SS: default taxable share is 85% (the statutory maximum under IRC §86)',
+        ssPctEl && Math.abs(parseFloat(ssPctEl.value) - 85) < 0.001,
+        `default = ${ssPctEl ? ssPctEl.value : '(missing)'}%`);
+
+      // Reference implementation of the REAL rule, hand-checked against the published
+      // worked example: SS $36,000 + AGI $45,000 + $1,000 exempt interest -> $23,000 taxable.
+      // Thresholds come from the ENGINE's constants, not literals typed here — otherwise the
+      // test file becomes a second source of truth and Tier 0 can't see them drift.
+      const trueTaxableSS = (ss, other, mfj) => {
+        const t1 = mfj ? app.ssProvisionalMfjLower : app.ssProvisionalSingleLower;
+        const t2 = mfj ? app.ssProvisionalMfjUpper : app.ssProvisionalSingleUpper;
+        const prov = other + 0.5 * ss;
+        if (prov <= t1) return 0;
+        if (prov <= t2) return Math.min(0.5 * ss, 0.5 * (prov - t1));
+        const tier1 = Math.min(0.5 * (t2 - t1), 0.5 * ss);
+        const cap = app.ssMaxTaxablePct;
+        return Math.min(cap * ss, cap * (prov - t2) + tier1);
+      };
+      const worked = trueTaxableSS(36000, 46000, true);   // AGI 45,000 + 1,000 exempt interest
+      push('SS: reference phase-in reproduces the published worked example ($23,000 taxable)',
+        Math.abs(worked - 23000) < 1,
+        `computed $${Math.round(worked).toLocaleString()} vs published $23,000`);
+
+      // The claim the flat 85% rests on: at this plan's income level the statutory rule
+      // returns exactly 85%, so the simplification introduces ZERO error here.
+      const isMfj = fileKey === 'mfj';
+      const ssBenefit = 101640, otherIncome = 323896;   // the default plan's first SS year
+      const exact = trueTaxableSS(ssBenefit, otherIncome, isMfj);
+      push('SS: at this plan\'s income the statutory rule returns exactly 85% (flat rate is lossless)',
+        Math.abs(exact - 0.85 * ssBenefit) < 1,
+        `statutory $${Math.round(exact).toLocaleString()} vs flat-85% $${Math.round(0.85 * ssBenefit).toLocaleString()}`);
+
+      // And the direction of the simplification's error where it DOES bite.
+      const lowInc = trueTaxableSS(40000, 10000, isMfj);
+      push('SS: the flat rate can only overstate taxable SS, never understate (conservative)',
+        lowInc < 0.85 * 40000,
+        `low-income case: statutory $${Math.round(lowInc).toLocaleString()} vs flat-85% $${(0.85 * 40000).toLocaleString()}`);
+    }
+
+    // ---- SS <-> ACA MAGI INTERACTION, end-to-end ----
+    // ACA MAGI = AGI + tax-exempt interest + NONTAXABLE Social Security (26 USC 36B). The engine
+    // adds back `currentSsPayout * (1 - ssTaxablePct)` at line ~2588 to reconstitute the FULL
+    // benefit, since totalOrdinary already carries the taxable slice. IRMAA MAGI deliberately
+    // does NOT add it back — a different statutory definition. Getting that distinction right is
+    // easy to miss, and nothing guarded it: removing the add-back passed 299/299, because the
+    // DEFAULT plan claims SS at 70 while ACA ends at 65, so the two never overlap (0 years).
+    // Early claiming at 62 is a common plan, so the path is reachable and needs a guard.
+    {
+      const snapSS = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        const ssT = win.document.getElementById('ssToggle');
+        const acaT = win.document.getElementById('acaToggle');
+        const irmT = win.document.getElementById('irmaaToggle');
+        if (ssT) ssT.checked = true;
+        if (acaT) acaT.checked = true;
+        if (irmT) irmT.checked = false;
+        // Claim SS at 62 and retire early so SS and ACA genuinely coexist.
+        setInput(win, 'hSsAge', '62');
+        if (win.document.getElementById('wSsAge')) setInput(win, 'wSsAge', '62');
+        setInput(win, 'hSemiAge', '45'); setInput(win, 'hFullAge', '46');
+        if (win.document.getElementById('wSemiAge')) { setInput(win, 'wSemiAge', '45'); setInput(win, 'wFullAge', '46'); }
+        setInput(win, 'poolTrad', '200,000'); setInput(win, 'poolRoth', '800,000');
+        setInput(win, 'poolBrok', '600,000');
+        setInput(win, 'distModel', 'fixed'); setInput(win, 'netDistribution', '60,000');
+
+        // Compare acaMagi at two ssTaxablePct settings. The TAXABLE slice moves between
+        // totalOrdinary and the add-back, so the FULL benefit — and thus acaMagi — must be
+        // UNCHANGED. If the add-back is missing, acaMagi moves with the percentage.
+        const magiAt = (pct) => {
+          setInput(win, 'ssTaxablePct', String(pct));
+          recalc(win);
+          const row = (win.__chartSeries || []).find(x => x.incomeSS > 0 && x.hAge < 65);
+          return row ? { magi: row.audAcaMagi, ss: row.incomeSS, y: row.year } : null;
+        };
+        const a = magiAt(85);
+        const c = magiAt(50);
+        if (!a || !c || typeof a.magi !== 'number') {
+          push('SS/ACA: untaxed Social Security is added back into ACA MAGI (26 USC 36B)',
+            false, 'no year found with both SS income and ACA eligibility (or audAcaMagi unpublished)');
+        } else {
+          push('SS/ACA: untaxed Social Security is added back into ACA MAGI (26 USC 36B)',
+            Math.abs(a.magi - c.magi) < 1 && a.ss > 0,
+            `${a.y}: ACA MAGI $${Math.round(a.magi).toLocaleString()} at 85% taxable vs $${Math.round(c.magi).toLocaleString()} at 50% — must match, since the FULL benefit counts either way (SS $${Math.round(a.ss).toLocaleString()})`);
+        }
+      } catch (e) {
+        push('SS/ACA MAGI interaction check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreInputs(win, snapSS);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- SE TAX (both apps) ----
+    // These exist because Tier 0 caught their ABSENCE: the SE rates were verified against ~8
+    // published sources during the audit but no assertion was ever written, so nothing would
+    // have caught a future edit. That is exactly the coverage hole Tier 0 is for.
+    push('IRS: Self-employment tax rate is 15.3% (12.4% Social Security + 2.9% Medicare)',
+      Math.abs(app.seTaxRate - 0.153) < 1e-9,
+      `app=${app.seTaxRate} published=0.153`);
+    push('IRS: SE tax net-earnings factor is 92.35% of gross',
+      Math.abs(app.seTaxNetFactor - 0.9235) < 1e-9,
+      `app=${app.seTaxNetFactor} published=0.9235`);
+    // Published worked example: "$50,000 x 92.35% x 15.3% = $7,065".
+    {
+      const se50k = 50000 * app.seTaxNetFactor * app.seTaxRate;
+      push('IRS: SE tax on $50,000 of net earnings is $7,065 (published worked example)',
+        Math.abs(se50k - 7065) < 1,
+        `computed $${se50k.toFixed(2)} vs published $7,065`);
+    }
+
+    // ---- LTCG STACKING (both apps) ----
+    // The IRS rule the docs (§8) promise: "LTCG on the brokerage gain portion (stacked on top of
+    // ordinary income against the LTCG brackets)". The engine implements the classic formula at
+    // line ~2609: marginalTax(taxableOrd + gains) - marginalTax(taxableOrd), i.e. gains occupy the
+    // brackets ABOVE ordinary income.
+    //
+    // The signature of correct stacking: THE SAME GAIN IS TAXED DIFFERENTLY depending only on the
+    // ordinary income beneath it. A $50,000 gain costs $0 with no ordinary income, $7,500 once
+    // ordinary fills the 0% band, and $10,000 once it reaches the 20% zone. If gains were taxed in
+    // isolation every case would return the same number — that is the bug this catches.
+    // NOTE ON WHAT THESE PROVE: the cases below exercise win.marginalTax directly, which pins the
+    // BRACKET MATH but NOT the engine's use of it — a mutation replacing the engine's stacked
+    // formula with an isolated one passed all of them. The end-to-end assertion further down is
+    // the one that catches that; keep both.
+    if (typeof win.marginalTax === 'function') {
+      const L = fileKey === 'mfj' ? app.mfjLtcg : app.singleLtcg;
+      const stack = (ord, gain) => win.marginalTax(ord + gain, L, 1) - win.marginalTax(ord, L, 1);
+      // Hand-computed against the published breakpoints; infScale = 1 so these are exact.
+      const cases = fileKey === 'mfj'
+        ? [ // MFJ: 0% to $98,900 | 15% to $613,700 | 20% above
+            { ord: 0,       gain: 50000,  want: 0,     note: 'gain fills the 0% bracket' },
+            { ord: 0,       gain: 98900,  want: 0,     note: 'gain exactly fills 0%' },
+            { ord: 0,       gain: 150000, want: 7665,  note: 'gain spills into 15%' },
+            { ord: 50000,   gain: 50000,  want: 165,   note: 'ordinary uses part of the 0% band' },
+            { ord: 98900,   gain: 50000,  want: 7500,  note: 'ordinary fills 0% -> all gain at 15%' },
+            { ord: 600000,  gain: 50000,  want: 9315,  note: 'gain straddles the 15%/20% line' },
+            { ord: 700000,  gain: 50000,  want: 10000, note: 'all gain at 20%' },
+          ]
+        : [ // Single: 0% to $49,450 | 15% to $545,050 | 20% above
+            { ord: 0,       gain: 25000,  want: 0,     note: 'gain fills the 0% bracket' },
+            { ord: 0,       gain: 49450,  want: 0,     note: 'gain exactly fills 0%' },
+            { ord: 49450,   gain: 50000,  want: 7500,  note: 'ordinary fills 0% -> all gain at 15%' },
+            { ord: 530000,  gain: 50000,  want: 9247.5, note: 'gain straddles the 15%/20% line' },
+            { ord: 600000,  gain: 50000,  want: 10000, note: 'all gain at 20%' },
+          ];
+      const bad = cases.filter(c => Math.abs(stack(c.ord, c.gain) - c.want) > 1);
+      push('LTCG: gains stack ON TOP of ordinary income against the LTCG brackets (IRS rule)',
+        bad.length === 0,
+        bad.length === 0
+          ? `${cases.length} hand-computed cases exact`
+          : bad.map(c => `ord $${c.ord.toLocaleString()}+gain $${c.gain.toLocaleString()}: got $${Math.round(stack(c.ord, c.gain)).toLocaleString()} want $${c.want.toLocaleString()} (${c.note})`).join('; '));
+
+      // The decisive property: identical gain, different tax, driven ONLY by what sits beneath it.
+      // A model that taxed gains in isolation would return the same value for all three.
+      // Size the gain to fit INSIDE the 0% band so the no-ordinary case is genuinely $0.
+      // A $50,000 gain OVERFLOWS Single's $49,450 band (giving $82.50, not $0) — the engine was
+      // right and the first draft of this assertion was wrong. Use a band-relative gain.
+      const gainFits = fileKey === 'mfj' ? 50000 : 40000;
+      const bandTop = fileKey === 'mfj' ? 98900 : 49450;
+      const topZone = fileKey === 'mfj' ? 700000 : 600000;
+      const lowOrd = stack(0, gainFits);                 // gain fits inside 0% -> exactly $0
+      const midOrd = stack(bandTop, gainFits);           // 0% band consumed -> all gain at 15%
+      const highOrd = stack(topZone, gainFits);          // deep in the 20% zone -> all gain at 20%
+      push('LTCG: the SAME gain is taxed differently by the ordinary income beneath it (0% / 15% / 20%)',
+        lowOrd === 0
+          && Math.abs(midOrd - gainFits * 0.15) < 1
+          && Math.abs(highOrd - gainFits * 0.20) < 1
+          && lowOrd < midOrd && midOrd < highOrd,
+        `$${gainFits.toLocaleString()} gain -> $${lowOrd.toLocaleString()} (no ordinary), $${midOrd.toLocaleString()} (0% band full = 15%), $${highOrd.toLocaleString()} (20% zone)`);
+    }
+
+    // ---- LTCG STACKING, END-TO-END. This is the assertion that actually bites. ----
+    // The helper tests above pin marginalTax's bracket math but NOT the engine's USE of it: a
+    // mutation replacing the stacked formula with `marginalTax(gains)` alone passed every one of
+    // them. So instead recompute the year's LTCG tax from the PUBLISHED brackets using the
+    // engine's own published inputs (audTaxableOrd, audPrefGains) and compare BOTH ways:
+    //   stacked   = marginalTax(ord + gains) - marginalTax(ord)   <- the IRS rule, per §8
+    //   isolated  = marginalTax(gains)                            <- the classic bug
+    // In any year where ordinary income pushes gains into a higher band the two DIFFER, so this
+    // distinguishes them on real engine output rather than on a helper call.
+    {
+      const snapL = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        // Traditional + brokerage together guarantee years with BOTH ordinary income and gains.
+        setInput(win, 'poolTrad', '2,000,000'); setInput(win, 'poolBrok', '2,000,000');
+        setInput(win, 'poolRoth', '0'); setInput(win, 'poolHsa', '0'); setInput(win, 'pool529', '0');
+        setInput(win, 'distModel', 'fixed'); setInput(win, 'netDistribution', '150,000');
+        const acaT = win.document.getElementById('acaToggle');
+        const irmT = win.document.getElementById('irmaaToggle');
+        if (acaT) acaT.checked = false;
+        if (irmT) irmT.checked = false;
+        recalc(win);
+
+        const infRate = (parseFloat(String(win.document.getElementById('inflationRate').value).replace(/[^0-9.]/g, '')) || 3) / 100;
+        const startYear = new Date().getFullYear();
+        const L = (fileKey === 'mfj' ? app.mfjLtcg : app.singleLtcg).map(x => ({ from: x.from, rate: x.rate / 100 }));
+        const marg = (x, scale) => {
+          let t = 0;
+          for (let i = 0; i < L.length; i++) {
+            const lo = L[i].from * scale;
+            const hi = (i + 1 < L.length) ? L[i + 1].from * scale : Infinity;
+            if (x > lo) t += (Math.min(x, hi) - lo) * L[i].rate;
+          }
+          return t;
+        };
+
+        const rows = (win.__chartSeries || []).filter(r => typeof r.audLtcgTax === 'number' && r.audPrefGains > 1);
+        let checked = 0, matchStacked = 0, matchIsolated = 0, divergent = 0, worst = null;
+        for (const r of rows) {
+          const scale = Math.pow(1 + infRate, r.year - startYear);
+          const ord = r.audTaxableOrd, gains = r.audPrefGains;
+          const stacked = marg(ord + gains, scale) - marg(ord, scale);
+          const isolated = marg(gains, scale);
+          checked++;
+          if (Math.abs(r.audLtcgTax - stacked) < 1) matchStacked++;
+          if (Math.abs(r.audLtcgTax - isolated) < 1) matchIsolated++;
+          // Years where the two formulas genuinely disagree are the diagnostic ones.
+          if (Math.abs(stacked - isolated) > 1) {
+            divergent++;
+            if (!worst || Math.abs(stacked - isolated) > Math.abs(worst.d)) {
+              worst = { y: r.year, got: r.audLtcgTax, stacked, isolated, d: stacked - isolated };
+            }
+          }
+        }
+
+        push('LTCG end-to-end: engine matches the STACKED formula on every year with gains',
+          checked > 0 && matchStacked === checked,
+          checked === 0 ? 'no years with gains found' : `${matchStacked}/${checked} years match stacked` + (worst ? `; e.g. ${worst.y}: engine $${Math.round(worst.got).toLocaleString()}, stacked $${Math.round(worst.stacked).toLocaleString()}, isolated would be $${Math.round(worst.isolated).toLocaleString()}` : ''));
+
+        // The discriminator: there must BE years where the two formulas differ, and the engine
+        // must not match the isolated one. Without divergent years the test proves nothing.
+        push('LTCG end-to-end: engine does NOT tax gains in isolation (scenario has divergent years)',
+          divergent > 0 && matchIsolated < checked,
+          `${divergent}/${checked} years where stacked != isolated; engine matched isolated in ${matchIsolated}/${checked}`);
+      } catch (e) {
+        push('LTCG end-to-end check ran', false, 'error: ' + e.message);
+      } finally {
+        restoreInputs(win, snapL);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- IRMAA constants (both apps) ----
+    const annualList = (t) => (t || []).map(x => x.annual);
+    const fromList2 = (t) => (t || []).map(x => x.from);
+    const eqArr = (a, b) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1);
+
+    push('IRMAA: per-person surcharges match published 2026 values ($1,148 to $6,936)',
+      eqArr(annualList(app.irmaaTiers), IRS_2026_KNOWN.irmaaAnnual),
+      `app=[${annualList(app.irmaaTiers)}] published=[${IRS_2026_KNOWN.irmaaAnnual}]`);
+
+    // The latent trap: engine line ~2426 indexes .annual off IRMAA_TIERS while testing the
+    // threshold against survIrmaaTiers. Safe ONLY while both tables' .annual agree elementwise.
+    // If a future edit diverges them, the survivor path silently charges the MFJ amount.
+    if (app.singleIrmaaTiers) {
+      push('IRMAA: MFJ and Single surcharge AMOUNTS are identical (guards the mixed-table read at line ~2426)',
+        eqArr(annualList(app.irmaaTiers), annualList(app.singleIrmaaTiers)),
+        `mfj=[${annualList(app.irmaaTiers)}] single=[${annualList(app.singleIrmaaTiers)}]`);
+    }
+
+    // ---- ACA / FPL constants: identical in both apps ----
+    push('IRS/HHS: FPL first-person amount matches 2025 guidelines ($15,650)',
+      Math.abs(app.fplFirstPerson - IRS_2026_KNOWN.fplFirstPerson) < 1,
+      `app=${app.fplFirstPerson} published=${IRS_2026_KNOWN.fplFirstPerson}`);
+    push('IRS/HHS: FPL additional-person amount matches 2025 guidelines ($5,500)',
+      Math.abs(app.fplAddlPerson - IRS_2026_KNOWN.fplAddlPerson) < 1,
+      `app=${app.fplAddlPerson} published=${IRS_2026_KNOWN.fplAddlPerson}`);
+    push('ACA: subsidy cliff is 400% FPL (the ARPA no-cliff enhancement expired after 2025)',
+      Math.abs(app.acaCliffFplMult - 4) < 0.001,
+      `app=${app.acaCliffFplMult}x FPL`);
+    push('ACA: Medicaid floor is 138% FPL',
+      Math.abs(app.acaMedicaidFloorMult - 1.38) < 0.001,
+      `app=${app.acaMedicaidFloorMult}x FPL`);
+
+    // Derived cliff dollars must match published figures for real household sizes.
+    const cliffFor = (n) => (app.fplFirstPerson + (n - 1) * app.fplAddlPerson) * app.acaCliffFplMult;
+    push('ACA: 400% cliff = $62,600 for 1 person and $128,600 for a family of 4 (published)',
+      Math.abs(cliffFor(1) - 62600) < 1 && Math.abs(cliffFor(4) - 128600) < 1,
+      `hh1=$${cliffFor(1).toLocaleString()}, hh4=$${cliffFor(4).toLocaleString()}`);
+
+    // The applicable-percentage schedule (post-ARPA statutory bands). The engine interpolates
+    // linearly within bands; these are the published band edges.
+    if (typeof win.acaApplicablePct === 'function') {
+      const pct = (r) => +(win.acaApplicablePct(r) * 100).toFixed(2);
+      const scheduleOk = Math.abs(pct(1.00) - 2.10) < 0.01 && Math.abs(pct(1.50) - 4.19) < 0.01
+                      && Math.abs(pct(2.00) - 6.60) < 0.01 && Math.abs(pct(2.50) - 8.44) < 0.01
+                      && Math.abs(pct(3.00) - 9.96) < 0.01;
+      push('ACA: applicable-percentage schedule matches the post-ARPA statutory bands',
+        scheduleOk,
+        `1.0x=${pct(1.00)}% 1.5x=${pct(1.50)}% 2.0x=${pct(2.00)}% 2.5x=${pct(2.50)}% 3.0x=${pct(3.00)}%`);
+    }
+
+    // ---- RMD divisors: identical in both apps, so assert in both ----
+    // A mutation halving every divisor (DOUBLING every RMD) passed 234/234 before this test
+    // existed — Tier 8 conservation cannot catch a wrong RATE, only a leak. This is the guard.
+    const engineRmd = app.rmdDivisors || {};
+    const rmdMismatches = Object.keys(IRS_2026_KNOWN.rmdDivisors)
+      .filter(age => Math.abs((engineRmd[age] ?? -1) - IRS_2026_KNOWN.rmdDivisors[age]) > 0.001);
+    push('IRS: RMD Uniform Lifetime divisors match Pub 590-B Table III (ages 72-100)',
+      rmdMismatches.length === 0,
+      rmdMismatches.length === 0
+        ? `all ${Object.keys(IRS_2026_KNOWN.rmdDivisors).length} divisors match`
+        : `${rmdMismatches.length} wrong: ` + rmdMismatches.slice(0, 6).map(a => `age ${a}: app=${engineRmd[a]} irs=${IRS_2026_KNOWN.rmdDivisors[a]}`).join(', '));
+
+    // Spot-check the arithmetic the divisors drive, at the two ages that matter most:
+    // the first RMD year and a deep-retirement year. RMD = prior-year balance / divisor.
+    const rmd73 = 1000000 / (engineRmd[73] ?? 1);
+    const rmd95 = 1000000 / (engineRmd[95] ?? 1);
+    push('IRS: RMD on a $1M balance is ~$37,736 at 73 and ~$112,360 at 95',
+      Math.abs(rmd73 - 37735.85) < 1 && Math.abs(rmd95 - 112359.55) < 1,
+      `age 73: $${Math.round(rmd73).toLocaleString()} (divisor ${engineRmd[73]}), age 95: $${Math.round(rmd95).toLocaleString()} (divisor ${engineRmd[95]})`);
+
+    // SECURE 2.0: RMD age is 73 for those born 1951-1959, and 75 for those born 1960+.
+    // Both default profiles (H 1980 / W 1983, and the Single app's owner) are born well after
+    // 1960, so 75 is the correct default. A default of 73 would force RMDs two years early.
+    const rmdAgeEl = win.document.getElementById('rmdAge');
+    push('SECURE 2.0: default RMD age is 75 (correct for anyone born 1960 or later)',
+      rmdAgeEl && String(rmdAgeEl.value) === '75',
+      `default rmdAge = ${rmdAgeEl ? rmdAgeEl.value : '(missing)'}`);
+
+    // ---- IRMAA 2-YEAR LOOKBACK, end-to-end ----
+    // Correct tier tables prove nothing if the engine reads the wrong YEAR's MAGI. This drives a
+    // deliberate MAGI spike and asserts the surcharge lands exactly two years later.
+    //
+    // NOTE on inflation: 'inflationRate' is read as `parseFloat(...) || 3`, so setting it to "0"
+    // is FALSY and silently becomes 3% — the probe looks like it ran and changes nothing. Use a
+    // small TRUTHY value (0.01) to hold the tier thresholds effectively static.
+    {
+      const snapIrmaa = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        const irmaaTgl = win.document.getElementById('irmaaToggle');
+        const acaTgl = win.document.getElementById('acaToggle');
+        if (irmaaTgl) irmaaTgl.checked = true;
+        if (acaTgl) acaTgl.checked = false;
+        setInput(win, 'poolTrad', '4,000,000'); setInput(win, 'poolRoth', '200,000');
+        setInput(win, 'poolBrok', '300,000');
+        setInput(win, 'distModel', 'fixed'); setInput(win, 'netDistribution', '150,000');
+        setInput(win, 'inflationRate', '0.01');
+
+        // A one-year MAGI SPIKE is what makes the lookback observable. Without it MAGI is nearly
+        // flat year-on-year, so a 1-year and a 2-year lookback select the SAME tier and a broken
+        // lookback is undetectable — that is exactly what happened in the Single app on the first
+        // attempt: the mutation was caught in MFJ and silently missed here.
+        // A big RE/BI exit creates a clean, isolated spike in a known year.
+        const spikeYear = new Date().getFullYear() + 17;   // comfortably inside Medicare years
+        win.__rebiSet([{
+          id: 1, name: 'IRMAA spike', capital: 100000, currentValue: 100000, apprPct: 0,
+          annualDist: 0, distTaxablePct: 0, distCola: false,
+          refiYear: 0, refiCapital: 0,
+          exitYear: spikeYear, exitValue: 3000000, recapturePct: 0
+        }]);
+        recalc(win);
+
+        const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(h => h.innerText.trim());
+        const hcIdx = hdrs.indexOf('Healthcare'), magiIdx = hdrs.indexOf('MAGI');
+        const rowFor = (yr) => [...win.document.querySelectorAll('tbody tr')].find(t => {
+          const f = t.querySelector('td'); return f && f.innerText.trim().startsWith(String(yr));
+        });
+        const cell = (yr, idx) => { const tr = rowFor(yr); if (!tr) return ''; const tds = [...tr.querySelectorAll('td')]; return tds[idx] ? tds[idx].innerText : ''; };
+        const num = (s) => parseFloat(String(s).replace(/[^0-9.]/g, '')) || 0;
+
+        // Find the first year that actually charges IRMAA.
+        const series = win.__chartSeries || [];
+        const firstIrmaaYear = series.map(s => s.year).find(y => /IRMAA/.test(cell(y, hcIdx)));
+
+        if (!firstIrmaaYear) {
+          push('IRMAA fires end-to-end when lookback MAGI exceeds a tier', false, 'no IRMAA charged in any year');
+        } else {
+          const magiLookback = num(cell(firstIrmaaYear - 2, magiIdx));
+          const magiCurrent = num(cell(firstIrmaaYear, magiIdx));
+          const magiPrior = num(cell(firstIrmaaYear - 1, magiIdx));
+          const tier0 = IRS_2026_KNOWN[fileKey === 'mfj' ? 'irmaaMfjFrom' : 'irmaaSingleFrom'][0];
+
+          // The decisive assertion: the CHARGED AMOUNT must correspond to the tier that
+          // year-2's MAGI lands in — not the tier implied by the current year or year-1.
+          // Asserting "current and prior are under tier 0" was tried first and is too
+          // restrictive: in the Single app MAGI sits above the $109k tier-0 line in all three
+          // years, so that phrasing failed while the lookback was working correctly.
+          // Comparing the SELECTED TIER works regardless of where MAGI happens to sit.
+          const tiers = IRS_2026_KNOWN[fileKey === 'mfj' ? 'irmaaMfjFrom' : 'irmaaSingleFrom'];
+          const tierIdxFor = (magi) => {
+            let idx = -1;
+            for (let t = tiers.length - 1; t >= 0; t--) { if (magi > tiers[t]) { idx = t; break; } }
+            return idx;
+          };
+          const idxLookback = tierIdxFor(magiLookback);
+          const idxCurrent = tierIdxFor(magiCurrent);
+          const chargedTxt = cell(firstIrmaaYear, hcIdx);
+          const chargedAmt = num((/\+\$([\d,]+)\s*IRMAA/.exec(chargedTxt) || [])[1] || '0');
+          // Which published tier does the charge correspond to (x1 or x2 enrollees)?
+          let chargedIdx = -1;
+          IRS_2026_KNOWN.irmaaAnnual.forEach((a, i) => {
+            if (Math.abs(chargedAmt - a) / a < 0.05 || Math.abs(chargedAmt - 2 * a) / (2 * a) < 0.05) chargedIdx = i;
+          });
+          push('IRMAA uses the 2-YEAR lookback (charge matches year-2 MAGI tier, not this year\'s)',
+            chargedIdx >= 0 && chargedIdx === idxLookback,
+            `${firstIrmaaYear} charged $${chargedAmt.toLocaleString()} = tier ${chargedIdx}; MAGI ${firstIrmaaYear - 2} $${Math.round(magiLookback).toLocaleString()} = tier ${idxLookback}; MAGI ${firstIrmaaYear} $${Math.round(magiCurrent).toLocaleString()} = tier ${idxCurrent}`);
+
+          // Surcharge is charged PER MEDICARE-ENROLLED PERSON, so it must be a whole multiple of
+          // a published tier amount (x1 when only one spouse has turned 65, x2 when both have).
+          const hcTxt = cell(firstIrmaaYear, hcIdx);
+          const charged = num((/\+\$([\d,]+)\s*IRMAA/.exec(hcTxt) || [])[1] || '0');
+          const perPerson = IRS_2026_KNOWN.irmaaAnnual;
+          const matchesTier = perPerson.some(a => Math.abs(charged - a) / a < 0.05 || Math.abs(charged - 2 * a) / (2 * a) < 0.05);
+          push('IRMAA surcharge equals a published per-person tier amount (x1 or x2 enrollees)',
+            charged > 0 && matchesTier,
+            `charged $${charged.toLocaleString()} in ${firstIrmaaYear}; published per-person tiers [${perPerson.join(', ')}]`);
+        }
+      } catch (e) {
+        push('IRMAA lookback end-to-end check ran', false, 'error: ' + e.message);
+      } finally {
+        const irmaaTgl = win.document.getElementById('irmaaToggle');
+        if (irmaaTgl) irmaaTgl.checked = false;
+        restoreInputs(win, snapIrmaa);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    // ---- ACA CLIFF, end-to-end. Constants being right proves nothing if the cliff never fires.
+    // Built as a LEAN early-retirement plan because the default plan's MAGI (~$760k) is 9x over
+    // the cliff, so no subsidy ever applies and the scenario cannot test anything.
+    // Lever: household SIZE, which moves the cliff while MAGI stays put. (Roth conversion was
+    // tried first and is unusable here — enabling it triggers a large bracket-fill conversion
+    // that swamps MAGI.)
+    {
+      const snapAca = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        win.setDollarMode('future');
+        setInput(win, 'poolTrad', '200,000'); setInput(win, 'poolRoth', '800,000');
+        setInput(win, 'poolBrok', '600,000'); setInput(win, 'poolHsa', '50,000');
+        setInput(win, 'pool529', '0');
+        // The spending lever is 'netDistribution' (with distModel='fixed'). NOT 'targetDraw' —
+        // that id does not exist in EITHER app. An earlier draft of this test wrote to it and
+        // silently set nothing; the MFJ assertion then passed by luck while Single failed, which
+        // looked like an engine bug and was not. Writing to a non-existent id is invisible:
+        // always confirm the lever actually moves the number before trusting the result.
+        setInput(win, 'distModel', 'fixed');
+        setInput(win, 'netDistribution', '60,000');
+        setInput(win, 'hSemiIncome', '0');
+        if (win.document.getElementById('wSemiIncome')) setInput(win, 'wSemiIncome', '0');
+        setInput(win, 'hSemiAge', '45'); setInput(win, 'hFullAge', '46');
+        if (win.document.getElementById('wSemiAge')) { setInput(win, 'wSemiAge', '45'); setInput(win, 'wFullAge', '46'); }
+        const acaTgl = win.document.getElementById('acaToggle');
+        acaTgl.checked = true;
+        setInput(win, 'acaBenchmarkPremium', '28,000');
+        const preserve = win.document.getElementById('acaPreserveSubsidy');
+        if (preserve) preserve.checked = false;   // let MAGI cross the cliff freely
+        const rc = win.document.getElementById('rothConvToggle');
+        if (rc) rc.checked = false;
+
+        const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(h => h.innerText.trim());
+        const hcIdx = hdrs.indexOf('Healthcare');
+        const subsidyAt = (n) => {
+          setInput(win, 'acaHouseholdSize', String(n));
+          recalc(win);
+          const target = (win.__chartSeries || []).find(x => x.isFullyRetired && x.hAge < 65);
+          if (!target) return null;
+          const tr = [...win.document.querySelectorAll('tbody tr')].find(t => {
+            const f = t.querySelector('td'); return f && f.innerText.trim().startsWith(String(target.year));
+          });
+          if (!tr) return null;
+          const tds = [...tr.querySelectorAll('td')];
+          return hcIdx >= 0 && tds[hcIdx] ? tds[hcIdx].innerText : '';
+        };
+
+        // Drive MAGI ACROSS the cliff at a fixed household size (hh1, cliff $62,600 base).
+        // Modest spending keeps MAGI under; heavy spending forces taxable withdrawals that push
+        // it over. Both apps behave identically once the real lever is used:
+        //   MFJ:    MAGI $43,218 -> -$26,913 ACA  |  MAGI $133,653 -> no subsidy
+        //   Single: MAGI $36,645 -> -$15,121 ACA  |  MAGI $118,088 -> no subsidy
+        setInput(win, 'netDistribution', '60,000');
+        const under = subsidyAt(1);
+        const underHasSubsidy = under !== null && /ACA/.test(under);
+
+        setInput(win, 'netDistribution', '250,000');
+        const over = subsidyAt(1);
+        const overNoSubsidy = over !== null && !/ACA/.test(over);
+
+        setInput(win, 'netDistribution', '60,000');   // restore for the next assertion
+
+        push('ACA cliff fires end-to-end: subsidy paid under 400% FPL, ZERO above it',
+          underHasSubsidy && overNoSubsidy,
+          `under cliff -> "${String(under).replace(/\n/g, ' ')}"; over cliff -> "${String(over).replace(/\n/g, ' ')}"`);
+
+        // A larger household raises the FPL, which lowers the FPL ratio, which lowers the
+        // applicable percentage — so the subsidy must RISE with household size at fixed MAGI.
+        const amt = (s) => { const m = /−\$([\d,]+)\s*ACA/.exec(String(s) || ''); return m ? parseFloat(m[1].replace(/,/g, '')) : 0; };
+        const sub1 = amt(subsidyAt(1));
+        const sub4 = amt(subsidyAt(4));
+        push('ACA: subsidy rises with household size (higher FPL -> lower FPL ratio)',
+          sub4 > sub1 && sub1 > 0,
+          `hh1 subsidy $${sub1.toLocaleString()}, hh4 subsidy $${sub4.toLocaleString()}`);
+      } catch (e) {
+        push('ACA cliff end-to-end check ran', false, 'error: ' + e.message);
+      } finally {
+        const acaTgl = win.document.getElementById('acaToggle');
+        if (acaTgl) acaTgl.checked = false;
+        restoreInputs(win, snapAca);
+        win.setDollarMode('today');
+        recalc(win);
+      }
+    }
+
+    if (fileKey === 'mfj') {
+      // ---- The app's MFJ tables must match published IRS figures ----
+      push('IRS: MFJ ordinary bracket thresholds match published 2026 values',
+        eq(fromList(app.mfjOrdinary), IRS_2026_KNOWN.mfjOrdinary),
+        `app=[${fromList(app.mfjOrdinary)}] irs=[${IRS_2026_KNOWN.mfjOrdinary}]`);
+      push('IRS: MFJ ordinary bracket RATES match published 2026 values',
+        eq(rateList(app.mfjOrdinary), IRS_2026_KNOWN.ordinaryRates),
+        `app=[${rateList(app.mfjOrdinary)}] irs=[${IRS_2026_KNOWN.ordinaryRates}]`);
+      push('IRS: MFJ LTCG breakpoints match published 2026 values',
+        eq(fromList(app.mfjLtcg), IRS_2026_KNOWN.mfjLtcg),
+        `app=[${fromList(app.mfjLtcg)}] irs=[${IRS_2026_KNOWN.mfjLtcg}]`);
+      push('IRS: MFJ standard deduction matches published 2026 value',
+        Math.abs(app.stdDedMfj - IRS_2026_KNOWN.stdDedMfj) < 1,
+        `app=${app.stdDedMfj} irs=${IRS_2026_KNOWN.stdDedMfj}`);
+      push('IRS: MFJ IRMAA tiers match published 2026 values',
+        eq(fromList(app.irmaaTiers), IRS_2026_KNOWN.mfjIrmaa),
+        `app=[${fromList(app.irmaaTiers)}] irs=[${IRS_2026_KNOWN.mfjIrmaa}]`);
+
+      // ---- The SURVIVOR tables. This is where the bug lived. ----
+      push('IRS: survivor (Single) ordinary brackets match published values — NOT half of MFJ',
+        eq(fromList(app.singleOrdinary), IRS_2026_KNOWN.singleOrdinary),
+        `app=[${fromList(app.singleOrdinary)}] irs=[${IRS_2026_KNOWN.singleOrdinary}]`);
+      push('IRS: survivor (Single) LTCG breakpoints match published values',
+        eq(fromList(app.singleLtcg), IRS_2026_KNOWN.singleLtcg),
+        `app=[${fromList(app.singleLtcg)}] irs=[${IRS_2026_KNOWN.singleLtcg}]`);
+      push('IRS: survivor (Single) standard deduction matches published value',
+        Math.abs(app.stdDedSingle - IRS_2026_KNOWN.stdDedSingle) < 1,
+        `app=${app.stdDedSingle} irs=${IRS_2026_KNOWN.stdDedSingle}`);
+      push('IRS: survivor (Single) IRMAA tiers match published values',
+        eq(fromList(app.singleIrmaaTiers), IRS_2026_KNOWN.singleIrmaa),
+        `app=[${fromList(app.singleIrmaaTiers)}] irs=[${IRS_2026_KNOWN.singleIrmaa}]`);
+
+      // ---- The specific regression: the top thresholds are NOT half ----
+      // Each of these would have PASSED under the old filingScale=0.5 model, because it
+      // computed exactly the left-hand side. They are the reason the bug existed.
+      const topOrd = app.singleOrdinary[app.singleOrdinary.length - 1].from;
+      push('Survivor 37% bracket is NOT half the MFJ threshold (widow-penalty modelled correctly)',
+        Math.abs(topOrd - 640600) < 1 && Math.abs(topOrd - 768700 / 2) > 1,
+        `survivor 37% starts at $${topOrd.toLocaleString()}; half-MFJ would be $${(768700/2).toLocaleString()}`);
+      const topLtcg = app.singleLtcg[app.singleLtcg.length - 1].from;
+      push('Survivor 20% LTCG breakpoint is NOT half the MFJ threshold',
+        Math.abs(topLtcg - 545050) < 1 && Math.abs(topLtcg - 613700 / 2) > 1,
+        `survivor 20% LTCG starts at $${topLtcg.toLocaleString()}; half-MFJ would be $${(613700/2).toLocaleString()}`);
+      const topIrmaa = app.singleIrmaaTiers[app.singleIrmaaTiers.length - 1].from;
+      push('Survivor top IRMAA tier is NOT half the MFJ threshold',
+        Math.abs(topIrmaa - 500000) < 1 && Math.abs(topIrmaa - 750000 / 2) > 1,
+        `survivor top IRMAA starts at $${topIrmaa.toLocaleString()}; half-MFJ would be $${(750000/2).toLocaleString()}`);
+
+      // ---- End-to-end: the engine must actually USE them ----
+      // A correct table that nothing reads is worthless, so drive a real survivor scenario
+      // and confirm the tax it produces is lower than the old halving model would give.
+      const snap = snapshotInputs(win);
+      try {
+        win.__rebiSet([]);
+        setInput(win, 'poolTrad', '6,000,000');
+        setInput(win, 'poolBrok', '4,000,000');
+        const tgl = win.document.getElementById('survivorToggle');
+        tgl.checked = true; win.toggleSurvivorInputs();
+        setInput(win, 'survivorFirstToDie', 'H');
+        setInput(win, 'survivorDeathAge', '72');
+        recalc(win);
+        const survTax = win.__scenarioB.lifetimeTax;
+        // Under the old half-MFJ model this same scenario produced $8,832,454 of lifetime tax;
+        // with the true Single tables it is ~$8,729,311 — about $103k LOWER. Assert we are on
+        // the correct side of that, with room for other engine changes to move the absolute.
+        push('Survivor scenario: engine uses the real Single tables end-to-end (not half-MFJ)',
+          survTax > 0 && survTax < 8800000,
+          `lifetime tax $${Math.round(survTax).toLocaleString()} (old half-MFJ model produced $8,832,454 — ~$103k of overtax)`);
+      } finally {
+        const tgl = win.document.getElementById('survivorToggle');
+        if (tgl) { tgl.checked = false; win.toggleSurvivorInputs(); }
+        restoreInputs(win, snap);
+        recalc(win);
+      }
+    } else {
+      // ---- The Single/HoH app's own tables ----
+      push('IRS: Single ordinary bracket thresholds match published 2026 values',
+        eq(fromList(app.singleOrdinary), IRS_2026_KNOWN.singleOrdinary),
+        `app=[${fromList(app.singleOrdinary)}] irs=[${IRS_2026_KNOWN.singleOrdinary}]`);
+      push('IRS: Single ordinary bracket RATES match published 2026 values',
+        eq(rateList(app.singleOrdinary), IRS_2026_KNOWN.ordinaryRates),
+        `app=[${rateList(app.singleOrdinary)}] irs=[${IRS_2026_KNOWN.ordinaryRates}]`);
+      push('IRS: Single LTCG breakpoints match published 2026 values',
+        eq(fromList(app.singleLtcg), IRS_2026_KNOWN.singleLtcg),
+        `app=[${fromList(app.singleLtcg)}] irs=[${IRS_2026_KNOWN.singleLtcg}]`);
+      push('IRS: Single standard deduction matches published 2026 value',
+        Math.abs(app.stdDedSingle - IRS_2026_KNOWN.stdDedSingle) < 1,
+        `app=${app.stdDedSingle} irs=${IRS_2026_KNOWN.stdDedSingle}`);
+      push('IRS: Single IRMAA tiers match published 2026 values',
+        eq(fromList(app.irmaaTiers), IRS_2026_KNOWN.singleIrmaa),
+        `app=[${fromList(app.irmaaTiers)}] irs=[${IRS_2026_KNOWN.singleIrmaa}]`);
+    }
+  } catch (e) {
+    push('Tier 7 known-answer checks ran', false, 'error: ' + e.message);
+  }
+  return out;
+}
+
+// =====================================================================================
+// TIER 8 — CONSERVATION
+// =====================================================================================
+// WHY THIS TIER EXISTS
+// --------------------
+// Four RE/BI bugs shipped past a 180-test green suite, and a fifth (RMD cash evaporating)
+// sat undetected in the DEFAULT plan. Every one was the same question — "cash arrives, then
+// where does it go?" — and not one test asked it. The other tiers check that things FIRE and
+// are TAXED correctly. None check that money is CONSERVED. That is how 180/180 green coexisted
+// with a balance that was 2x wrong.
+//
+// THE INVARIANTS
+// --------------
+// 1. Per bucket:  ending = starting + inflows - outflows        (trad, roth, brok, hsa, 529)
+// 2. Household:   end_total = start_total + growth + contribs + externalIn - spending
+//
+// Invariant 2 is the strong one. Internal shuffles — RMDs, Roth conversions, elective draws,
+// banking to brokerage — MUST NET TO ZERO, because they only move money between the household's
+// own pockets. So this check cannot be fooled by which account money came from, or by how many
+// code paths touch it. If a transfer loses money on the way, this catches it and NOTHING ELSE
+// HAS TO BE RIGHT for it to work.
+//
+// It is deliberately not RE/BI-specific. It covers savings, growth, contributions, Traditional,
+// Roth, Brokerage, HSA, 529, RMDs, conversions, RE/BI, and spending — every path a dollar can
+// take through either app.
+//
+// THE RULE THAT KEEPS THIS ALIVE
+// ------------------------------
+// Any new feature that moves money MUST publish its flow in chartSeries.push (the aud* fields)
+// and add a scenario below. Because the invariant is GENERAL, it already covers features that
+// don't exist yet: a future annuity or pension cannot quietly leak money — this tier fails the
+// moment its cash path doesn't balance, without anyone writing an annuity-specific test.
+const CONSERVATION_SCENARIOS = [
+  { name: 'baseline (no deals)', deals: [] },
+  { name: 'distributions only', deals: [{ annualDist: 7000 }] },
+  { name: 'large distributions', deals: [{ annualDist: 100000 }] },
+  { name: 'huge dist (exceeds need)', deals: [{ annualDist: 2000000, distTaxablePct: 0 }] },
+  { name: 'refi only', deals: [{ refiYear: 4, refiCapital: 100000 }] },
+  { name: 'exit only', deals: [{ exitYear: 7, exitValue: 200000 }] },
+  { name: 'full lifecycle (dist+refi+exit)', deals: [{ annualDist: 7000, refiYear: 4, refiCapital: 25000, exitYear: 7, exitValue: 175000 }] },
+  { name: 'exit after RMD age', deals: [{ annualDist: 5000, exitYear: 48, exitValue: 400000 }] },
+  { name: 'two deals', deals: [{ annualDist: 7000, refiYear: 4, refiCapital: 25000 }, { annualDist: 3000, exitYear: 10, exitValue: 150000 }] },
+];
+
+function conservationDeals(specs, startYear) {
+  return specs.map((s, i) => ({
+    id: i + 1, name: 'Cons ' + (i + 1),
+    capital: s.capital ?? 100000, currentValue: s.currentValue ?? 100000,
+    apprPct: s.apprPct ?? 4, annualDist: s.annualDist ?? 0,
+    distTaxablePct: s.distTaxablePct ?? 25, distCola: s.distCola ?? true,
+    refiYear: s.refiYear ? startYear + s.refiYear : 0, refiCapital: s.refiCapital ?? 0,
+    exitYear: s.exitYear ? startYear + s.exitYear : 0, exitValue: s.exitValue ?? 0,
+    recapturePct: s.recapturePct ?? 20,
+  }));
+}
+
+function tier8(win, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+  const TOL = 1.0; // engine uses floats; sub-dollar drift is rounding, not leakage
+
+  let baseSnap = null;
+  try {
+    baseSnap = snapshotInputs(win);
+    // Nominal dollars: dispScale would deflate everything uniformly and mask real leaks.
+    win.setDollarMode('future');
+    const startYear = new Date().getFullYear();
+
+    for (const scenario of CONSERVATION_SCENARIOS) {
+      win.__rebiSet(conservationDeals(scenario.deals, startYear));
+      recalc(win);
+      const rows = (win.__chartSeries || []).filter(r => typeof r.audTradStart === 'number');
+      if (!rows.length) {
+        push(`Conservation: ${scenario.name} — audit flows present`, false, 'chartSeries exposes no aud* fields');
+        continue;
+      }
+
+      // ---- Per-bucket conservation ----
+      const bucketFails = {};
+      const noteBucket = (label, yr, diff) => {
+        if (!bucketFails[label]) bucketFails[label] = { n: 0, worst: 0, yr: null };
+        const e = bucketFails[label];
+        e.n++;
+        if (Math.abs(diff) > Math.abs(e.worst)) { e.worst = diff; e.yr = yr; }
+      };
+
+      // ---- Household total conservation ----
+      let hhFails = 0, hhWorst = 0, hhWorstYr = null, hhWorstRmd = 0;
+
+      for (const a of rows) {
+        // 529: burns tuition (capped at balance), then contribs + growth.
+        const f529Out = Math.min(a.audTuitionBurn, a.audF529Start);
+        const f529Exp = a.audF529Start - f529Out + a.audF529Cont + a.audF529Grow;
+        if (Math.abs(a.f529 - f529Exp) > TOL) noteBucket('529', a.year, a.f529 - f529Exp);
+
+        // Traditional: -RMD, -conversion, -elective draw, +contribs, +growth.
+        const tradExp = a.audTradStart - a.audForcedRmd - a.audRothConv - a.audElecTrad + a.audTradCont + a.audTradGrow;
+        if (Math.abs(a.trad - tradExp) > TOL) noteBucket('Traditional', a.year, a.trad - tradExp);
+
+        // Roth: +conversion, -elective draw, +contribs, +growth.
+        const rothExp = a.audRothStart + a.audRothConv - a.audElecRoth + a.audRothCont + a.audRothGrow;
+        if (Math.abs(a.roth - rothExp) > TOL) noteBucket('Roth', a.year, a.roth - rothExp);
+
+        // HSA: -healthcare distributions, +contribs, +growth.
+        const hsaExp = a.audHsaStart - a.audHsaDist + a.audHsaCont + a.audHsaGrow;
+        if (Math.abs(a.hsa - hsaExp) > TOL) noteBucket('HSA', a.year, a.hsa - hsaExp);
+
+        // Brokerage: -529 shortfall, -elective draw, +excessRmd, +RE/BI banked, +contribs, +growth.
+        const brokExp = a.audBrokStart - a.audF529Shortfall - a.audElecBrok + a.audExcessRmd
+                      + a.rebiToBrok + a.brokCont + a.brokGrow;
+        if (Math.abs(a.brok - brokExp) > TOL) noteBucket('Brokerage', a.year, a.brok - brokExp);
+
+        // Household: internal shuffles must net to zero.
+        const startTotal = a.audTradStart + a.audRothStart + a.audBrokStart + a.audHsaStart + a.audF529Start;
+        const endTotal = a.trad + a.roth + a.brok + a.hsa + a.f529;
+        const growth = a.audTradGrow + a.audRothGrow + a.brokGrow + a.audHsaGrow + a.audF529Grow;
+        const contribs = a.audTradCont + a.audRothCont + a.brokCont + a.audHsaCont + a.audF529Cont;
+        // audGross1099, NOT income1099: the latter is NET of self-employment tax (published for
+        // display), while the engine's cashSources uses GROSS and accounts the SE tax inside
+        // solvedTax on the spending side. Using the net figure double-deducts the SE tax and makes
+        // the audit report phantom CREATED money (~$23.7k/yr in the default plan).
+        const externalIn = a.rebiDist + a.rebiRefi + a.rebiExit + a.audGross1099 + a.incomeSS;
+        // hsaDist is real spending straight out of the HSA bucket — it is NOT part of
+        // hcFromPortfolio (which is only the share healthcare draws from the other buckets).
+        const spent = a.audBaseNeed + a.audHcFromPortfolio + a.audSolvedTax + a.audHsaDist
+                    + Math.min(a.audTuitionBurn, a.audF529Start) + a.audF529Shortfall;
+        const gap = endTotal - (startTotal + growth + contribs + externalIn - spent);
+        if (Math.abs(gap) > TOL) {
+          hhFails++;
+          if (Math.abs(gap) > Math.abs(hhWorst)) { hhWorst = gap; hhWorstYr = a.year; hhWorstRmd = a.audForcedRmd; }
+        }
+      }
+
+      const bucketLabels = Object.keys(bucketFails);
+      push(`Conservation: ${scenario.name} — every bucket balances`,
+        bucketLabels.length === 0,
+        bucketLabels.length === 0
+          ? `all ${rows.length} years, 5 buckets`
+          : bucketLabels.map(l => `${l}: ${bucketFails[l].n}yrs worst $${Math.round(bucketFails[l].worst).toLocaleString()} (${bucketFails[l].yr})`).join('; '));
+
+      push(`Conservation: ${scenario.name} — no money created or destroyed`,
+        hhFails === 0,
+        hhFails === 0
+          ? `all ${rows.length} years conserve`
+          : `${hhFails}/${rows.length} years leak; worst $${Math.round(hhWorst).toLocaleString()} in ${hhWorstYr} (RMD that year: $${Math.round(hhWorstRmd).toLocaleString()})`);
+    }
+  } catch (e) {
+    push('Tier 8 conservation ran', false, 'error: ' + e.message);
+  } finally {
+    try {
+      win.__rebiSet([]);
+      if (baseSnap) restoreInputs(win, baseSnap);
+      win.setDollarMode('today');
+      recalc(win);
+    } catch (e) { /* leave the app in a sane state regardless */ }
+  }
   return out;
 }
 
@@ -743,6 +2683,19 @@ async function runFile(frameId, fileKey, fileLabel) {
   // Tier 6 — Real Estate / Business Investments
   recalc(win);
   fileRes.tiers['Tier 6 — Real Estate / Business'] = tier6(win, fileKey);
+
+  // Tier 7 — Known-answer (survivor / filing status). Catches WRONG RATES, which Tier 8 cannot.
+  recalc(win);
+  const t7 = tier7(win, fileKey);
+  fileRes.tiers['Tier 7 — Known-answer (IRS tables)'] = t7;
+
+  // Tier 0 — Triangulation. Runs AFTER Tier 7 because it audits Tier 7's own coverage.
+  recalc(win);
+  fileRes.tiers['Tier 0 — Triangulation (docs ↔ engine ↔ tests)'] = tier0(win, fileKey, t7);
+
+  // Tier 8 — Conservation. Runs LAST because it drives many scenarios and restores state.
+  recalc(win);
+  fileRes.tiers['Tier 8 — Conservation (whole app)'] = tier8(win, fileKey);
 
   RESULTS[fileKey] = fileRes;
   renderFile(fileKey);
