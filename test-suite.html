@@ -73,7 +73,7 @@
 </head>
 <body>
   <h1>P-ZERO Test Suite</h1>
-  <div class="sub">Validates both engines (MFJ + Single/HoH) &mdash; Tier 1 structural, Tier 2 invariants across scenario fixtures, Tier 3 known-answer math hand-derived from 2026 IRS brackets.</div>
+  <div class="sub">Validates both engines (MFJ + Single/HoH) across eight defense-in-depth tiers &mdash; Tier 0 triangulation (docs&harr;engine&harr;tests), 1 structural, 2 invariants, 3 hand-derived bracket math, 5 features, 6 RE/BI, 7 known-answer vs published IRS figures (the only tier that catches a wrong number), 8 conservation (~1,000 money-leak checks/run). A green run means the checked facts still hold &mdash; not that the engine is proven; see TESTING.md.</div>
 
   <div class="controls">
     <button id="runBtn" onclick="runAll()">Run All Tests</button>
@@ -1202,6 +1202,50 @@ function tier0(win, fileKey, tier7Results) {
     push('Docs: every verified fact cites a published source (never recall)',
       unsourced.length === 0,
       unsourced.length === 0 ? 'all facts sourced' : 'unsourced: ' + unsourced.join(', '));
+
+    // ---- EDGE 5: doc<->engine for WORKED EXAMPLES (prose numbers, not just §21 facts) ----
+    // Worked examples in the help text cite numbers derived from the live engine (e.g. the ACA
+    // applicable-percentage and the resulting contribution). Those have no §21 fact, so nothing
+    // stopped them drifting when the engine changed — two went stale in one edit cycle. This edge
+    // recomputes each tagged example value from the engine and asserts the displayed prose matches.
+    // The number a human reads and the number checked here are the SAME DOM element, so they cannot
+    // silently diverge. Only derived-from-function examples are tagged (not whole-plan scenarios).
+    const EXAMPLE_RESOLVERS = {
+      'aca.pct': (el) => {
+        if (typeof win.acaApplicablePct !== 'function') return null;
+        const magi = parseFloat(el.getAttribute('data-magi'));
+        const fpl = parseFloat(el.getAttribute('data-fpl'));
+        return { value: win.acaApplicablePct(magi / fpl) * 100, unit: '%', tol: 0.15 };
+      },
+      'aca.contrib': (el) => {
+        if (typeof win.acaApplicablePct !== 'function') return null;
+        const magi = parseFloat(el.getAttribute('data-magi'));
+        const fpl = parseFloat(el.getAttribute('data-fpl'));
+        return { value: win.acaApplicablePct(magi / fpl) * magi, unit: '$', tol: 60 };
+      },
+    };
+    const examples = [...doc.querySelectorAll('[data-example]')];
+    const exStale = [];
+    let exChecked = 0;
+    for (const el of examples) {
+      const key = el.getAttribute('data-example');
+      const resolver = EXAMPLE_RESOLVERS[key];
+      if (!resolver) continue;                 // untagged/unsupported keys are ignored, not failed
+      const expected = resolver(el);
+      if (!expected) continue;                 // engine fn not reachable in this app — skip cleanly
+      const shown = parseFloat((el.textContent || '').replace(/[$,%\s]/g, ''));
+      exChecked++;
+      if (!isFinite(shown) || Math.abs(shown - expected.value) > expected.tol) {
+        exStale.push(`${key}: page shows "${el.textContent.trim()}" but engine computes ${expected.unit === '%' ? expected.value.toFixed(2) + '%' : '$' + Math.round(expected.value).toLocaleString()}`);
+      }
+    }
+    push('Docs: worked-example numbers still match the live engine (no prose drift)',
+      exStale.length === 0,
+      exChecked === 0
+        ? 'no tagged worked examples in this app'
+        : (exStale.length === 0
+            ? `${exChecked} tagged example value(s) recomputed and matched`
+            : exStale.join(' | ')));
   } catch (e) {
     push('Tier 0 triangulation ran', false, 'error: ' + e.message);
   }
