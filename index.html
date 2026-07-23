@@ -61,6 +61,11 @@
             --text-primary: #f3f4f6;
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
+                /* Distribution Mix: spine reads white on dark. The Sources total needs a green
+                   that survives both themes -- a light mint on dark, a deeper emerald on white. */
+                --dist-spine: rgba(255, 255, 255, 0.92);
+                --dist-sources: #34d399;
+                --dist-spend: #f87171;
             --scrollbar-track: #080c14;
             --scrollbar-thumb: #1e293b;
         }
@@ -74,6 +79,9 @@
             --text-primary: #0f172a;
             --text-secondary: #475569;
             --text-muted: #64748b;
+                --dist-spine: rgba(15, 23, 42, 0.30);
+                --dist-sources: #047857;
+                --dist-spend: #b91c1c;
             --scrollbar-track: #f4f6f9;
             --scrollbar-thumb: #cbd5e1;
         }
@@ -224,12 +232,23 @@
                 <i class="fa-solid fa-dice mr-1.5 text-blue-400"></i> Monte Carlo
             </button>
             <input type="file" id="importFileInput" accept=".txt" class="hidden" onchange="importConfig(event)">
-            <button onclick="document.getElementById('importFileInput').click()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-2 rounded-lg border border-slate-800 transition cursor-pointer">
-                <i class="fa-solid fa-upload mr-1.5 text-slate-400"></i> Import Profile
-            </button>
-            <button onclick="exportConfig()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-2 rounded-lg border border-slate-800 transition cursor-pointer">
-                <i class="fa-solid fa-download mr-1.5 text-slate-400"></i> Export Profile
-            </button>
+            <!-- Import/Export merged into one "Profile" menu. They're a natural pair and both are
+                 OCCASIONAL actions (you save or load a scenario now and then), so trading one extra
+                 click for a full button's width is a good deal here -- unlike the frequently-used
+                 analysis buttons, which stay visible. -->
+            <div class="relative inline-block">
+                <button id="profileMenuBtn" onclick="toggleProfileMenu(event)" aria-haspopup="true" aria-expanded="false" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-2 rounded-lg border border-slate-800 transition cursor-pointer" title="Save your current inputs to a file, or load a previously saved profile">
+                    <i class="fa-solid fa-user-gear mr-1.5 text-slate-400"></i> Profile <i class="fa-solid fa-chevron-down ml-1 text-[9px] text-slate-500"></i>
+                </button>
+                <div id="profileMenu" class="hidden absolute right-0 mt-1 py-1 rounded-lg border shadow-lg z-50 min-w-[170px]" style="background:var(--bg-elevated);border-color:var(--border-strong);">
+                    <button onclick="profileMenuAction('import')" class="w-full text-left px-3 py-2 text-xs transition cursor-pointer hover:bg-slate-800/60" style="color:var(--text-primary);">
+                        <i class="fa-solid fa-upload mr-2 text-slate-400"></i> Import Profile
+                    </button>
+                    <button onclick="profileMenuAction('export')" class="w-full text-left px-3 py-2 text-xs transition cursor-pointer hover:bg-slate-800/60" style="color:var(--text-primary);">
+                        <i class="fa-solid fa-download mr-2 text-slate-400"></i> Export Profile
+                    </button>
+                </div>
+            </div>
             <button onclick="resetToDefaults()" class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-semibold text-xs px-4 py-2 rounded-lg transition cursor-pointer">
                 <i class="fa-solid fa-arrow-rotate-left mr-1.5"></i> Reset
             </button>
@@ -487,7 +506,7 @@
                 </div>
                 <div id="rothConvWrapper" class="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-900">
                     <div>
-                        <label class="block text-[10px] text-slate-400 mb-0.5">Start Age (younger spouse) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">When Roth conversions begin. "Auto" (shown as age & year, e.g. 53 (2035)) starts the year after both spouses have stepped down; or pick a manual age. <a onclick="openHelp('sec-roth')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §10 &rarr;</a></span></span></label>
+                        <label class="block text-[10px] text-slate-400 mb-0.5">Start Age (younger spouse) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">When Roth conversions begin. "Auto" (shown as age & year, e.g. 53 (2036)) starts the year after both spouses have stepped down; or pick a manual age. <a onclick="openHelp('sec-roth')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §10 &rarr;</a></span></span></label>
                         <select id="rothConvStartAge" class="mini-input" data-select-type="age-auto" data-default="auto"></select>
                     </div>
                     <div>
@@ -501,8 +520,8 @@
                         <label class="block text-[10px] text-slate-400 mb-0.5">Fill Bracket Up To</label>
                         <select id="rothConvBracketCap" class="mini-input">
                             <option value="10">10%</option>
-                            <option value="12">12%</option>
-                            <option value="22" selected>22%</option>
+                            <option value="12" selected>12%</option>
+                            <option value="22">22%</option>
                             <option value="24">24%</option>
                             <option value="32">32%</option>
                             <option value="35">35%</option>
@@ -831,14 +850,23 @@
                  always stays put — only #chartCollapseBody folds away — so the chart's own controls
                  never vanish with it. State persists in snapshot.preferences, defaults expanded. -->
             <section class="glass-panel p-5 rounded-xl border border-slate-800">
-                <div class="flex items-center justify-between mb-3 flex-wrap gap-y-2">
-                    <h3 class="text-xs font-bold text-white heading-font uppercase tracking-wider flex items-center">
-                        <button id="btnChartCollapse" onclick="toggleChartCollapse()" class="mr-2 text-slate-400 hover:text-white transition cursor-pointer" aria-expanded="true" aria-controls="chartCollapseBody" title="Show or hide the chart — collapse it to read the KPI tiles and the table in one view">
+                <!-- Single header row: collapse chevron + tab labels on the left, chart toggles on
+                     the right. The old "Net Worth Trajectory by Bucket" <h3> was removed because the
+                     tab label already says it — it was a redundant second header. This row lives
+                     OUTSIDE #chartCollapseBody so the tabs and toggles stay put when collapsed. -->
+                <div class="flex items-center justify-between mb-3 flex-wrap gap-y-2 border-b border-slate-800">
+                    <div class="flex items-center gap-1">
+                        <button id="btnChartCollapse" onclick="toggleChartCollapse()" class="mr-1 text-slate-400 hover:text-white transition cursor-pointer" aria-expanded="true" aria-controls="chartCollapseBody" title="Show or hide the chart — collapse it to read the KPI tiles and the table in one view">
                             <i id="btnChartCollapseIcon" class="fa-solid fa-chevron-down"></i>
                         </button>
-                        <i class="fa-solid fa-chart-area text-blue-400 mr-2"></i>Net Worth Trajectory by Bucket
-                    </h3>
-                    <div class="flex items-center gap-4">
+                        <button id="chartTabTrajectory" onclick="setChartTab('trajectory')" class="px-3 py-1.5 text-[11px] font-semibold text-blue-400 border-b-2 border-blue-400 -mb-px transition cursor-pointer">
+                            <i class="fa-solid fa-chart-area mr-1.5"></i>Net Worth Trajectory
+                        </button>
+                        <button id="chartTabDistribution" onclick="setChartTab('distribution')" class="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b-2 border-transparent -mb-px transition cursor-pointer hover:text-slate-200">
+                            <i class="fa-solid fa-shuffle mr-1.5"></i>Distribution Mix
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-4 pb-1.5" id="chartBucketToggles">
                         <label class="flex items-center gap-1.5 cursor-pointer select-none">
                             <input type="checkbox" id="chartIncludeHsa" checked onchange="triggerRecalculate()" class="accent-cyan-500 cursor-pointer">
                             <span class="text-[11px] text-slate-400">Include HSA <span class="text-slate-600">(healthcare $)</span></span>
@@ -850,8 +878,14 @@
                     </div>
                 </div>
                 <div id="chartCollapseBody">
-                    <div id="netWorthChartWrap" class="w-full"></div>
-                    <p class="text-[10px] text-slate-500 mt-2">By default, 529 is excluded since those funds aren't generally usable for living expenses without tax/penalty; HSA is included since it directly funds healthcare costs, which is a living expense.</p>
+                    <div id="tabPaneTrajectory">
+                        <div id="netWorthChartWrap" class="w-full"></div>
+                        <p class="text-[10px] text-slate-500 mt-2">By default, 529 is excluded since those funds aren't generally usable for living expenses without tax/penalty; HSA is included since it directly funds healthcare costs, which is a living expense.</p>
+                    </div>
+                    <div id="tabPaneDistribution" style="display:none;">
+                        <p class="text-[11px] text-slate-500 mb-2">Where each year's money comes from (<span style="color:var(--dist-sources);font-weight:600">Sources</span>) and what it pays for (<span style="color:var(--dist-spend);font-weight:600">Spend</span>). Each panel defaults to a life-phase milestone — change any year to inspect it. Hover any ribbon for the exact amount. Responds to the Today's $ / Future $ toggle above.</p>
+                        <div id="distributionPanels" class="grid grid-cols-1 lg:grid-cols-3 gap-3"></div>
+                    </div>
                 </div>
             </section>
 
@@ -1393,6 +1427,7 @@
                 card.className = 'bg-slate-900/40 p-3 rounded-lg border border-slate-900 space-y-2';
                 const undergradStart = child.birthYear + 18;
                 const gradStart = undergradStart + child.undergradYears;
+            const money = (v) => (parseFloat(v) || 0).toLocaleString();  // comma-only, matches input panel
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] font-semibold text-slate-300">Child ${idx + 1}</span>
@@ -1405,7 +1440,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] text-slate-500 mb-0.5">Undergrad $/yr</label>
-                            <input type="number" class="mini-input" value="${child.undergradCost}" data-child-id="${child.id}" data-field="undergradCost" onchange="updateChildField(this)">
+                            <input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(child.undergradCost)}" data-child-id="${child.id}" data-field="undergradCost" onchange="updateChildField(this)">
                         </div>
                         <div>
                             <label class="block text-[10px] text-slate-500 mb-0.5">Undergrad Years</label>
@@ -1421,7 +1456,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] text-slate-500 mb-0.5">Grad $/yr</label>
-                            <input type="number" class="mini-input" value="${child.gradCost}" data-child-id="${child.id}" data-field="gradCost" onchange="updateChildField(this)">
+                            <input type="text" inputmode="decimal" data-money="true" class="mini-input" value="${money(child.gradCost)}" data-child-id="${child.id}" data-field="gradCost" onchange="updateChildField(this)">
                         </div>
                         <div>
                             <label class="block text-[10px] text-slate-500 mb-0.5">Grad Years</label>
@@ -1433,6 +1468,15 @@
                 `;
                 wrap.appendChild(card);
             });
+            // Children cost fields (undergrad/grad $/yr) are rendered dynamically, so like the RE/BI
+            // cards they miss the load-time formatter. Apply comma-only formatting on load/blur,
+            // raw digits on focus. cleanNum strips commas so the stored value parses cleanly.
+            wrap.querySelectorAll('input[data-money="true"]').forEach(el => {
+                const fmt = (x) => { const raw = cleanNum(x.value).trim(); if (raw==='' || isNaN(parseFloat(raw))) return; x.value = Math.round(parseFloat(raw)).toLocaleString(); };
+                fmt(el);
+                el.addEventListener('blur', () => fmt(el));
+                el.addEventListener('focus', () => { el.value = cleanNum(el.value); });
+            });
         }
         function updateChildField(el) {
             const id = parseInt(el.dataset.childId);
@@ -1442,7 +1486,7 @@
             if (field === 'gradEnabled') {
                 child[field] = el.checked;
             } else {
-                child[field] = parseFloat(el.value) || 0;
+                child[field] = parseFloat(cleanNum(el.value)) || 0;
             }
             renderChildrenProfiles(); // re-render to update derived year ranges and grad fields visibility
             triggerRecalculate();
@@ -1546,6 +1590,20 @@
                 `;
                 wrap.appendChild(card);
             });
+            // RE/BI money fields are rendered dynamically (after initMoneyInputFormatting ran at
+            // load), so they miss the load-time formatter. Apply comma-only formatting (e.g. 10,000,
+            // matching the main input-panel fields) on load and blur, and strip to raw digits on
+            // focus for editing. cleanNum removes commas/$ so the stored value parses cleanly.
+            const fmtRebiMoney = (el) => {
+                const raw = cleanNum(el.value).trim();
+                if (raw === '' || isNaN(parseFloat(raw))) return;
+                el.value = Math.round(parseFloat(raw)).toLocaleString();
+            };
+            wrap.querySelectorAll('input[data-money="true"]').forEach(el => {
+                fmtRebiMoney(el);
+                el.addEventListener('blur', () => fmtRebiMoney(el));
+                el.addEventListener('focus', () => { el.value = cleanNum(el.value); });
+            });
         }
         function updateRebiField(el) {
             const id = parseInt(el.dataset.rebiId);
@@ -1588,16 +1646,22 @@
                 row.className = 'flex items-center gap-1.5';
                 row.innerHTML = `
                     <input type="number" class="mini-input flex-shrink-0" style="width:64px" value="${year}" data-gift-year-old="${year}" onchange="updateGiftYear(this)" title="Year">
-                    <span class="text-slate-600 text-[10px] flex-shrink-0">$</span>
-                    <input type="number" class="mini-input min-w-0 flex-1" value="${childGiftingProfile[year]}" data-gift-year="${year}" onchange="updateGiftAmt(this)" title="Amount">
+                    <input type="text" inputmode="decimal" data-money="true" class="mini-input min-w-0 flex-1" value="${(parseFloat(childGiftingProfile[year])||0).toLocaleString()}" data-gift-year="${year}" onchange="updateGiftAmt(this)" title="Amount">
                     <button onclick="removeGiftRow('${year}')" class="text-red-400 hover:text-red-300 text-xs px-1 flex-shrink-0 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
                 `;
                 wrap.appendChild(row);
             });
+            // Gift amount fields render dynamically; apply comma-only formatting like other inputs.
+            wrap.querySelectorAll('input[data-money="true"]').forEach(el => {
+                const fmt = (x) => { const raw = cleanNum(x.value).trim(); if (raw==='' || isNaN(parseFloat(raw))) return; x.value = Math.round(parseFloat(raw)).toLocaleString(); };
+                fmt(el);
+                el.addEventListener('blur', () => fmt(el));
+                el.addEventListener('focus', () => { el.value = cleanNum(el.value); });
+            });
         }
         function updateGiftAmt(el) {
             const year = el.dataset.giftYear;
-            childGiftingProfile[year] = parseFloat(el.value) || 0;
+            childGiftingProfile[year] = parseFloat(cleanNum(el.value)) || 0;
             triggerRecalculate();
         }
         function updateGiftYear(el) {
@@ -1869,8 +1933,255 @@
             if (btn) btn.setAttribute('aria-expanded', chartCollapsed ? 'false' : 'true');
         }
 
+        // --- Profile menu (Import / Export) ---
+        // Import and Export were separate top-nav buttons; merged into one menu to save width.
+        // Both are one-shot actions, so the menu just fires them and closes -- no state to hold.
+        function toggleProfileMenu(evt) {
+            if (evt) evt.stopPropagation();
+            const menu = document.getElementById('profileMenu');
+            const btn = document.getElementById('profileMenuBtn');
+            if (!menu) return;
+            const open = menu.classList.toggle('hidden') === false;
+            if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        function closeProfileMenu() {
+            const menu = document.getElementById('profileMenu');
+            const btn = document.getElementById('profileMenuBtn');
+            if (menu && !menu.classList.contains('hidden')) menu.classList.add('hidden');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+        function profileMenuAction(which) {
+            closeProfileMenu();
+            if (which === 'import') { document.getElementById('importFileInput').click(); }
+            else if (which === 'export') { exportConfig(); }
+        }
+        document.addEventListener('click', closeProfileMenu);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeProfileMenu(); });
+
         function toggleChartCollapse() {
             setChartCollapsed(!chartCollapsed);
+        }
+
+        // ===== DISTRIBUTION MIX =====
+        // A pure VIEW over data the engine already publishes on __chartSeries — it reads flow fields
+        // and draws Sankey ribbons. It changes NO engine math. The field mapping below is verified to
+        // match the detailed ledger table cell-for-cell (see the distribution guard in the test suite):
+        //   Taxes = audSolvedTax (already includes LTCG — do NOT add audLtcgTax; that double-counts)
+        //   Living = audBaseNeed - audGift (baseNeed BUNDLES gifts; subtract or gifts double-count)
+        //   Healthcare = audHcFromPortfolio + audHsaDist (HSA-funded HC isn't in hcFromPortfolio)
+        //   1099 = audGross1099 (gross cash received, not the SE-tax-adjusted income1099)
+        //   529 (source) = audTuitionBurn - audF529Shortfall (the 529-funded portion of tuition)
+        // With this mapping, Sources and Spend balance to the dollar every year.
+        // Palette: SOURCES are cool (blue -> violet -> teal), SPEND is warm (amber -> red -> brown).
+        // The cool/warm split means the eye reads left=money in, right=money out without consulting a
+        // legend, and no hue appears on both sides. Within each side, hues are spaced far enough apart
+        // to stay distinguishable at the compact ribbon size.
+        // Palette "Slate & Clay, brighter": editorial hues with saturation lifted to ~70% (the
+        // original slate/clay reading was ~48%, which blurred adjacent ribbons at compact size; the
+        // fully-saturated alternative read as loud). Lightness is kept from the muted original --
+        // that's what keeps it from looking like default chart colors. SOURCES are cool, SPEND is
+        // warm, so the eye reads left=money in / right=money out without consulting a legend, and
+        // no hue appears on both sides.
+        const DIST_COLORS = {
+            // --- Sources (cool) ---
+            'Traditional':'#226dbe',
+            'Roth':'#415ede',
+            'Brokerage':'#1da29b',
+            'Social Security':'#22b5c0',
+            'RE/Business':'#3e36dc',
+            '1099 Income':'#34c4db',
+            'HSA':'#44dec0',
+            '529':'#7b92e8',
+            // --- Spend (warm) ---
+            'Living':'#e06b52',
+            'Healthcare':'#db3736',
+            'Taxes':'#e2a159',
+            'Gifting':'#df4a78',
+            'Tuition':'#e28a58'
+        };
+        const DIST_SHORT = {'1099 Income':'1099','Social Security':'Soc Sec','RE/Business':'RE/Biz'};
+        let distActiveYears = {}; // per-panel chosen year (keyed by phase index)
+        let distUserSet = {};     // per-panel: true once the user manually picks a year.
+        // A panel in "track" mode (userSet false) follows its life-phase milestone, so changing a
+        // birth year or semi/full-retirement age moves the dropdown to the new milestone year. Once
+        // the user picks a year, that panel is "pinned" (userSet true) and keeps their choice even
+        // as inputs change -- with a reset control to hand it back to auto-tracking.
+
+        // Extract the verified source/spend flows for a given series row.
+        function distFlowsFor(y) {
+            if (!y) return null;
+            const from529 = Math.max(0, (y.audTuitionBurn||0) - (y.audF529Shortfall||0));
+            const sources = {
+                'Traditional': y.audElecTrad||0, 'Roth': y.audElecRoth||0, 'Brokerage': y.audElecBrok||0,
+                'Social Security': y.incomeSS||0, 'RE/Business': y.rebiDist||0, '1099 Income': y.audGross1099||0,
+                'HSA': y.audHsaDist||0, '529': from529
+            };
+            const spend = {
+                'Living': Math.max(0,(y.audBaseNeed||0)-(y.audGift||0)),
+                'Healthcare': (y.audHcFromPortfolio||0)+(y.audHsaDist||0),
+                'Taxes': y.audSolvedTax||0, 'Gifting': y.audGift||0, 'Tuition': y.audTuitionBurn||0
+            };
+            return { sources, spend };
+        }
+
+        // proportional thickness with a minimum floor, normalized so the column fills exactly
+        function distSized(entries, H, minPx, gap) {
+            // Materiality threshold, not `v > 0`: the engine leaves floating-point dust in
+            // spent-down buckets (e.g. Traditional 0.00096, HSA 3.9e-33). Those pass a >0 test,
+            // then get a minimum-floor ribbon and render as "$0 (0%)" — visually implying money
+            // moves when none does. Anything under a dollar is not a flow worth drawing.
+            const items = Object.entries(entries).filter(([k,v])=>v>=1);
+            if (!items.length) return {items:[],total:0};
+            const total = items.reduce((a,[,v])=>a+v,0);
+            const n = items.length, avail = H - gap*(n-1);
+            let arr = items.map(([k,v])=>({k,v,h:Math.max(minPx,(v/total)*avail)}));
+            let over = arr.reduce((a,r)=>a+r.h,0) - avail;
+            if (over > 0) {
+                const slackT = arr.filter(r=>r.h>minPx).reduce((a,r)=>a+(r.h-minPx),0);
+                if (slackT>0) arr = arr.map(r=>(r.h>minPx)?{...r,h:r.h-over*((r.h-minPx)/slackT)}:r);
+            }
+            return {items:arr, total};
+        }
+
+        function distFmt(v){ return '$'+Math.round(v).toLocaleString(); }
+        function distFmtK(v){ return v>=1000 ? '$'+Math.round(v/1000)+'k' : '$'+Math.round(v); }
+
+        // Build one Sankey SVG. opts sizes it for compact vs zoom. Labels show $ + side-relative %.
+        function distBuildSVG(flows, opts) {
+            const {W,H,pad,minPx,gap,spineW,fs,labelGap} = opts;
+            const cx = W/2;
+            const inS = distSized(flows.sources, H-pad*2, minPx, gap);
+            const outS = distSized(flows.spend, H-pad*2, minPx, gap);
+            let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;">`;
+            // The spine spans exactly the flush ribbon stack -- no overhang past the first/last
+            // ribbon. Sources and Spend can flush to different totals (different counts, different
+            // minimum floors), so the spine takes the TALLER of the two and both stacks are
+            // top-aligned: the top edges of the first source ribbon, the spine, and the first spend
+            // ribbon all land on the same line.
+            const inFlush = inS.items.reduce((a,r)=>a+r.h,0);
+            const outFlush = outS.items.reduce((a,r)=>a+r.h,0);
+            const sTop = pad, sH = Math.max(inFlush, outFlush);
+            svg += `<rect x="${cx-spineW/2}" y="${sTop}" width="${spineW}" height="${sH}" fill="var(--dist-spine)"/>`;
+            svg += `<text x="${cx}" y="${sTop-6}" text-anchor="middle" font-size="${fs-1}" fill="var(--text-muted)" font-weight="700" font-family="ui-monospace,monospace" letter-spacing="0.06em">SOURCE → SPEND</text>`;
+            const leftX = pad+labelGap, rightX = W-pad-labelGap;
+            // Ribbons hold CONSTANT thickness end to end -- a $69k flow has one value, so it gets
+            // one thickness. The flowing look comes from the OUTER edge being gapped (so labels have
+            // room) while the SPINE edge is packed flush; each ribbon slides vertically to close its
+            // gap, and the bezier does the rest. The flush stack is centered against the spine.
+            let y=pad, sy=pad;   // top-aligned: flush stack starts at the spine's top edge
+            inS.items.forEach(it=>{
+                const c=DIST_COLORS[it.k]; const y0=y,y1=y+it.h,s0=sy,s1=sy+it.h,x0=leftX,x1=cx-spineW/2;
+                const pctExact = inS.total ? (it.v/inS.total*100).toFixed(2) : '0.00';
+                svg += `<path d="M${x0},${y0} C${(x0+x1)/2},${y0} ${(x0+x1)/2},${s0} ${x1},${s0} L${x1},${s1} C${(x0+x1)/2},${s1} ${(x0+x1)/2},${y1} ${x0},${y1} Z" fill="${c}" opacity="0.82"><title>${it.k}: ${distFmt(it.v)} (${pctExact}% of sources)</title></path>`;
+                const m=(y0+y1)/2, pct=inS.total?Math.round(it.v/inS.total*100):0;
+                svg += `<text x="${x0-5}" y="${m-1}" text-anchor="end" font-size="${fs}" fill="var(--text-secondary)">${DIST_SHORT[it.k]||it.k}</text>`;
+                svg += `<text x="${x0-5}" y="${m+fs+1}" text-anchor="end" font-size="${fs}" fill="var(--text-primary)" font-weight="700" font-family="ui-monospace,monospace">${distFmtK(it.v)} (${pct}%)</text>`;
+                y=y1+gap; sy=s1;   // flush: no gap at the spine
+            });
+            y=pad; sy=pad;   // top-aligned, same as sources
+            outS.items.forEach(it=>{
+                const c=DIST_COLORS[it.k]; const y0=y,y1=y+it.h,s0=sy,s1=sy+it.h,x0=cx+spineW/2,x1=rightX;
+                const pctExact = outS.total ? (it.v/outS.total*100).toFixed(2) : '0.00';
+                svg += `<path d="M${x0},${s0} C${(x0+x1)/2},${s0} ${(x0+x1)/2},${y0} ${x1},${y0} L${x1},${y1} C${(x0+x1)/2},${y1} ${(x0+x1)/2},${s1} ${x0},${s1} Z" fill="${c}" opacity="0.82"><title>${it.k}: ${distFmt(it.v)} (${pctExact}% of spend)</title></path>`;
+                const m=(y0+y1)/2, pct=outS.total?Math.round(it.v/outS.total*100):0;
+                svg += `<text x="${x1+5}" y="${m-1}" text-anchor="start" font-size="${fs}" fill="var(--text-secondary)">${it.k}</text>`;
+                svg += `<text x="${x1+5}" y="${m+fs+1}" text-anchor="start" font-size="${fs}" fill="var(--text-primary)" font-weight="700" font-family="ui-monospace,monospace">${distFmtK(it.v)} (${pct}%)</text>`;
+                y=y1+gap; sy=s1;   // flush: no gap at the spine
+            });
+            svg += `</svg>`;
+            return { svg, inTot:inS.total, outTot:outS.total };
+        }
+
+        const DIST_COMPACT = {W:300,H:290,pad:20,minPx:18,gap:6,spineW:6,fs:9,labelGap:52};
+        const DIST_ZOOM = {W:1000,H:440,pad:36,minPx:26,gap:8,spineW:24,fs:13,labelGap:130};
+
+        // Determine the three default life-phase years from the current inputs.
+        function distDefaultYears() {
+            const series = (window.__chartSeries)||[];
+            if (!series.length) return [];
+            const num = id => parseInt((document.getElementById(id)||{}).value)||0;
+            const hBirth=num('hBirthYear'), wBirth=num('wBirthYear');
+            const hSemi=num('hSemiAge'), wSemi=num('wSemiAge'), hFull=num('hFullAge'), wFull=num('wFullAge');
+            // younger spouse (later birth year) drives semi/full milestones
+            const semiYr = Math.max((hBirth||0)+hSemi, (wBirth||0)+wSemi);
+            const fullYr = Math.max((hBirth||0)+hFull, (wBirth||0)+wFull);
+            // SS claim year (younger spouse); fall back to a late-plan year
+            const ssYr = Math.max((hBirth||0)+ (num('hSsAge')||70), (wBirth||0)+(num('wSsAge')||70));
+            const clamp = yr => {
+                const yrs = series.map(s=>s.year);
+                return Math.min(Math.max(yr, yrs[0]), yrs[yrs.length-1]);
+            };
+            return [
+                {phase:'Semi-Retirement', year:clamp(semiYr)},
+                {phase:'Full Retirement', year:clamp(fullYr)},
+                {phase:'SS-Claim Age', year:clamp(ssYr)}
+            ];
+        }
+
+        function distAgesFor(year) {
+            const y = (window.__chartSeries||[]).find(s=>s.year===year);
+            if (!y) return '';
+            // The Single app mirrors the wife fields internally (wAge always exists), so testing for
+            // the field would always show a spouse. The real signal is whether the wife INPUT row is
+            // visible in the UI -- shown for MFJ, hidden for Single/HoH.
+            const wIn = document.getElementById('wBirthYear');
+            const hasSpouse = !!(wIn && wIn.offsetParent !== null);
+            return hasSpouse ? `H${y.hAge} · W${y.wAge}` : `Age ${y.hAge}`;
+        }
+
+        function renderDistribution() {
+            const panelsEl = document.getElementById('distributionPanels');
+            if (!panelsEl) return;
+            const series = window.__chartSeries||[];
+            if (!series.length) { panelsEl.innerHTML = '<p class="text-slate-500 text-xs">Run a projection to see the distribution mix.</p>'; return; }
+            const phases = distDefaultYears();
+            const yrOptions = series.map(s=>s.year);
+            panelsEl.innerHTML = phases.map((ph,i)=>{
+                // Untouched panel -> track the milestone. Pinned panel -> keep the user's year,
+                // unless that year fell out of the available range (then fall back to the milestone).
+                if (!distUserSet[i] || !yrOptions.includes(distActiveYears[i])) distActiveYears[i]=ph.year;
+                const yr = distActiveYears[i];
+                const y = series.find(s=>s.year===yr);
+                const flows = distFlowsFor(y);
+                const {svg,inTot,outTot} = distBuildSVG(flows, DIST_COMPACT);
+                const opts = yrOptions.map(o=>`<option value="${o}"${o===yr?' selected':''}>${o}</option>`).join('');
+                return `<div class="rounded-xl p-3" style="background:var(--bg-elevated);border:1px solid var(--border-strong);">
+                    <div class="flex items-center justify-between mb-0.5">
+                        <span class="text-[10.5px] font-bold uppercase tracking-wide text-blue-400">${ph.phase}</span>
+                        <span class="flex items-center gap-1">
+                            ${distUserSet[i] ? `<button onclick="resetDistYear(${i})" title="Reset to the ${ph.phase.toLowerCase()} milestone year (${ph.year})" class="text-[11px] leading-none px-1 py-1 rounded cursor-pointer transition" style="color:var(--text-muted);border:1px solid var(--border-strong);background:var(--bg-input);">&#8634;</button>` : ''}
+                            <select onchange="setDistYear(${i}, this.value)" title="Change the year shown in this panel" class="rounded px-2 py-1 text-[11px] cursor-pointer" style="font-family:ui-monospace,monospace;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-strong);box-shadow:0 1px 2px rgba(0,0,0,0.06);">${opts}</select>
+                        </span>
+                    </div>
+                    <div class="text-[10px] mb-1" style="font-family:ui-monospace,monospace;color:var(--text-muted);">${distAgesFor(yr)}</div>
+                    <div class="flex justify-between text-[9.5px] mb-1" style="font-family:ui-monospace,monospace;color:#64748b;">
+                        <span>Sources<strong style="color:var(--dist-sources);display:block;font-size:12px;">${distFmt(inTot)}</strong></span>
+                        <span style="text-align:right;">Spend<strong style="color:var(--dist-spend);display:block;font-size:12px;">${distFmt(outTot)}</strong></span>
+                    </div>
+                    ${svg}
+                </div>`;
+            }).join('');
+        }
+
+        function setDistYear(i, yr){ distActiveYears[i]=parseInt(yr); distUserSet[i]=true; renderDistribution(); }
+        function resetDistYear(i){ distUserSet[i]=false; renderDistribution(); } // hand the panel back to milestone-tracking
+
+        let currentChartTab = 'trajectory';
+        function setChartTab(tab){
+            currentChartTab = tab;
+            const isT = tab==='trajectory';
+            document.getElementById('tabPaneTrajectory').style.display = isT ? '' : 'none';
+            document.getElementById('tabPaneDistribution').style.display = isT ? 'none' : '';
+            const tb=document.getElementById('chartTabTrajectory'), db=document.getElementById('chartTabDistribution');
+            tb.className = 'px-3 py-1.5 text-[11px] font-semibold -mb-px transition cursor-pointer ' + (isT?'text-blue-400 border-b-2 border-blue-400':'text-slate-400 border-b-2 border-transparent hover:text-slate-200');
+            db.className = 'px-3 py-1.5 text-[11px] font-semibold -mb-px transition cursor-pointer ' + (!isT?'text-blue-400 border-b-2 border-blue-400':'text-slate-400 border-b-2 border-transparent hover:text-slate-200');
+            // Include HSA / Include 529 pick which BALANCES stack in the trajectory chart. The
+            // Distribution Mix shows FLOWS, not balances, so they have no meaning there -- hide them
+            // rather than grey them out, since the control genuinely doesn't apply to this view.
+            // State is preserved; they reappear on switching back.
+            const bt = document.getElementById('chartBucketToggles');
+            if (bt) bt.style.display = isT ? '' : 'none';
+            if (!isT) renderDistribution();
         }
 
         function setDollarMode(mode) {
@@ -1939,7 +2250,7 @@
         // Strips thousands-separator commas before parsing; harmless no-op on strings without commas
         function cleanNum(str) {
             if (typeof str !== 'string') return str;
-            return str.replace(/,/g, '');
+            return str.replace(/[$,\s]/g, '');
         }
 
         // Live comma-formatting for dollar-amount input fields: format on blur/load, allow free typing while focused
@@ -2108,7 +2419,7 @@
             // partial-year W2 income in the transition year. Manual age overrides this.
             const rothConvAutoYear = Math.max(hBirthYear + hSemi, wBirthYear + wSemi) + 1;
             const rothConvMethod = document.getElementById('rothConvMethod').value;
-            const rothConvBracketCap = parseInt(document.getElementById('rothConvBracketCap').value) || 22;
+            const rothConvBracketCap = parseInt(document.getElementById('rothConvBracketCap').value) || 12;
             const rothConvFixedAmt = parseFloat(cleanNum(document.getElementById('rothConvFixedAmt').value)) || 0;
 
             const ssActive = document.getElementById('ssToggle').checked;
@@ -3192,6 +3503,12 @@
             </span>`).join('');
 
             window.__chartSeries = series; // stash for tooltip lookup
+            // Keep the Distribution Mix tab in sync. It reads the same published series, so it
+            // refreshes on every recalc — including when the Today's $ / Future $ toggle fires
+            // (setDollarMode ends with triggerRecalculate). Only redraw when that tab is showing.
+            if (typeof currentChartTab !== 'undefined' && currentChartTab === 'distribution') {
+                try { renderDistribution(); } catch (e) { /* view-only; never break the engine path */ }
+            }
 
             // A/B compare: overlay scenario A's spendable-total trajectory as a dashed line,
             // aligned to B's years and scaled to B's current y-axis (maxTotal).
@@ -4439,6 +4756,7 @@
                         <a href="#sec-dollars" class="hover:underline cursor-pointer">2. Dollar Display Modes (Today's $ vs Future $)</a>
                         <a href="#sec-inputs" class="hover:underline cursor-pointer">3. Input Parameters Explained</a>
                         <a href="#sec-kpis" class="hover:underline cursor-pointer">4. KPI Cards Explained</a>
+                        <a href="#sec-distribution" class="hover:underline cursor-pointer">4b. Distribution Mix</a>
                         <a href="#sec-columns" class="hover:underline cursor-pointer">5. Combined Table Columns</a>
                         <a href="#sec-detailcols" class="hover:underline cursor-pointer">6. Per-Account Detail Columns</a>
                         <a href="#sec-lifecycle" class="hover:underline cursor-pointer">7. Life Phase Logic</a>
@@ -4476,7 +4794,7 @@
                             <li>Semi-retirement at <strong style="color:var(--text-primary)">55 / 52</strong>, full retirement at <strong style="color:var(--text-primary)">57 / 60</strong>, plan to age <strong style="color:var(--text-primary)">95</strong></li>
                             <li>Contributions to all five buckets; two children in college later on</li>
                         </ul>
-                        <p class="text-sm mt-2" style="color:var(--text-secondary)">These match the app's out-of-the-box settings, so with nothing changed the examples line up with what's on screen. They're only an illustration &mdash; <strong style="color:var(--text-primary)">your inputs may differ, and the explanations apply regardless of the numbers.</strong></p>
+                        <p class="text-sm mt-2" style="color:var(--text-secondary)">These match the app's out-of-the-box settings, so with nothing changed the examples line up with what's on screen. They're only an illustration &mdash; <strong style="color:var(--text-primary)">your inputs may differ, and the explanations apply regardless of the numbers.</strong> Any concrete calendar years shown in examples (e.g. 2035, 2036) assume the plan starts in the current year and shift forward as the calendar advances &mdash; the projection begins in whatever year you run it, so read the years as offsets from that start (both spouses step down in the plan's 9th year, conversions the year after), not as fixed dates.</p>
                     </div>
                 </section>
 
@@ -4548,7 +4866,7 @@
                         <div>
                             <h3 class="font-semibold text-base mb-1">Roth Conversion, Social Security, Children</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li>Roth conversion controls (toggle — <strong style="color:var(--text-primary)">off by default</strong>; start — "Auto" (shown as the younger spouse's age and start year, e.g. "53 (2035)"), or any manual age — bracket-fill cap or fixed amount) — Section 10.</li>
+                                <li>Roth conversion controls (toggle — <strong style="color:var(--text-primary)">off by default</strong>; start — "Auto" (shown as the younger spouse's age and start year, e.g. "53 (2036)"), or any manual age — bracket-fill cap or fixed amount) — Section 10.</li>
                                 <li>Social Security controls (toggle — <strong style="color:var(--text-primary)">off by default</strong>, per-spouse claim ages and amounts, COLA, taxable %) — Section 13.</li>
                                 <li>Children profiles (birth years, undergrad/grad costs and durations) and the gifting schedule — Section 15.</li>
                                 <li>Survivor Scenario (toggle, first-to-pass, age at passing, survivor spending %) — documented as Phase 4 in Section 7.</li>
@@ -4591,6 +4909,19 @@
                         <tr class="border-b border-slate-200"><td class="py-2 pr-4 font-semibold" style="color:var(--text-primary)">529 status <span class="font-normal">(badge)</span></td><td class="py-2">Shown as a small badge beneath <strong style="color:var(--text-primary)">Portfolio Horizon</strong> rather than as its own card &mdash; it carries a single piece of information, and Portfolio Horizon already excludes the 529, so the badge completes that picture. <strong style="color:var(--text-primary)">&#9679; 529 Funded</strong> means the 529 covered every scheduled tuition year; <strong style="color:#ef4444">&#9679; 529 Underfunded</strong> (red) means tuition exceeded the 529 balance at some point, forcing the shortfall to be paid from Brokerage. In Compare mode the badge also shows A's state, but only when A and B differ.</td></tr>
                         </tbody>
                     </table></div>
+                </section>
+
+                <!-- 4b. Distribution Mix -->
+                <section id="sec-distribution">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-shuffle mr-2"></i>4b. Distribution Mix (where each year's money moves)</h2>
+                    <p class="mb-3">The chart area at the top has two tabs. <strong style="color:var(--text-primary)">Net Worth Trajectory</strong> shows balances growing and drawing down over the whole plan; <strong style="color:var(--text-primary)">Distribution Mix</strong> answers a different question for a single year &mdash; <em>where did the money come from, and what did it pay for?</em> It is a cash-flow (Sankey) view, not a balance view.</p>
+                    <p class="mb-3">Three panels default to life-phase milestones (semi-retirement, full retirement, and Social&nbsp;Security claim age). Each panel tracks its milestone automatically &mdash; change a birth year or a semi/full-retirement age and the panels follow to the new years. Pick a specific year from a panel&rsquo;s dropdown to pin it there instead; a pinned panel keeps your year even as other inputs change, and a <span aria-hidden="true">&#8634;</span> reset button appears to hand it back to automatic tracking. Each panel shows <span style="color:var(--dist-sources);font-weight:600">Sources</span> on the left flowing into <span style="color:var(--dist-spend);font-weight:600">Spend</span> on the right, with a running total for each side.</p>
+                    <ul class="list-disc ml-6 mb-3 space-y-1" style="color:var(--text-secondary)">
+                        <li><strong style="color:var(--text-primary)">Sources</strong>: Traditional, Roth, and Brokerage withdrawals; Social Security; RE/Business distributions; 1099 / part-time income (gross); HSA; and the 529 (the portion of tuition it funds).</li>
+                        <li><strong style="color:var(--text-primary)">Spend</strong>: Living, Healthcare, Taxes (the year's full tax, including any capital-gains tax), Gifting, and Tuition.</li>
+                        <li>Ribbon thickness is proportional to each flow's share, with a small minimum so tiny slices stay visible. Labels show the rounded figure and share; <strong style="color:var(--text-primary)">hover any ribbon</strong> for the exact dollar amount and precise percent.</li>
+                        <li>The numbers reconcile to the projection table for the same year, and each panel's Sources and Spend totals balance to the dollar. The view honors the Today's&nbsp;$ / Future&nbsp;$ toggle. The Include&nbsp;HSA / Include&nbsp;529 controls apply only to the trajectory chart's balances, so they are hidden on this tab.</li>
+                    </ul>
                 </section>
 
                 <!-- 5. Combined columns -->
@@ -4637,6 +4968,7 @@
                     </ul>
                     <p class="mt-2" style="color:var(--text-secondary)">Cross-check anytime: Trad Dists (elective + RMD used for spending) + Roth Dists + Brokerage Dists = Combined Portfolio W/D.</p>
                 </section>
+
 
                 <!-- 7. Life phases -->
                 <section id="sec-lifecycle">
@@ -4929,6 +5261,7 @@
                 <!-- 18. Profiles -->
                 <section id="sec-profiles">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-file-export mr-2"></i>18. Profiles: Import / Export / Reset</h2>
+                    <p class="mb-2">Both live under the <strong style="color:var(--text-primary)">Profile</strong> menu in the top bar &mdash; click it and choose Import or Export. <strong style="color:var(--text-primary)">Reset</strong> is its own button next to it.</p>
                     <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                         <li><strong style="color:var(--text-primary)">Export Profile</strong> downloads a JSON snapshot (saved as .txt) of <em>your</em> setup: every left-panel input (household, assets, contributions, distribution, Roth conversions, Social Security, survivor, state/local tax, heir assumptions), the children and gifting schedules, and display preferences (theme, view mode, dollar mode, KPI number format, visible column groups). Real Estate / Business investment deals are saved with the profile too, so a scenario's private positions travel with it. It deliberately does <em>not</em> save the federal tax tables (brackets, LTCG, standard deduction, FPL, RMD divisors) &mdash; those are current tax law, not personal data, so on import they always come from the app's current figures rather than whatever they were when you saved. This means a profile saved in an earlier tax year stays valid: your situation is re-run against today's tax law.</li>
                         <li><strong style="color:var(--text-primary)">Import Profile</strong> restores a previously exported file exactly — useful for maintaining named scenarios (e.g., "aggressive conversions" vs. "no SS, conservative") and swapping between them. The file is validated before anything is overwritten.</li>
