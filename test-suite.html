@@ -287,6 +287,29 @@ function tier1(win, fileKey) {
   push(`default 529 is $${expected529} for ${fileKey}`, got529 === expected529,
     p529 ? `529=${got529}` : 'no pool529');
 
+  // Healthcare defaults, re-based when healthcare stopped riding general CPI. Pre-65 is an ALL-IN
+  // figure (premiums + deductibles + copays + Rx + dental/vision), and the Single app runs at half
+  // the MFJ household throughout. The ACA benchmark is household-sized, so Single must be $14,000 --
+  // it previously carried the couple's $28,000, which understated a single filer's subsidy.
+  const dnum = id => { const e = win.document.getElementById(id); return e ? (e.value || '').replace(/[$,\s]/g, '') : null; };
+  const isSingleApp = fileKey === 'single';
+  const hcExp   = isSingleApp ? '20000'  : '40000';
+  const mcExp   = isSingleApp ? '9000'   : '18000';
+  const acaExp  = isSingleApp ? '14000'  : '28000';
+  const tradExp = isSingleApp ? '500000' : '1200000';
+  push(`default pre-65 healthcare is $${hcExp} for ${fileKey}`, dnum('healthcareCost') === hcExp,
+    `healthcareCost=${dnum('healthcareCost')}`);
+  push(`default post-65 Medicare is $${mcExp} for ${fileKey}`, dnum('medicareCost') === mcExp,
+    `medicareCost=${dnum('medicareCost')}`);
+  push(`default ACA benchmark premium is $${acaExp} for ${fileKey}`, dnum('acaBenchmarkPremium') === acaExp,
+    `acaBenchmarkPremium=${dnum('acaBenchmarkPremium')}`);
+  push(`default Traditional balance is $${tradExp} for ${fileKey}`, dnum('poolTrad') === tradExp,
+    `poolTrad=${dnum('poolTrad')}`);
+  // Healthcare inflation is its own rate, above general CPI. A silent revert to CPI would make the
+  // plan quietly cheaper by ~1.5 points/yr compounded across 50+ years.
+  push('default healthcare inflation is 4.5%', dnum('healthcareInflation') === '4.5',
+    `healthcareInflation=${dnum('healthcareInflation')}`);
+
   const s = win.__scenarioB && win.__scenarioB.series;
   push('series is non-empty array', Array.isArray(s) && s.length > 0, s ? `len ${s.length}` : 'no series');
 

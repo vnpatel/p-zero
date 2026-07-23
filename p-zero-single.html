@@ -434,11 +434,11 @@
                         <input type="number" id="pctDistribution" value="4.0" step="0.1" class="mini-input">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Pre-65 Healthcare Cost (Annual, Combined, today's $)</label>
-                        <input type="text" inputmode="decimal" data-money="true" id="healthcareCost" value="18000" class="mini-input">
+                        <label class="block text-[11px] text-slate-400 mb-1">Pre-65 Healthcare Cost (Annual, Combined, today's $) <span class="relative info-tip-wrap inline-block"><i class="fa-solid fa-circle-info text-slate-600 text-[9px] cursor-help"></i><span class="info-tip"><strong>All-in figure</strong> &mdash; premiums plus deductibles, copays, coinsurance, prescriptions, dental and vision. Not premiums alone. Marketplace coverage is age-rated, so this is best read as an average across the pre-65 stretch: lighter in your mid-50s, heavier approaching 65. Long-term care is <em>not</em> included here.</span></span></label>
+                        <input type="text" inputmode="decimal" data-money="true" id="healthcareCost" value="20000" class="mini-input">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Post-65 Medicare Cost (Annual, Combined, today's $)</label>
+                        <label class="block text-[11px] text-slate-400 mb-1">Post-65 Medicare Cost (Annual, Combined, today's $) <span class="relative info-tip-wrap inline-block"><i class="fa-solid fa-circle-info text-slate-600 text-[9px] cursor-help"></i><span class="info-tip"><strong>All-in figure</strong> &mdash; Part B and Part D premiums, Medigap/supplemental, deductibles and coinsurance, plus dental, vision and hearing (which Medicare doesn't cover). IRMAA surcharges are modelled separately and added on top. Long-term care is <em>not</em> included here.</span></span></label>
                         <input type="text" inputmode="decimal" data-money="true" id="medicareCost" value="9000" class="mini-input">
                     </div>
                     <div class="space-y-2 bg-slate-900/40 p-3 rounded-lg border border-slate-900">
@@ -448,7 +448,7 @@
                         </div>
                         <div>
                             <label class="block text-[10px] text-slate-500 mb-0.5">Benchmark Premium (SLCSP, annual, of the pre-65 cost) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">The Second-Lowest-Cost Silver Plan premium — the benchmark the ACA uses to size your subsidy. Subsidy = benchmark minus your expected contribution. <a onclick="openHelp('sec-healthcare')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §14 &rarr;</a></span></span></label>
-                            <input type="text" inputmode="decimal" data-money="true" id="acaBenchmarkPremium" value="28000" class="mini-input">
+                            <input type="text" inputmode="decimal" data-money="true" id="acaBenchmarkPremium" value="14000" class="mini-input">
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] text-slate-500">ACA Household Size <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Number of people in the tax household — sets the Federal Poverty Level used for the ACA 400% subsidy cliff. <a onclick="openHelp('sec-healthcare')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §14 &rarr;</a></span></span></span>
@@ -602,6 +602,10 @@
                     <div>
                         <label class="block text-[11px] text-slate-400 mb-1">CPI Inflation</label>
                         <input type="number" id="inflationRate" value="3" step="0.1" class="mini-input">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">Healthcare Inflation <span class="relative info-tip-wrap inline-block"><i class="fa-solid fa-circle-info text-slate-600 text-[9px] cursor-help"></i><span class="info-tip">Medical costs have historically risen faster than general inflation &mdash; roughly 1 to 1.5 points above CPI over recent decades. This rate escalates pre-Medicare healthcare, Medicare-era costs, and the ACA benchmark premium. Set it equal to CPI Inflation if you'd rather not model a premium.</span></span></label>
+                        <input type="number" id="healthcareInflation" value="4.5" step="0.1" class="mini-input">
                     </div>
                 </div>
                 <div class="bg-slate-900/40 p-2.5 rounded-lg border border-slate-900 text-[11px] flex justify-between mb-2">
@@ -1245,7 +1249,7 @@
             'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle', 'heirTaxRate', 'heirHsaTaxRate',
             'rmdAge', 'rothConvToggle', 'rothConvStartAge', 'rothConvMethod', 'rothConvBracketCap', 'rothConvFixedAmt',
             'ssToggle', 'hSsAge', 'wSsAge', 'hSsAmount', 'wSsAmount', 'ssCola', 'ssTaxablePct',
-            'roiNominal', 'inflationRate', 'stateRate', 'countyRate', 'stateExemptsSS',
+            'roiNominal', 'inflationRate', 'healthcareInflation', 'stateRate', 'countyRate', 'stateExemptsSS',
             'survivorToggle', 'survivorFirstToDie', 'survivorDeathAge', 'survivorSpendPct',
             'chartIncludeHsa', 'chartInclude529', 'growthConvention'
         ];
@@ -2386,11 +2390,17 @@
 
             const roiFlat = (parseFloat(cleanNum(document.getElementById('roiNominal').value)) || 6) / 100;
             const infFlat = (parseFloat(cleanNum(document.getElementById('inflationRate').value)) || 3) / 100;
+            // Medical costs have historically outpaced headline CPI (roughly 1-1.5 points over recent
+            // decades), so healthcare escalates on its own rate rather than general inflation. This
+            // drives pre-Medicare cost, Medicare-era cost, and the ACA benchmark premium -- the
+            // benchmark must move with the premium it's compared against, or the subsidy math drifts.
+            const hcInfFlat = (parseFloat(cleanNum(document.getElementById('healthcareInflation').value)) || 4.5) / 100;
             // Monte Carlo injection: when __mcPath is set, per-year returns/inflation come from it;
             // otherwise the flat rates are used (bit-identical to the deterministic model).
             const mcPath = window.__mcPath || null;
             const roi = roiFlat; // per-year roi is resolved inside the loop (see yearRoi)
             const inf = infFlat;
+            const hcInf = hcInfFlat;   // healthcare escalation rate (mirrors the inf/infFlat alias)
             const realRoi = ((1 + roi) / (1 + inf)) - 1;
             document.getElementById('realRoiDisplay').innerText = (realRoi * 100).toFixed(2) + '%';
 
@@ -2518,7 +2528,22 @@
                 } else {
                     infScale = Math.pow(1 + inf, i);
                 }
-                let ssInfScale = Math.pow(1 + ssCola, i);
+                // Healthcare escalates on its own rate. Under Monte Carlo the general path is stochastic,
+            // so rather than ignore it, healthcare rides that same drawn path plus the constant
+            // premium it has historically carried over CPI (hcInfFlat - infFlat). That keeps a bad
+            // inflation draw feeding healthcare too, instead of pinning it to a smooth curve.
+            let hcInfScale;
+            if (mcPath && mcPath.cumInf) {
+                // Scale the drawn cumulative inflation by the RATIO of the two rates, not by adding
+                // a premium: (1+hc)/(1+cpi) per year. Adding compounds the premium on top of the
+                // draw -- 1.03 x 1.015 = 1.04545, not the 1.045 the deterministic path uses -- so a
+                // pinned MC path would drift from the deterministic result. With the ratio, a pinned
+                // path reproduces it exactly while a bad inflation draw still feeds healthcare.
+                hcInfScale = infScale * Math.pow((1 + hcInfFlat) / (1 + infFlat), i);
+            } else {
+                hcInfScale = Math.pow(1 + hcInf, i);
+            }
+            let ssInfScale = Math.pow(1 + ssCola, i);
 
                 // ---- Survivor: one-time step-up in basis on the decedent's half of jointly-held
                 // brokerage (non-community-property state): half the unrealized gain becomes basis ----
@@ -2664,10 +2689,10 @@
                 let hcMarketplacePremium = 0;   // benchmark-premium slice for pre-65 person(s)
                 let hcNonSubsidizable = 0;      // OOP + Medicare-side costs (never subsidized)
                 if (isSemiRetired || isFullyRetired) {
-                    const preRate = baseHealthcare * infScale;
-                    const postRate = baseMedicare * infScale;
+                    const preRate = baseHealthcare * hcInfScale;
+                    const postRate = baseMedicare * hcInfScale;
                     // Household benchmark premium can never exceed the all-in pre-65 cost
-                    const benchPrem = acaOn ? Math.min(acaBenchPremBase * infScale, preRate) : 0;
+                    const benchPrem = acaOn ? Math.min(acaBenchPremBase * hcInfScale, preRate) : 0;
                     // Single filer: exactly one person (the mirrored spouse is ignored so healthcare
                     // isn't charged twice).
                     const persons = [{ on65: hAge >= 65 }];
@@ -4790,7 +4815,7 @@
                         <div>
                             <h3 class="font-semibold text-base mb-1">Asset Pool Balances &amp; Brokerage Basis</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li>Defaults: Traditional $1,000,000 &bull; Roth $500,000 &bull; Brokerage $1,000,000 &bull; HSA $130,000 &bull; 529 $260,000 (2026 starting values).</li>
+                                <li>Defaults: Traditional $500,000 &bull; Roth $250,000 &bull; Brokerage $500,000 &bull; HSA $100,000 &bull; 529 $100,000 (starting values).</li>
                                 <li><strong style="color:var(--text-primary)">Brokerage Basis % (default 60%):</strong> the share of the brokerage balance that is original after-tax principal. Only the remaining gain portion of each brokerage withdrawal is taxed (at LTCG rates). The basis ratio is tracked and updated every year as contributions add basis and withdrawals consume it proportionally.</li>
                                 <li><strong style="color:var(--text-primary)">Brokerage Dividend Yield (default 2%) &amp; % Qualified (default 85%):</strong> the annual dividend the taxable account throws off, and what share of it is "qualified" — the long-held-stock kind taxed at the lower long-term capital-gains rates, versus ordinary dividends (REITs, bond/money-market funds) taxed at regular income rates. See Section 12.</li>
                             </ul>
@@ -4801,7 +4826,7 @@
                                 <li><strong style="color:var(--text-primary)">Annual Living Target — Excl. Healthcare (default $90,000, today's $):</strong> the <em>net, after-tax</em> amount you want available for non-healthcare living expenses each retirement year. Taxes do NOT come out of this number — the engine grosses up the portfolio withdrawal so that taxes are paid <em>on top</em> and the full target lands in your pocket (Section 8). Healthcare, gifting, and tuition are also tracked separately on top.</li>
                                 <li><strong style="color:var(--text-primary)">Distribution model:</strong> fixed dollar target (above) or a percentage of the portfolio.</li>
                                 <li><strong style="color:var(--text-primary)">Withdrawal Order:</strong> Sequential (Brokerage &rarr; Traditional &rarr; Roth) or Pro-Rata. See Section 9.</li>
-                                <li><strong style="color:var(--text-primary)">Healthcare (Pre-65) $18,000 / Post-65 Medicare $9,000:</strong> all-in annual costs, today's $. See Section 14 for the split-age transition, the ACA subsidy inputs (toggle, $28K benchmark premium, household size, preserve-subsidy cap) and the IRMAA toggle.</li>
+                                <li><strong style="color:var(--text-primary)">Healthcare (Pre-65) $20,000 / Post-65 Medicare $9,000:</strong> all-in annual costs, today's $ &mdash; premiums plus deductibles, copays, prescriptions, dental and vision, not premiums alone. These escalate at the Healthcare Inflation rate (4.5% default), not general CPI. See Section 14 for the split-age transition, the ACA subsidy inputs (toggle, $14K benchmark premium, household size, preserve-subsidy cap) and the IRMAA toggle.</li>
                                 <li><strong style="color:var(--text-primary)">Growth Timing:</strong> when contributions/withdrawals earn growth within a year. Default "Realistically Conservative" (half-year convention). See Section 17.</li>
                             </ul>
                         </div>
@@ -4892,7 +4917,7 @@
                     <div class="rounded-lg p-4 mt-4 border border-slate-300" style="background:var(--bg-base);">
                         <p class="font-semibold mb-1" style="color:var(--text-primary)">How a row reconciles:</p>
                         <p style="color:var(--text-secondary)">Portfolio W/D = Planned living target + net healthcare (after any HSA coverage) + gifts + taxes &minus; semi-retirement income &minus; Social Security. Ending = Starting + Growth &minus; Portfolio W/D &minus; any HSA healthcare draw &minus; tuition paid by 529 (reflected only in the full-net-worth view). Every row reconciles this way at that row's price level.</p>
-                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; In our filer's first drawdown year (2035, age 55, today's $): $90,000 (Planned) + $0 (healthcare &mdash; the HSA covered all $18,000) + $0 (gifts) + $8,623 (taxes) &minus; $25,000 (semi-retirement income) &minus; $0 (SS) = <strong style="color:var(--text-primary)">$73,623</strong>, matching that row. The $25,000 of consulting income offsets part of the draw.</div>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; In our filer's first drawdown year (2035, age 55, today's $): $90,000 (Planned) + $0 (healthcare &mdash; the HSA covered all $22,779) + $0 (gifts) + $8,623 (taxes) &minus; $25,000 (semi-retirement income) &minus; $0 (SS) = <strong style="color:var(--text-primary)">$73,623</strong>, matching that row. The $25,000 of consulting income offsets part of the draw.</div>
                     </div>
                 </section>
 
@@ -5018,8 +5043,8 @@
                     </div>
 
                     <h3 class="font-semibold text-base mb-2">14.1 &mdash; The base costs (what you budget)</h3>
-                    <p style="color:var(--text-secondary)">The two sidebar inputs are all-in <em>gross</em> household costs in today's dollars, inflation-indexed: <strong style="color:var(--text-primary)">Pre-65 ($18,000 default)</strong> = unsubsidized marketplace premiums + deductibles + copays; <strong style="color:var(--text-primary)">Post-65 Medicare ($9,000 default)</strong> = Part B/D + Medigap + out-of-pocket. Costs begin at semi-retirement: the pre-65 rate applies until you reach 65, then the Medicare rate applies. Everything in this section only ever <em>adjusts</em> these bases: ACA can reduce the pre-65 side; IRMAA can increase the post-65 side; neither ever touches the other side of the 65 line.</p>
-                    <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Want the simple model?</strong> Turn both toggles off &rarr; the engine runs flat $18,000 / $9,000 (inflation-indexed) with zero ACA/IRMAA adjustments — verified identical to the pre-ACA engine, cell for cell. The MAGI column and the Lifetime ACA Subsidy card hide automatically so the interface matches the simpler model.</p>
+                    <p style="color:var(--text-secondary)">The two sidebar inputs are all-in <em>gross</em> household costs in today's dollars, escalated at the <strong style="color:var(--text-primary)">Healthcare Inflation</strong> rate (4.5% default) rather than general CPI: <strong style="color:var(--text-primary)">Pre-65 ($20,000 default)</strong> = unsubsidized marketplace premiums + deductibles + copays; <strong style="color:var(--text-primary)">Post-65 Medicare ($9,000 default)</strong> = Part B/D + Medigap + out-of-pocket. Costs begin at semi-retirement: the pre-65 rate applies until you reach 65, then the Medicare rate applies. Everything in this section only ever <em>adjusts</em> these bases: ACA can reduce the pre-65 side; IRMAA can increase the post-65 side; neither ever touches the other side of the 65 line.</p>
+                    <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Want the simple model?</strong> Turn both toggles off &rarr; the engine runs flat $20,000 / $9,000 (healthcare-inflation-indexed) with zero ACA/IRMAA adjustments — verified identical to the pre-ACA engine, cell for cell. The MAGI column and the Lifetime ACA Subsidy card hide automatically so the interface matches the simpler model.</p>
 
                     <h3 class="font-semibold text-base mb-2 mt-5">14.2 &mdash; MAGI: the yardstick everything reads</h3>
                     <p style="color:var(--text-secondary)">MAGI (Modified Adjusted Gross Income) is the government's measure of "how much income did you really have this year," used for benefit eligibility. Crucially, <strong style="color:var(--text-primary)">no deductions reduce it</strong> — which is why it differs from the Total Taxable column. Real Estate / Business investments feed MAGI too (Section 15b): the taxable portion of distributions counts as ordinary income, and a sale/exit gain counts like a brokerage gain — so a big exit year can push you over the ACA cliff or into an IRMAA tier exactly as a large conversion would.</p>
@@ -5044,20 +5069,20 @@
                     </div>
 
                     <h3 class="font-semibold text-base mb-2 mt-5">14.3 &mdash; ACA subsidies before 65: the math, worked</h3>
-                    <p style="color:var(--text-secondary)">Under post-2025 law, subsidies exist only while MAGI &le; 400% of the Federal Poverty Level (FPL is shown read-only in the Federal Tax Details tab; a single-person household &rarr; cliff at roughly <span class="font-mono">$62,600</span> today's $). Within eligibility, you contribute a sliding <span class="font-mono">2.1%–9.96%</span> of MAGI toward the <strong style="color:var(--text-primary)">benchmark premium</strong> (the SLCSP input — the subsidizable slice of the $18,000 pre-65 cost; the out-of-pocket remainder is never subsidized); the subsidy pays the rest. The exact figures depend on your benchmark-premium and FPL inputs — the numbers below illustrate the mechanics with representative single-filer values.</p>
+                    <p style="color:var(--text-secondary)">Under post-2025 law, subsidies exist only while MAGI &le; 400% of the Federal Poverty Level (FPL is shown read-only in the Federal Tax Details tab; a single-person household &rarr; cliff at roughly <span class="font-mono">$62,600</span> today's $). Within eligibility, you contribute a sliding <span class="font-mono">2.1%–9.96%</span> of MAGI toward the <strong style="color:var(--text-primary)">benchmark premium</strong> (the SLCSP input — the subsidizable slice of the $20,000 pre-65 cost; the out-of-pocket remainder is never subsidized); the subsidy pays the rest. The exact figures depend on your benchmark-premium and FPL inputs — the numbers below illustrate the mechanics with representative single-filer values.</p>
                     <div class="rounded-lg p-4 mt-3 border border-slate-300" style="background:var(--bg-base);">
                         <p class="font-semibold mb-1" style="color:var(--text-primary)">Worked example — MAGI $40,000, single (benchmark $14,000):</p>
-                        <p class="font-mono text-sm" style="color:var(--text-secondary)">ratio = 40,000 / 15,650 FPL = 2.56&times; &rarr; applicable % &asymp; <span data-example="aca.pct" data-magi="40000" data-fpl="15650">8.61%</span><br>your contribution = 8.61% &times; 40,000 = <span data-example="aca.contrib" data-magi="40000" data-fpl="15650">$3,444</span><br>subsidy = $14,000 benchmark − $3,444 = <strong>$10,556</strong><br>net healthcare = $18,000 − $10,556 = <strong>$7,444</strong> (vs $18,000 unsubsidized)</p>
+                        <p class="font-mono text-sm" style="color:var(--text-secondary)">ratio = 40,000 / 15,650 FPL = 2.56&times; &rarr; applicable % &asymp; <span data-example="aca.pct" data-magi="40000" data-fpl="15650">8.61%</span><br>your contribution = 8.61% &times; 40,000 = <span data-example="aca.contrib" data-magi="40000" data-fpl="15650">$3,444</span><br>subsidy = $14,000 benchmark − $3,444 = <strong>$10,556</strong><br>net healthcare = $20,000 − $10,556 = <strong>$9,444</strong> (vs $20,000 unsubsidized)</p>
                     </div>
                     <p class="mt-3 mb-1 font-semibold" style="color:var(--text-primary)">How the subsidy behaves across MAGI levels (illustrative; the cliff made visceral):</p>
                     <div class="overflow-x-auto"><table class="w-full text-sm">
-                        <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">MAGI</th><th class="py-2 pr-4">Subsidy</th><th class="py-2">Net healthcare (of $18,000)</th></tr></thead>
+                        <thead><tr class="border-b border-slate-300 text-left"><th class="py-2 pr-4">MAGI</th><th class="py-2 pr-4">Subsidy</th><th class="py-2">Net healthcare (of $20,000)</th></tr></thead>
                         <tbody style="color:var(--text-secondary)" class="font-mono">
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Very low (Roth-funded yr)</td><td class="py-1.5 pr-4">~$13,700</td><td class="py-1.5">~$4,300 (floored at the 138%-FPL minimum contribution)</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$30,000</td><td class="py-1.5 pr-4">~$11,800</td><td class="py-1.5">~$6,200</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$40,000</td><td class="py-1.5 pr-4">$10,640</td><td class="py-1.5">$7,360</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$62,600 (cliff edge)</td><td class="py-1.5 pr-4">~$7,800</td><td class="py-1.5">~$10,200</td></tr>
-                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4 font-bold">$62,601 (one dollar over)</td><td class="py-1.5 pr-4 font-bold">$0</td><td class="py-1.5 font-bold">$18,000 &larr; the subsidy vanishes over $1</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">Very low (Roth-funded yr)</td><td class="py-1.5 pr-4">~$13,700</td><td class="py-1.5">~$6,300 (floored at the 138%-FPL minimum contribution)</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$30,000</td><td class="py-1.5 pr-4">~$11,800</td><td class="py-1.5">~$8,200</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$40,000</td><td class="py-1.5 pr-4">$10,640</td><td class="py-1.5">$9,360</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4">$62,600 (cliff edge)</td><td class="py-1.5 pr-4">~$7,800</td><td class="py-1.5">~$12,200</td></tr>
+                        <tr class="border-b border-slate-200"><td class="py-1.5 pr-4 font-bold">$62,601 (one dollar over)</td><td class="py-1.5 pr-4 font-bold">$0</td><td class="py-1.5 font-bold">$20,000 &larr; the subsidy vanishes over $1</td></tr>
                         <tr><td class="py-1.5 pr-4">$100,000+</td><td class="py-1.5 pr-4">$0</td><td class="py-1.5">$18,000</td></tr>
                         </tbody>
                     </table></div>
@@ -5066,7 +5091,7 @@
                     <h3 class="font-semibold text-base mb-2 mt-5">14.4 &mdash; Reading the Healthcare cell sub-lines</h3>
                     <div class="rounded-lg p-4 border border-amber-300" style="background:var(--bg-base);">
                         <p style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">The big number in the cell is always the TOTAL you spend that year.</strong> The small sub-line is the explanation of how it got there — never an addition on top:</p>
-                        <p class="font-mono text-sm mt-2" style="color:var(--text-secondary)">$7,360 <span class="text-emerald-600">−$10,640 ACA</span>&nbsp;&nbsp;&rarr; you spend $7,360; the label explains: $18,000 sticker minus a $10,640 subsidy<br>$15,355 <span class="text-red-600">+$6,355 IRMAA</span>&nbsp;&rarr; you spend $15,355; the label explains: $9,000 base plus a $6,355 surcharge</p>
+                        <p class="font-mono text-sm mt-2" style="color:var(--text-secondary)">$9,360 <span class="text-emerald-600">−$10,640 ACA</span>&nbsp;&nbsp;&rarr; you spend $9,360; the label explains: $20,000 sticker minus a $10,640 subsidy<br>$15,355 <span class="text-red-600">+$6,355 IRMAA</span>&nbsp;&rarr; you spend $15,355; the label explains: $9,000 base plus a $6,355 surcharge</p>
                         <p class="mt-2" style="color:var(--text-secondary)">Combining an ACA reduction and an IRMAA surcharge in the same figure is impossible: ACA only touches the pre-65 base (downward), IRMAA only touches the post-65 base (upward), and they never apply to the same year since one is strictly before 65 and the other strictly after.</p>
                     </div>
 
