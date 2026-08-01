@@ -310,6 +310,39 @@ function tier1(win, fileKey) {
   push('default healthcare inflation is 4.5%', dnum('healthcareInflation') === '4.5',
     `healthcareInflation=${dnum('healthcareInflation')}`);
 
+  // Long-Term Care defaults. LTC is OFF by default (a stress-test contingency), so the toggle must
+  // start unchecked -- if it silently defaulted on, every baseline would carry a large late-life
+  // cost most users won't face, and the shipped baselines would move. Onset 84 both; durations are
+  // gender-differentiated (men ~2.2yr -> 2, women ~3.7yr -> 4); $110k ~ semi-private nursing room.
+  const ltcTog = win.document.getElementById('ltcToggle');
+  push('LTC toggle is OFF by default', ltcTog && ltcTog.checked === false,
+    ltcTog ? `checked=${ltcTog.checked}` : 'no ltcToggle');
+  push('LTC inputs hidden by default', (() => { const el = win.document.getElementById('ltcInputs'); return el && el.classList.contains('hidden'); })(),
+    'ltcInputs visibility');
+  push('default LTC onset age (H) is 84', dnum('ltcHAge') === '84', `ltcHAge=${dnum('ltcHAge')}`);
+  push('default LTC annual cost (H) is $110,000', dnum('ltcHCost') === '110000', `ltcHCost=${dnum('ltcHCost')}`);
+  push('default LTC duration (H) is 2 yrs', dnum('ltcHYears') === '2', `ltcHYears=${dnum('ltcHYears')}`);
+
+  // ---- Healthcare inflation TAPER defaults (ANNUAL_CONSTANTS_2026) ----
+  // The taper is a modeling assumption: healthcare's EXCESS over CPI fades to zero over a window,
+  // rather than persisting for the whole horizon. Default-on. The premium itself is NOT stored --
+  // it is computed live as (healthcareInflation - CPI) -- so we guard the on-flag and the window,
+  // not a hardcoded premium.
+  const AC = win.ANNUAL_CONSTANTS_2026;
+  push('ANNUAL_CONSTANTS_2026 exists', !!AC, AC ? 'present' : 'MISSING');
+  push('healthcare taper is ON by default', !!AC && AC.hcTaperOn === true,
+    AC ? `hcTaperOn=${AC.hcTaperOn}` : 'no AC');
+  push('healthcare taper window is 25 years', !!AC && AC.hcConvergenceYears === 25,
+    AC ? `hcConvergenceYears=${AC.hcConvergenceYears}` : 'no AC');
+  push('taper premium is NOT hardcoded (derived from inputs)', !!AC && AC.hcPremium === undefined && AC.hcExcess === undefined,
+    'premium must be computed live as healthcareInflation - CPI, not stored');
+  if (!isSingleApp) {
+    // Wife row exists only in MFJ. Same onset, longer duration (4 vs 2) per the gender data.
+    push('default LTC onset age (W) is 84', dnum('ltcWAge') === '84', `ltcWAge=${dnum('ltcWAge')}`);
+    push('default LTC annual cost (W) is $110,000', dnum('ltcWCost') === '110000', `ltcWCost=${dnum('ltcWCost')}`);
+    push('default LTC duration (W) is 4 yrs', dnum('ltcWYears') === '4', `ltcWYears=${dnum('ltcWYears')}`);
+  }
+
   const s = win.__scenarioB && win.__scenarioB.series;
   push('series is non-empty array', Array.isArray(s) && s.length > 0, s ? `len ${s.length}` : 'no series');
 
@@ -556,6 +589,67 @@ function tier3(win, fileKey) {
 function tier5(win, fileKey) {
   const out = [];
   const push = (name, pass, detail) => out.push({ name, pass, detail });
+
+  // ---- Long-Term Care: off reproduces baseline; on reduces the plan ----
+  // LTC is a stacked late-life cost drawn from the portfolio. Off (the default) it must not touch
+  // any number; on it must strictly lower the end-of-life total. Complements the Tier 1 structural
+  // check on the toggle by proving the behaviour from the engine side.
+  try {
+    const tog = win.document.getElementById('ltcToggle');
+    if (tog) {
+      const eol = () => Math.round(win.__scenarioB.series.at(-1).spendableTotal);
+      const wasChecked = tog.checked;
+      tog.checked = false; win.triggerRecalculate();
+      const off = eol();
+      tog.checked = true; if (win.toggleLtcInputs) win.toggleLtcInputs(); win.triggerRecalculate();
+      const on = eol();
+      tog.checked = wasChecked; if (win.toggleLtcInputs) win.toggleLtcInputs(); win.triggerRecalculate();
+      const restored = eol();
+      push('LTC on reduces the end-of-life total vs off', on < off,
+        `off $${off.toLocaleString()} -> on $${on.toLocaleString()}`);
+      push('LTC toggle is reversible (off-state reproduces exactly)', restored === off,
+        `restored $${restored.toLocaleString()} vs off $${off.toLocaleString()}`);
+    } else {
+      push('LTC toggle present', false, 'no ltcToggle element');
+    }
+  } catch (e) {
+    push('LTC behavioral test ran', false, 'error: ' + e.message);
+  }
+
+  // ---- Healthcare taper: far-out healthcare grows SLOWER than a flat premium would ----
+  // With the taper on, the excess-over-CPI fades, so a late-life healthcare cost (in today's $)
+  // must be LOWER than the same cost projected at a flat healthcare rate. We verify by comparing the
+  // taper-on engine's healthcare at a far year against a hand-computed flat-rate escalation of the
+  // same base. This proves the taper actually bends the curve (not just that a flag is set).
+  try {
+    const AC = win.ANNUAL_CONSTANTS_2026;
+    if (AC && AC.hcTaperOn) {
+      win.setDollarMode && win.setDollarMode('today');
+      recalc(win);
+      const s = win.__chartSeries;
+      // pick a far-out post-65 year (age 84) where medicare is the base and the taper has bitten
+      const y = s.find(x => x.hAge === 84);
+      if (y) {
+        const hcShown = (y.audHcFromPortfolio || 0) + (y.audHsaDist || 0);
+        // flat-rate counterfactual: base medicare escalated at the FLAT healthcare rate, deflated at CPI.
+        const medBase = parseFloat((win.document.getElementById('medicareCost').value || '0').replace(/[^0-9.]/g, '')) || 0;
+        const hcInf = (parseFloat(win.document.getElementById('healthcareInflation').value) || 4.5) / 100;
+        const cpi = (parseFloat(win.document.getElementById('inflationRate').value) || 3) / 100;
+        const yrsOut = y.year - new Date().getFullYear();
+        // flat: medBase grows at hcInf, then today's-$ deflates at cpi
+        const flatShown = medBase * Math.pow(1 + hcInf, yrsOut) / Math.pow(1 + cpi, yrsOut);
+        // taper-on healthcare should be MEANINGFULLY below the flat counterfactual (allow it to be a
+        // couple % under at minimum; at 38 yrs out the gap is large).
+        push('taper: far-out healthcare grows slower than flat premium',
+          hcShown < flatShown * 0.98,
+          `taper-on hc@84 $${Math.round(hcShown).toLocaleString()} vs flat-rate $${Math.round(flatShown).toLocaleString()}`);
+      } else {
+        push('taper: far-out healthcare check ran', true, 'no age-84 row (short horizon persona)');
+      }
+    }
+  } catch (e) {
+    push('taper behavioral test ran', false, 'error: ' + e.message);
+  }
 
   // ---- Proration: the first projection year adds only the remaining-months fraction ----
   try {
@@ -1246,6 +1340,24 @@ function tier0(win, fileKey, tier7Results) {
     // The number a human reads and the number checked here are the SAME DOM element, so they cannot
     // silently diverge. Only derived-from-function examples are tagged (not whole-plan scenarios).
     const EXAMPLE_RESOLVERS = {
+      // The Auto Roth-conversion label ("53 (2036)" MFJ / "56 (2036)" Single) is quoted in help
+      // prose but computed by the engine from birth years + semi-retirement ages. It drifted once
+      // already (docs said "53 (2035)" vs engine "53 (2036)"). This calls the app's OWN label
+      // function, so the tagged prose is checked against the real code path, not a copy. String-
+      // valued: compared exactly, not numerically.
+      'autoRothConvLabel': (el) => {
+        if (typeof win.autoRothConvLabel !== 'function') return null;
+        return { strValue: win.autoRothConvLabel() };
+      },
+      // Standard deduction quoted in prose ($32,200 MFJ / $15,750 Single). Resolves against the
+      // app's own live stdDeduction element -- the same value the engine uses -- so a prose figure
+      // that isn't updated during the annual IRS refresh is caught.
+      'stdDeduction': (el) => {
+        const e = win.document.getElementById('stdDeduction');
+        if (!e) return null;
+        const v = parseInt((e.value || e.textContent || '0').replace(/[$,\s]/g, ''));
+        return { value: v, unit: '$', tol: 0 };
+      },
       'aca.pct': (el) => {
         if (typeof win.acaApplicablePct !== 'function') return null;
         const magi = parseFloat(el.getAttribute('data-magi'));
@@ -1268,10 +1380,18 @@ function tier0(win, fileKey, tier7Results) {
       if (!resolver) continue;                 // untagged/unsupported keys are ignored, not failed
       const expected = resolver(el);
       if (!expected) continue;                 // engine fn not reachable in this app — skip cleanly
-      const shown = parseFloat((el.textContent || '').replace(/[$,%\s]/g, ''));
       exChecked++;
-      if (!isFinite(shown) || Math.abs(shown - expected.value) > expected.tol) {
-        exStale.push(`${key}: page shows "${el.textContent.trim()}" but engine computes ${expected.unit === '%' ? expected.value.toFixed(2) + '%' : '$' + Math.round(expected.value).toLocaleString()}`);
+      if (expected.strValue !== undefined) {
+        // String-valued example (e.g. the "53 (2036)" label): compare trimmed text exactly.
+        const shownStr = (el.textContent || '').trim();
+        if (shownStr !== expected.strValue) {
+          exStale.push(`${key}: page shows "${shownStr}" but engine computes "${expected.strValue}"`);
+        }
+      } else {
+        const shown = parseFloat((el.textContent || '').replace(/[$,%\s]/g, ''));
+        if (!isFinite(shown) || Math.abs(shown - expected.value) > expected.tol) {
+          exStale.push(`${key}: page shows "${el.textContent.trim()}" but engine computes ${expected.unit === '%' ? expected.value.toFixed(2) + '%' : '$' + Math.round(expected.value).toLocaleString()}`);
+        }
       }
     }
     push('Docs: worked-example numbers still match the live engine (no prose drift)',

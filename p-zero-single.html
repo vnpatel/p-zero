@@ -434,11 +434,11 @@
                         <input type="number" id="pctDistribution" value="4.0" step="0.1" class="mini-input">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Pre-65 Healthcare Cost (Annual, Combined, today's $) <span class="relative info-tip-wrap inline-block"><i class="fa-solid fa-circle-info text-slate-600 text-[9px] cursor-help"></i><span class="info-tip"><strong>All-in figure</strong> &mdash; premiums plus deductibles, copays, coinsurance, prescriptions, dental and vision. Not premiums alone. Marketplace coverage is age-rated, so this is best read as an average across the pre-65 stretch: lighter in your mid-50s, heavier approaching 65. Long-term care is <em>not</em> included here.</span></span></label>
+                        <label class="block text-[11px] text-slate-400 mb-1">Pre-65 Healthcare Cost (Annual, Combined, today's $) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)"><strong>All-in figure</strong> &mdash; premiums plus deductibles, copays, coinsurance, prescriptions, dental and vision. Not premiums alone. Marketplace coverage is age-rated, so this is best read as an average across the pre-65 stretch: lighter in your mid-50s, heavier approaching 65. Long-term care is <em>not</em> included here.</span></span></label>
                         <input type="text" inputmode="decimal" data-money="true" id="healthcareCost" value="20000" class="mini-input">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Post-65 Medicare Cost (Annual, Combined, today's $) <span class="relative info-tip-wrap inline-block"><i class="fa-solid fa-circle-info text-slate-600 text-[9px] cursor-help"></i><span class="info-tip"><strong>All-in figure</strong> &mdash; Part B and Part D premiums, Medigap/supplemental, deductibles and coinsurance, plus dental, vision and hearing (which Medicare doesn't cover). IRMAA surcharges are modelled separately and added on top. Long-term care is <em>not</em> included here.</span></span></label>
+                        <label class="block text-[11px] text-slate-400 mb-1">Post-65 Medicare Cost (Annual, Combined, today's $) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)"><strong>All-in figure</strong> &mdash; Part B and Part D premiums, Medigap/supplemental, deductibles and coinsurance, plus dental, vision and hearing (which Medicare doesn't cover). IRMAA surcharges are modelled separately and added on top. Long-term care is <em>not</em> included here.</span></span></label>
                         <input type="text" inputmode="decimal" data-money="true" id="medicareCost" value="9000" class="mini-input">
                     </div>
                     <div class="space-y-2 bg-slate-900/40 p-3 rounded-lg border border-slate-900">
@@ -473,6 +473,25 @@
                 </div>
             </div>
 
+            <!-- Long-Term Care -->
+            <div class="border-t border-slate-900 pt-4">
+                <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-wheelchair-move mr-2 text-purple-400"></i>Long-Term Care</h2>
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] text-slate-400 font-semibold">Model a long-term care event <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Off by default: roughly 30% of people never need paid long-term care, so it's a contingency to stress-test, not a certainty. When on, the cost is added on top of regular healthcare for the years specified, drawn from the portfolio, and escalated at the Healthcare Inflation rate. <a onclick="openHelp('sec-ltc')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;14c &rarr;</a></span></span></span>
+                    <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="ltcToggle" class="sr-only peer" onchange="if(window.toggleLtcInputs)toggleLtcInputs(); triggerRecalculate();"><div class="toggle-track"></div></label>
+                </div>
+                <div id="ltcInputs" class="hidden space-y-3">
+                    <div class="bg-slate-900/40 rounded-lg p-2.5">
+                        <div class="grid grid-cols-3 gap-2">
+                            <div><label class="block text-[10px] text-slate-500 mb-1">Onset age</label><input type="number" id="ltcHAge" value="84" class="mini-input"></div>
+                            <div><label class="block text-[10px] text-slate-500 mb-1">Annual $</label><input type="text" inputmode="decimal" data-money="true" id="ltcHCost" value="110000" class="mini-input"></div>
+                            <div><label class="block text-[10px] text-slate-500 mb-1">Years</label><input type="number" id="ltcHYears" value="2" class="mini-input"></div>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500">Costs are in today's dollars (inflation-adjusted to each year). Defaults reflect a mean onset age of 84 and a ~2-year typical duration; $110k &asymp; a semi-private nursing-home room. Adjust to your situation.</p>
+                </div>
+            </div>
+
             <!-- RMD -->
             <div class="border-t border-slate-900 pt-4">
                 <h2 class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-3"><i class="fa-solid fa-hourglass-half mr-2 text-purple-400"></i>Required Min. Distributions</h2>
@@ -493,7 +512,7 @@
                 </div>
                 <div id="rothConvWrapper" class="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-900">
                     <div>
-                        <label class="block text-[10px] text-slate-400 mb-0.5">Start Age (younger spouse) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">When Roth conversions begin. "Auto" (shown as age & year, e.g. 56 (2036)) starts the year after you fully step down; or pick a manual age. <a onclick="openHelp('sec-roth')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §10 &rarr;</a></span></span></label>
+                        <label class="block text-[10px] text-slate-400 mb-0.5">Start Age (younger spouse) <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">When Roth conversions begin. "Auto" (shown as age &amp; year, e.g. <span data-example="autoRothConvLabel">56 (2036)</span>) starts the year after you fully step down; or pick a manual age. <a onclick="openHelp('sec-roth')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help §10 &rarr;</a></span></span></label>
                         <select id="rothConvStartAge" class="mini-input" data-select-type="age-auto" data-default="auto"></select>
                     </div>
                     <div>
@@ -604,7 +623,7 @@
                         <input type="number" id="inflationRate" value="3" step="0.1" class="mini-input">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Healthcare Inflation <span class="relative info-tip-wrap inline-block"><i class="fa-solid fa-circle-info text-slate-600 text-[9px] cursor-help"></i><span class="info-tip">Medical costs have historically risen faster than general inflation &mdash; roughly 1 to 1.5 points above CPI over recent decades. This rate escalates pre-Medicare healthcare, Medicare-era costs, and the ACA benchmark premium. Set it equal to CPI Inflation if you'd rather not model a premium.</span></span></label>
+                        <label class="block text-[11px] text-slate-400 mb-1">Healthcare Inflation <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:11px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">Medical costs have historically risen faster than general inflation &mdash; roughly 1 to 1.5 points above CPI over recent decades. This rate escalates pre-Medicare healthcare, Medicare-era costs, and the ACA benchmark premium. The <strong style="color:var(--text-primary)">excess over CPI tapers toward zero</strong> over the projection, so healthcare doesn't outpace inflation forever. Set it equal to CPI to model no premium. <a onclick="openHelp('sec-hc-taper')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;14.2 &rarr;</a></span></span></label>
                         <input type="number" id="healthcareInflation" value="4.5" step="0.1" class="mini-input">
                     </div>
                 </div>
@@ -846,6 +865,11 @@
                     <div id="tabPaneDistribution" style="display:none;">
                         <p class="text-[11px] text-slate-500 mb-2">Where each year's money comes from (<span style="color:var(--dist-sources);font-weight:600">Sources</span>) and what it pays for (<span style="color:var(--dist-spend);font-weight:600">Spend</span>). Each panel defaults to a life-phase milestone — change any year to inspect it. Hover any ribbon for the exact amount. Responds to the Today's $ / Future $ toggle above.</p>
                         <div id="distributionPanels" class="grid grid-cols-1 lg:grid-cols-3 gap-3"></div>
+                        <!-- Custom hover/tap tooltip for the ribbons. Replaces the native SVG <title>,
+                             which had a browser-imposed delay and never fires on touch devices. Styled
+                             and positioned like the trajectory chart's tooltip so both charts in this
+                             collapsible area behave the same way. -->
+                        <div id="distTooltip" class="hidden absolute bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] font-mono text-slate-300 shadow-2xl pointer-events-none z-50"></div>
                     </div>
                 </div>
             </section>
@@ -874,10 +898,7 @@
 
                     </div>
 
-                    <div id="horizonToggleContainer" class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800">
-                        <button id="btnViewCondensed" onclick="setViewMode('condensed')" class="text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition">Condensed</button>
-                        <button id="btnViewFull" onclick="setViewMode('full')" class="text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition">Full View</button>
-                    </div>
+                    <button id="btnViewToggle" onclick="toggleViewMode()" title="Toggle between showing every year and condensing to every 5th year after age 65" class="bg-slate-900 border border-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded text-[11px] hover:bg-slate-800 transition cursor-pointer inline-flex items-center gap-1.5"><i id="btnViewIcon" class="fa-solid fa-list"></i><span id="btnViewLabel">All years</span></button>
                 </div>
             </div>
 
@@ -898,7 +919,7 @@
                             <tr id="ledgerHeaderRow2" class="bg-slate-900/80 text-slate-400 border-b border-slate-800 font-medium text-[10px]">
                                 <th class="p-2 border-r border-slate-800 sticky left-0 bg-slate-900 z-20 shadow-md min-w-[110px]">Year (Age)</th>
                                 <!-- Combined Columns — 13 total -->
-                                <th class="p-2 font-mono text-white font-semibold" data-group="grpCombined">Starting</th>
+                                <th class="p-2 font-mono text-white font-semibold" data-group="grpCombined">Starting <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <th class="p-2 font-mono" data-group="grpCombined">Contribs</th>
                                 <th class="p-2 font-mono" data-group="grpCombined">Growth</th>
                                 <th class="p-2 font-mono text-cyan-400" data-group="grpCombined">Planned Dist</th>
@@ -911,39 +932,39 @@
                                 <th class="p-2 font-mono text-amber-400 magi-col" data-group="grpCombined" title="ACA MAGI: ordinary income + realized gains + full Social Security. Drives the 400% FPL subsidy cliff (pre-65) and IRMAA tiers (post-65, 2-yr lookback).">MAGI</th>
                                 <th class="p-2 font-mono text-red-400" data-group="grpCombined">Taxes</th>
                                 <th class="p-2 font-mono text-purple-400 font-semibold" data-group="grpCombined">Portfolio W/D</th>
-                                <th class="p-2 font-mono text-white font-semibold border-r border-slate-800" data-group="grpCombined">Ending</th>
+                                <th class="p-2 font-mono text-white font-semibold border-r border-slate-800" data-group="grpCombined">Ending <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <!-- Trad Columns -->
-                                <th class="p-2 font-mono" data-group="grpTrad">Starting</th>
+                                <th class="p-2 font-mono" data-group="grpTrad">Starting<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <th class="p-2 font-mono" data-group="grpTrad">Contribs</th>
                                 <th class="p-2 font-mono" data-group="grpTrad">Growth</th>
                                 <th class="p-2 font-mono" data-group="grpTrad">Dist w/RMD</th>
                                 <th class="p-2 font-mono" data-group="grpTrad">RMD $</th>
                                 <th class="p-2 font-mono" data-group="grpTrad">Roth Conv</th>
-                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpTrad">Ending</th>
+                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpTrad">Ending<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <!-- Roth Columns -->
-                                <th class="p-2 font-mono" data-group="grpRoth">Starting</th>
+                                <th class="p-2 font-mono" data-group="grpRoth">Starting<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <th class="p-2 font-mono" data-group="grpRoth">Contribs</th>
                                 <th class="p-2 font-mono" data-group="grpRoth">Growth</th>
                                 <th class="p-2 font-mono" data-group="grpRoth">Dists</th>
-                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpRoth">Ending</th>
+                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpRoth">Ending<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <!-- Brokerage Columns -->
-                                <th class="p-2 font-mono" data-group="grpBrok">Starting</th>
+                                <th class="p-2 font-mono" data-group="grpBrok">Starting<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <th class="p-2 font-mono" data-group="grpBrok">Contribs</th>
                                 <th class="p-2 font-mono" data-group="grpBrok" title="Refi and sale proceeds from Real Estate / Business deals, reinvested here as after-tax principal. Without this column the row would not add up in capital-event years.">RE/BI Proceeds</th>
                                 <th class="p-2 font-mono" data-group="grpBrok">Growth</th>
                                 <th class="p-2 font-mono" data-group="grpBrok">Dists</th>
-                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpBrok">Ending</th>
+                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpBrok">Ending<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <!-- HSA & 529 Columns -->
-                                <th class="p-2 font-mono" data-group="grpHsa">Starting</th>
+                                <th class="p-2 font-mono" data-group="grpHsa">Starting<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Contribs</th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Growth</th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Dists</th>
-                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpHsa">Ending</th>
-                                <th class="p-2 font-mono" data-group="grpHsa">Starting</th>
+                                <th class="p-2 font-mono border-r border-slate-800" data-group="grpHsa">Ending<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
+                                <th class="p-2 font-mono" data-group="grpHsa">Starting<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Contribs</th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Growth</th>
                                 <th class="p-2 font-mono" data-group="grpHsa">Dists</th>
-                                <th class="p-2 font-mono" data-group="grpHsa">Ending</th>
+                                <th class="p-2 font-mono" data-group="grpHsa">Ending<span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:12px;height:12px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:9px"></i><span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">In <strong style="color:var(--text-primary)">Today's $</strong> mode, each row shows that year's balance in today's purchasing power. A year's <strong style="color:var(--text-primary)">Ending</strong> and the next year's <strong style="color:var(--text-primary)">Starting</strong> are the same nominal balance one year later, so the Starting balance appears slightly lower because one more year of inflation has reduced its purchasing power&mdash;not because money disappeared. Switch to <strong style="color:var(--text-primary)">Future $</strong> and the balances match exactly. <a onclick="openHelp('sec-dollars')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help &sect;2 &rarr;</a></span></span></th>
                                 <th class="p-2 font-mono" data-group="grpRebi">Start Value</th>
                                 <th class="p-2 font-mono" data-group="grpRebi">Distributions</th>
                                 <th class="p-2 font-mono" data-group="grpRebi">Refi</th>
@@ -1049,7 +1070,7 @@
     </div>
 
     <script>
-        let viewMode = 'condensed';
+        let viewMode = 'full';
         let dollarMode = 'today'; // default to today's (inflation-adjusted) dollars
         let sidebarHidden = false;
         let visibleGroups = { grpCombined: true };   // Combined/All-Buckets summary shown by default (toggleable)
@@ -1149,7 +1170,29 @@
             }
         };
         // Expose for the test suite (read-only validation).
-        window.IRS_2026 = IRS_2026;
+                window.IRS_2026 = IRS_2026;
+
+        // ---- ANNUAL_CONSTANTS_2026 -------------------------------------------------------------
+        // Non-IRS planning assumptions reviewed on the annual update but NOT statutory IRS figures
+        // (those live in IRS_2026). Kept separate so the IRS update stays a clean single-block edit.
+        //
+        // HEALTHCARE INFLATION TAPER
+        // Healthcare initially grows faster than general inflation, with that EXCESS (healthcare-
+        // Inflation - CPI, computed live from the panel inputs -- never hardcoded) gradually
+        // diminishing to zero over a convergence window, after which healthcare grows at CPI. This
+        // avoids assuming today's excess persists unchanged over an entire retirement.
+        //   - hcTaperOn:          whether the taper is active (default true).
+        //   - hcConvergenceYears: the linear convergence window, in years from the projection start.
+        // NOTE for the annual update: hcConvergenceYears is a WINDOW (a duration), not a calendar
+        // year, so it does NOT need advancing each year -- "N years from the projection start" re-
+        // anchors automatically. Only revisit it if your BELIEF about how long the excess persists
+        // changes.
+        const ANNUAL_CONSTANTS_2026 = {
+            reviewYear: 2026,
+            hcTaperOn: true,
+            hcConvergenceYears: 25,
+        };
+        window.ANNUAL_CONSTANTS_2026 = ANNUAL_CONSTANTS_2026;   // expose for the test suite
 
         // --- Backward-compatible aliases: existing engine code references these names.
         //     They now derive from IRS_2026 so there is ONE source of truth. ---
@@ -1249,7 +1292,7 @@
             'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle', 'heirTaxRate', 'heirHsaTaxRate',
             'rmdAge', 'rothConvToggle', 'rothConvStartAge', 'rothConvMethod', 'rothConvBracketCap', 'rothConvFixedAmt',
             'ssToggle', 'hSsAge', 'wSsAge', 'hSsAmount', 'wSsAmount', 'ssCola', 'ssTaxablePct',
-            'roiNominal', 'inflationRate', 'healthcareInflation', 'stateRate', 'countyRate', 'stateExemptsSS',
+            'roiNominal', 'inflationRate', 'healthcareInflation', 'ltcToggle', 'ltcHAge', 'ltcHCost', 'ltcHYears', 'stateRate', 'countyRate', 'stateExemptsSS',
             'survivorToggle', 'survivorFirstToDie', 'survivorDeathAge', 'survivorSpendPct',
             'chartIncludeHsa', 'chartInclude529', 'growthConvention'
         ];
@@ -1954,9 +1997,17 @@
 
         function setViewMode(mode) {
             viewMode = mode;
-            document.getElementById('btnViewCondensed').className = mode === 'condensed' ? 'text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition' : 'text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition';
-            document.getElementById('btnViewFull').className = mode === 'full' ? 'text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-600 text-white transition' : 'text-[11px] font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-white transition';
+            const label = document.getElementById('btnViewLabel');
+            const icon = document.getElementById('btnViewIcon');
+            if (label && icon) {
+                // The button shows the CURRENT state so it doubles as a status indicator.
+                if (mode === 'full') { label.textContent = 'All years'; icon.className = 'fa-solid fa-list'; }
+                else { label.textContent = 'Every 5 yrs (65+)'; icon.className = 'fa-solid fa-list-ul'; }
+            }
             triggerRecalculate();
+        }
+        function toggleViewMode() {
+            setViewMode(viewMode === 'full' ? 'condensed' : 'full');
         }
 
         // Chart collapse. Deliberately a display-only toggle: it never calls triggerRecalculate(),
@@ -1977,6 +2028,12 @@
         // --- Profile menu (Import / Export) ---
         // Import and Export were separate top-nav buttons; merged into one menu to save width.
         // Both are one-shot actions, so the menu just fires them and closes -- no state to hold.
+        function toggleLtcInputs() {
+            const box = document.getElementById('ltcInputs');
+            const on = document.getElementById('ltcToggle');
+            if (box && on) box.classList.toggle('hidden', !on.checked);
+        }
+
         function toggleProfileMenu(evt) {
             if (evt) evt.stopPropagation();
             const menu = document.getElementById('profileMenu');
@@ -2113,7 +2170,7 @@
             inS.items.forEach(it=>{
                 const c=DIST_COLORS[it.k]; const y0=y,y1=y+it.h,s0=sy,s1=sy+it.h,x0=leftX,x1=cx-spineW/2;
                 const pctExact = inS.total ? (it.v/inS.total*100).toFixed(2) : '0.00';
-                svg += `<path d="M${x0},${y0} C${(x0+x1)/2},${y0} ${(x0+x1)/2},${s0} ${x1},${s0} L${x1},${s1} C${(x0+x1)/2},${s1} ${(x0+x1)/2},${y1} ${x0},${y1} Z" fill="${c}" opacity="0.82"><title>${it.k}: ${distFmt(it.v)} (${pctExact}% of sources)</title></path>`;
+                svg += `<path d="M${x0},${y0} C${(x0+x1)/2},${y0} ${(x0+x1)/2},${s0} ${x1},${s0} L${x1},${s1} C${(x0+x1)/2},${s1} ${(x0+x1)/2},${y1} ${x0},${y1} Z" fill="${c}" opacity="0.82" style="cursor:pointer" onmousemove="distTipShow(event.clientX,event.clientY,'${it.k}',${it.v},'${pctExact}','sources')" onmouseleave="distTipHide()" ontouchstart="distTipShow(event.touches[0].clientX,event.touches[0].clientY,'${it.k}',${it.v},'${pctExact}','sources')"></path>`;
                 const m=(y0+y1)/2, pct=inS.total?Math.round(it.v/inS.total*100):0;
                 svg += `<text x="${x0-5}" y="${m-1}" text-anchor="end" font-size="${fs}" fill="var(--text-secondary)">${DIST_SHORT[it.k]||it.k}</text>`;
                 svg += `<text x="${x0-5}" y="${m+fs+1}" text-anchor="end" font-size="${fs}" fill="var(--text-primary)" font-weight="700" font-family="ui-monospace,monospace">${distFmtK(it.v)} (${pct}%)</text>`;
@@ -2123,7 +2180,7 @@
             outS.items.forEach(it=>{
                 const c=DIST_COLORS[it.k]; const y0=y,y1=y+it.h,s0=sy,s1=sy+it.h,x0=cx+spineW/2,x1=rightX;
                 const pctExact = outS.total ? (it.v/outS.total*100).toFixed(2) : '0.00';
-                svg += `<path d="M${x0},${s0} C${(x0+x1)/2},${s0} ${(x0+x1)/2},${y0} ${x1},${y0} L${x1},${y1} C${(x0+x1)/2},${y1} ${(x0+x1)/2},${s1} ${x0},${s1} Z" fill="${c}" opacity="0.82"><title>${it.k}: ${distFmt(it.v)} (${pctExact}% of spend)</title></path>`;
+                svg += `<path d="M${x0},${s0} C${(x0+x1)/2},${s0} ${(x0+x1)/2},${y0} ${x1},${y0} L${x1},${y1} C${(x0+x1)/2},${y1} ${(x0+x1)/2},${s1} ${x0},${s1} Z" fill="${c}" opacity="0.82" style="cursor:pointer" onmousemove="distTipShow(event.clientX,event.clientY,'${it.k}',${it.v},'${pctExact}','spend')" onmouseleave="distTipHide()" ontouchstart="distTipShow(event.touches[0].clientX,event.touches[0].clientY,'${it.k}',${it.v},'${pctExact}','spend')"></path>`;
                 const m=(y0+y1)/2, pct=outS.total?Math.round(it.v/outS.total*100):0;
                 svg += `<text x="${x1+5}" y="${m-1}" text-anchor="start" font-size="${fs}" fill="var(--text-secondary)">${it.k}</text>`;
                 svg += `<text x="${x1+5}" y="${m+fs+1}" text-anchor="start" font-size="${fs}" fill="var(--text-primary)" font-weight="700" font-family="ui-monospace,monospace">${distFmtK(it.v)} (${pct}%)</text>`;
@@ -2203,6 +2260,42 @@
                 </div>`;
             }).join('');
         }
+
+        // --- Distribution ribbon tooltip (mouse + touch) ---
+        // The native SVG <title> this replaces had two problems: a browser-imposed delay before it
+        // appeared, and no touch support at all -- on a phone the exact figures were unreachable,
+        // which is exactly where the compact labels are hardest to read. This mirrors the trajectory
+        // chart's tooltip so both charts in the collapsible area behave identically.
+        function distTipShow(clientX, clientY, label, amount, pct, side) {
+            const tip = document.getElementById('distTooltip');
+            const wrap = document.getElementById('tabPaneDistribution');
+            if (!tip || !wrap) return;
+            const swatch = DIST_COLORS[label] || 'var(--text-muted)';
+            tip.innerHTML = `<div class="text-white font-bold mb-1"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${swatch};margin-right:5px"></span>${label}</div>`
+                + `<div class="flex justify-between gap-4"><span class="text-slate-500">Amount</span><span>${distFmt(amount)}</span></div>`
+                + `<div class="flex justify-between gap-4"><span class="text-slate-500">Share of ${side}</span><span>${pct}%</span></div>`;
+            tip.classList.remove('hidden');
+            // Position relative to the pane, clamping at the right edge so a ribbon in the rightmost
+            // panel doesn't push the tooltip off-screen (same guard the trajectory chart uses).
+            const rect = wrap.getBoundingClientRect();
+            const tipW = tip.offsetWidth || 170;
+            let left = clientX - rect.left + 14;
+            let top = clientY - rect.top - 10;
+            if (left + tipW > rect.width) left = clientX - rect.left - tipW - 14;
+            if (left < 0) left = 4;
+            tip.style.left = left + 'px';
+            tip.style.top = top + 'px';
+            wrap.style.position = 'relative';
+        }
+        function distTipHide() {
+            const tip = document.getElementById('distTooltip');
+            if (tip) tip.classList.add('hidden');
+        }
+        // Touch: tap a ribbon to show, tap anywhere else to dismiss. Registered once, not per render,
+        // so re-rendering the panels (year change, dollar toggle) can't stack duplicate listeners.
+        document.addEventListener('touchstart', e => {
+            if (!e.target.closest || !e.target.closest('#distributionPanels path')) distTipHide();
+        }, { passive: true });
 
         function setDistYear(i, yr){ distActiveYears[i]=parseInt(yr); distUserSet[i]=true; renderDistribution(); }
         function resetDistYear(i){ distUserSet[i]=false; renderDistribution(); } // hand the panel back to milestone-tracking
@@ -2364,6 +2457,14 @@
             const valPctRate = (parseFloat(cleanNum(document.getElementById('pctDistribution').value)) || 4.0) / 100;
             const baseHealthcare = parseFloat(cleanNum(document.getElementById('healthcareCost').value)) || 0;
             const baseMedicare = parseFloat(cleanNum(document.getElementById('medicareCost').value)) || 0;
+
+            // Long-Term Care: off by default (a contingency, not a certainty). Single filer -> one row.
+            // Today's-dollars cost, escalated at the healthcare-inflation scale, funded from the
+            // portfolio via the normal waterfall, and STACKED on top of regular healthcare.
+            const ltcOn = (document.getElementById('ltcToggle') || {}).checked || false;
+            const ltcH = { age: parseInt((document.getElementById('ltcHAge')||{}).value) || 0,
+                           cost: parseFloat(cleanNum((document.getElementById('ltcHCost')||{}).value)) || 0,
+                           years: parseInt((document.getElementById('ltcHYears')||{}).value) || 0 };
 
             const seq = document.getElementById('withdrawalSeq').value;
             const rmdStartAge = parseInt(document.getElementById('rmdAge').value) || 75;
@@ -2532,16 +2633,35 @@
             // so rather than ignore it, healthcare rides that same drawn path plus the constant
             // premium it has historically carried over CPI (hcInfFlat - infFlat). That keeps a bad
             // inflation draw feeding healthcare too, instead of pinning it to a smooth curve.
+            // ---- Healthcare inflation, with optional TAPER (see ANNUAL_CONSTANTS_2026) ----
+            // Cumulative healthcare factor = product of per-year rates. Without the taper each
+            // year's rate is the flat healthcare rate. With the taper the EXCESS over CPI
+            // (hcInfFlat - infFlat, computed live -- never hardcoded) fades linearly to zero over
+            // hcConvergenceYears, then healthcare grows at CPI. Computed the SAME way for the
+            // deterministic and Monte Carlo paths so a pinned MC path reproduces the deterministic
+            // result exactly (guards the historical MC-healthcare drift bug).
+            let hcNominalFactor = 1;
+            const _hcExcess = Math.max(0, hcInfFlat - infFlat);
+            const _hcTaperOn = (typeof ANNUAL_CONSTANTS_2026 !== 'undefined') && ANNUAL_CONSTANTS_2026.hcTaperOn;
+            const _hcWindow = (typeof ANNUAL_CONSTANTS_2026 !== 'undefined') ? ANNUAL_CONSTANTS_2026.hcConvergenceYears : 0;
+            for (let _y = 1; _y <= i; _y++) {
+                let _rate;
+                if (_hcTaperOn && _hcWindow > 0) {
+                    const _frac = Math.max(0, 1 - (_y - 1) / _hcWindow); // premium fraction left at year _y
+                    _rate = infFlat + _hcExcess * _frac;
+                } else {
+                    _rate = hcInfFlat;
+                }
+                hcNominalFactor *= (1 + _rate);
+            }
             let hcInfScale;
             if (mcPath && mcPath.cumInf) {
-                // Scale the drawn cumulative inflation by the RATIO of the two rates, not by adding
-                // a premium: (1+hc)/(1+cpi) per year. Adding compounds the premium on top of the
-                // draw -- 1.03 x 1.015 = 1.04545, not the 1.045 the deterministic path uses -- so a
-                // pinned MC path would drift from the deterministic result. With the ratio, a pinned
-                // path reproduces it exactly while a bad inflation draw still feeds healthcare.
-                hcInfScale = infScale * Math.pow((1 + hcInfFlat) / (1 + infFlat), i);
+                // Ride the drawn CPI path, scaled by healthcare's excess-over-CPI RATIO (not additive).
+                const _cpiFactor = Math.pow(1 + infFlat, i);
+                const _hcRatioFactor = _cpiFactor > 0 ? (hcNominalFactor / _cpiFactor) : 1;
+                hcInfScale = infScale * _hcRatioFactor;
             } else {
-                hcInfScale = Math.pow(1 + hcInf, i);
+                hcInfScale = hcNominalFactor;
             }
             let ssInfScale = Math.pow(1 + ssCola, i);
 
@@ -2723,7 +2843,14 @@
                         irmaaSurcharge = annualPerPerson * persons65;
                     }
                 }
-                const grossHealthcareBase = hcMarketplacePremium + hcNonSubsidizable + irmaaSurcharge;
+                // Long-Term Care for THIS year (single filer -> one row), stacked on regular healthcare.
+                // Applies while the filer's age is within [onset, onset+years). Escalated by hcInfScale.
+                let ltcCost = 0;
+                if (ltcOn && ltcH.years > 0 && ltcH.cost > 0) {
+                    const age = isSurvivorPhase ? survAge : hAge;
+                    if (age >= ltcH.age && age < (ltcH.age + ltcH.years)) ltcCost += ltcH.cost * hcInfScale;
+                }
+                const grossHealthcareBase = hcMarketplacePremium + hcNonSubsidizable + irmaaSurcharge + ltcCost;
                 // ACA cliff parameters for this year (survivor: household size shrinks by one)
                 const fplHousehold = (fplFirst + (Math.max(1, isSurvivorPhase ? acaHhSize - 1 : acaHhSize) - 1) * fplAddl) * infScale;
                 const cliffMagi = IRS_2026.acaCliffFplMult * fplHousehold;
@@ -3179,7 +3306,7 @@
                         <td class="p-2 text-orange-400 font-mono" data-group="grpCombined">${c(totalTaxableGross)}</td>
                         <td class="p-2 text-amber-400 font-mono magi-col" data-group="grpCombined">${c(solvedResult.acaMagi)}</td>
                         <td class="p-2 text-red-400 font-mono" data-group="grpCombined">${c(currentYearTaxDrag)}</td>
-                        <td class="p-2 text-purple-400 font-semibold font-mono" data-group="grpCombined">${c(portfolioWithdrawalActual)}${(portfolioWithdrawalActual > 0 && baseNeedFixed <= 0 && solvedResult.hcFromPortfolio <= 0 && solvedTax >= portfolioWithdrawalActual * 0.9) ? `<span class="block text-[9px] text-amber-500 font-sans cursor-help" title="This isn't retirement spending — you're still working. Your taxable brokerage throws off dividends every year (balance \u00d7 dividend yield), and the IRS taxes those whether or not you spend them. Because the model doesn't simulate your W-2 salary during working years (it assumes your paycheck covers living costs), there's no paycheck here to pay that tax bill from — so the portfolio sells just enough of itself to cover it. In real life you'd pay this from your salary and the portfolio wouldn't shrink. Net worth lands in the same place either way.">\u25d0 tax only</span>` : ''}</td>
+                        <td class="p-2 text-purple-400 font-semibold font-mono" data-group="grpCombined">${c(portfolioWithdrawalActual)}${(portfolioWithdrawalActual > 0 && baseNeedFixed <= 0 && solvedResult.hcFromPortfolio <= 0 && solvedTax >= portfolioWithdrawalActual * 0.9) ? `<span class="relative info-tip-wrap block text-[9px] text-amber-500 font-sans cursor-help" onmouseenter="positionInfoTip(this)">\u25d0 tax only<span class="info-tip w-72 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">This isn't retirement spending &mdash; you're still working. Your taxable brokerage throws off dividends every year (balance \u00d7 dividend yield), and the IRS taxes those whether or not you spend them. Because the model doesn't simulate your W-2 salary during working years (it assumes your paycheck covers living costs), the portfolio sells just enough of itself to cover the tax. In real life you'd pay this from your salary and the portfolio wouldn't shrink &mdash; net worth lands in the same place either way.</span></span>` : ''}</td>
                         <td class="p-2 border-r border-slate-800 text-white font-bold font-mono bg-slate-900/30" data-group="grpCombined">${c(spendableNetWorth)}</td>
 
                         <td class="p-2 text-slate-400 font-mono" data-group="grpTrad">${c(tradStart)}</td>
@@ -4731,6 +4858,7 @@
                         <a href="#sec-tax" class="hover:underline cursor-pointer">12. Tax Calculations</a>
                         <a href="#sec-ss" class="hover:underline cursor-pointer">13. Social Security</a>
                         <a href="#sec-healthcare" class="hover:underline cursor-pointer">14. Healthcare: MAGI, ACA &amp; IRMAA</a>
+                        <a href="#sec-ltc" class="hover:underline cursor-pointer">14c. Long-Term Care</a>
                         <a href="#sec-children" class="hover:underline cursor-pointer">15. Children: College Funding &amp; Gifting</a>
                         <a href="#sec-rebi" class="hover:underline cursor-pointer">15b. Real Estate / Business Investments</a>
                         <a href="#sec-529hsa" class="hover:underline cursor-pointer">16. 529 &amp; HSA: Spendable vs Total Net Worth</a>
@@ -4774,7 +4902,7 @@
                         <li><strong style="color:var(--text-primary)">Today's $ (inflation-adjusted, default):</strong> every figure in a given row is divided by that row's cumulative inflation factor (1.03<sup>n</sup> for year n at 3% inflation), converting it to today's purchasing power.</li>
                     </ul>
                     <div class="rounded-lg p-4 mt-4 border border-amber-300" style="background:var(--bg-base);">
-                        <p class="font-semibold text-amber-600 mb-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Important: in Today's $ mode, a year's Ending balance will NOT equal the next year's Starting balance. This is correct behavior, not a bug.</p>
+                        <p class="font-semibold text-amber-600 mb-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>At first glance this can look surprising: in Today's $ mode, a year's Ending balance will not equal the next year's Starting balance. It's expected, not an error &mdash; and the quickest way to confirm it is to switch to Future $ mode, where a year's Ending and the next year's Starting match to the penny.</p>
                         <p style="color:var(--text-secondary)">Internally the balances flow with perfect continuity: the nominal Ending balance of year N is <em>exactly</em> the nominal Starting balance of year N+1 (you can verify this by switching to Future $ mode, where the numbers match to the penny). But in Today's $ mode, year N's row is deflated by year N's inflation factor, while year N+1's row is deflated by year N+1's (larger) factor. The same nominal balance is therefore shown about 3% smaller in the next row — because a year of inflation has genuinely eroded its purchasing power.</p>
                         <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; Say a year ends with a nominal spendable balance of $3,000,000. The next year's Starting balance is the same money, so in Future $ mode it still shows $3,000,000. In Today's $ mode that identical figure instead shows $3,000,000 &divide; 1.03 &asymp; $2,912,621 (at 3% inflation). Nothing was lost &mdash; that money simply buys 3% less than a year earlier. Toggle Dollars on any row to watch the same balance convert by exactly one year of inflation.</div>
                         <p class="mt-2" style="color:var(--text-secondary)">This is an unavoidable property of real-dollar display: you can have <em>within-row</em> reconciliation (Starting + Contribs + Growth &minus; outflows = Ending, all at one year's price level) or <em>across-row</em> continuity, but not both. This tool preserves within-row reconciliation, which is what makes each year's math auditable.</p>
@@ -4826,14 +4954,14 @@
                                 <li><strong style="color:var(--text-primary)">Annual Living Target — Excl. Healthcare (default $90,000, today's $):</strong> the <em>net, after-tax</em> amount you want available for non-healthcare living expenses each retirement year. Taxes do NOT come out of this number — the engine grosses up the portfolio withdrawal so that taxes are paid <em>on top</em> and the full target lands in your pocket (Section 8). Healthcare, gifting, and tuition are also tracked separately on top.</li>
                                 <li><strong style="color:var(--text-primary)">Distribution model:</strong> fixed dollar target (above) or a percentage of the portfolio.</li>
                                 <li><strong style="color:var(--text-primary)">Withdrawal Order:</strong> Sequential (Brokerage &rarr; Traditional &rarr; Roth) or Pro-Rata. See Section 9.</li>
-                                <li><strong style="color:var(--text-primary)">Healthcare (Pre-65) $20,000 / Post-65 Medicare $9,000:</strong> all-in annual costs, today's $ &mdash; premiums plus deductibles, copays, prescriptions, dental and vision, not premiums alone. These escalate at the Healthcare Inflation rate (4.5% default), not general CPI. See Section 14 for the split-age transition, the ACA subsidy inputs (toggle, $14K benchmark premium, household size, preserve-subsidy cap) and the IRMAA toggle.</li>
+                                <li><strong style="color:var(--text-primary)">Healthcare (Pre-65) $20,000 / Post-65 Medicare $9,000:</strong> all-in annual costs, today's $ &mdash; premiums plus deductibles, copays, prescriptions, dental and vision, not premiums alone. These escalate at the Healthcare Inflation rate (4.5% default), not general CPI &mdash; though the excess over CPI tapers toward zero over the projection (see &sect;14.2). See Section 14 for the split-age transition, the ACA subsidy inputs (toggle, $14K benchmark premium, household size, preserve-subsidy cap) and the IRMAA toggle.</li>
                                 <li><strong style="color:var(--text-primary)">Growth Timing:</strong> when contributions/withdrawals earn growth within a year. Default "Realistically Conservative" (half-year convention). See Section 17.</li>
                             </ul>
                         </div>
                         <div>
                             <h3 class="font-semibold text-base mb-1">Roth Conversion, Social Security, Children</h3>
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
-                                <li>Roth conversion controls (toggle — <strong style="color:var(--text-primary)">off by default</strong>; start — "Auto" (shown as your age and start year, e.g. "56 (2036)"), or any manual age — bracket-fill cap or fixed amount) — Section 10.</li>
+                                <li>Roth conversion controls (toggle — <strong style="color:var(--text-primary)">off by default</strong>; start — "Auto" (shown as your age and start year, e.g. "<span data-example="autoRothConvLabel">56 (2036)</span>"), or any manual age — bracket-fill cap or fixed amount) — Section 10.</li>
                                 <li>Social Security controls (toggle — <strong style="color:var(--text-primary)">off by default</strong>, claim age and amount, COLA, taxable %) — Section 13.</li>
                                 <li>Children profiles (birth years, undergrad/grad costs and durations) and the gifting schedule — Section 15.</li>
                                 <li>Filing status is Single, switching to Head of Household automatically when you have dependents — documented in Section 7.</li>
@@ -4844,7 +4972,7 @@
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                                 <li><strong style="color:var(--text-primary)">Nominal ROI (default 6%):</strong> applied identically to all five buckets every year.</li>
                                 <li><strong style="color:var(--text-primary)">Inflation (default 3%):</strong> inflates spending targets, healthcare, contributions, tax brackets, the standard deduction, and gift/tuition amounts; also drives the Today's $ deflator.</li>
-                                <li>Federal ordinary brackets, LTCG brackets, standard deduction ($15,750 Single / $23,625 Head of Household), the IRS Uniform Lifetime RMD divisors, and the IRMAA tiers are <em>read-only reference values</em> shown in the <strong style="color:var(--text-primary)">Federal Tax Details</strong> tab &mdash; sourced from the app's built-in tax-year data (IRS_2026), not editable, and never saved in a profile. Bracket thresholds are inflation-indexed each simulated year. Your <em>personal</em> settings &mdash; state tax (2.90%), county/local tax (1.5%), the &ldquo;State Exempts Social Security&rdquo; choice, and the heir tax rates for the After-Tax Legacy KPI &mdash; are editable in the left input panel (State &amp; Local Tax and Legacy / Heir Assumptions sections) and are saved with your profile.</li>
+                                <li>Federal ordinary brackets, LTCG brackets, standard deduction (<span data-example="stdDeduction">$15,750</span> Single / $23,625 Head of Household), the IRS Uniform Lifetime RMD divisors, and the IRMAA tiers are <em>read-only reference values</em> shown in the <strong style="color:var(--text-primary)">Federal Tax Details</strong> tab &mdash; sourced from the app's built-in tax-year data (IRS_2026), not editable, and never saved in a profile. Bracket thresholds are inflation-indexed each simulated year. Your <em>personal</em> settings &mdash; state tax (2.90%), county/local tax (1.5%), the &ldquo;State Exempts Social Security&rdquo; choice, and the heir tax rates for the After-Tax Legacy KPI &mdash; are editable in the left input panel (State &amp; Local Tax and Legacy / Heir Assumptions sections) and are saved with your profile.</li>
                             </ul>
                         </div>
                     </div>
@@ -4917,7 +5045,7 @@
                     <div class="rounded-lg p-4 mt-4 border border-slate-300" style="background:var(--bg-base);">
                         <p class="font-semibold mb-1" style="color:var(--text-primary)">How a row reconciles:</p>
                         <p style="color:var(--text-secondary)">Portfolio W/D = Planned living target + net healthcare (after any HSA coverage) + gifts + taxes &minus; semi-retirement income &minus; Social Security. Ending = Starting + Growth &minus; Portfolio W/D &minus; any HSA healthcare draw &minus; tuition paid by 529 (reflected only in the full-net-worth view). Every row reconciles this way at that row's price level.</p>
-                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; In our filer's first drawdown year (2035, age 55, today's $): $90,000 (Planned) + $0 (healthcare &mdash; the HSA covered all $22,779) + $0 (gifts) + $8,623 (taxes) &minus; $25,000 (semi-retirement income) &minus; $0 (SS) = <strong style="color:var(--text-primary)">$73,623</strong>, matching that row. The $25,000 of consulting income offsets part of the draw.</div>
+                        <div class="mt-2 rounded-md px-3 py-2 text-sm" style="background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.5);color:var(--text-secondary)"><strong style="color:var(--text-primary)">Example</strong> &mdash; In our filer's first drawdown year (2035, age 55, today's $): $90,000 (Planned) + $0 (healthcare &mdash; the HSA covered all $22,313) + $0 (gifts) + $8,623 (taxes) &minus; $25,000 (semi-retirement income) &minus; $0 (SS) = <strong style="color:var(--text-primary)">$73,623</strong>, matching that row. The $25,000 of consulting income offsets part of the draw.</div>
                     </div>
                 </section>
 
@@ -5010,7 +5138,7 @@
                 <section id="sec-tax">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-building-columns mr-2"></i>12. Tax Calculations</h2>
                     <h3 class="font-semibold mb-2">Ordinary Income Tax</h3>
-                    <p style="color:var(--text-secondary)">Applied to: semi-retirement income (1099 income is reduced by the &frac12; SE-tax deduction; W-2 wages are fully taxable), RMDs, elective Traditional withdrawals, Roth conversions, the taxable share of Social Security, and the taxable portion of Real Estate / Business distributions (Section 15b &mdash; you set what percentage of each deal's distribution is currently taxable; the sheltered remainder is untaxed). The standard deduction ($15,750 Single / $23,625 Head of Household, inflation-indexed) is subtracted, then the single-filer marginal brackets (thresholds inflation-indexed) apply. If you add one or more dependents, filing status switches automatically to Head of Household, which uses its own wider brackets and larger standard deduction.</p>
+                    <p style="color:var(--text-secondary)">Applied to: semi-retirement income (1099 income is reduced by the &frac12; SE-tax deduction; W-2 wages are fully taxable), RMDs, elective Traditional withdrawals, Roth conversions, the taxable share of Social Security, and the taxable portion of Real Estate / Business distributions (Section 15b &mdash; you set what percentage of each deal's distribution is currently taxable; the sheltered remainder is untaxed). The standard deduction (<span data-example="stdDeduction">$15,750</span> Single / $23,625 Head of Household, inflation-indexed) is subtracted, then the single-filer marginal brackets (thresholds inflation-indexed) apply. If you add one or more dependents, filing status switches automatically to Head of Household, which uses its own wider brackets and larger standard deduction.</p>
                     <h3 class="font-semibold mb-2 mt-4">Long-Term Capital Gains</h3>
                     <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income &mdash; plus the gain on a Real Estate / Business exit (Section 15b), which flows through this same machinery. It stacks on top of ordinary taxable income against the LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.<br><br><strong style="color:var(--text-primary)">Depreciation recapture (RE/BI exits only):</strong> the recapture slice of a sale &mdash; your Recapture % of invested capital, capped at the gain &mdash; is taxed at the 25% recapture rate rather than LTCG, and is added on top of the year's other taxes. See Section 15b.</p>
                     <h3 class="font-semibold mb-2 mt-4">Self-Employment Tax</h3>
@@ -5043,8 +5171,18 @@
                     </div>
 
                     <h3 class="font-semibold text-base mb-2">14.1 &mdash; The base costs (what you budget)</h3>
-                    <p style="color:var(--text-secondary)">The two sidebar inputs are all-in <em>gross</em> household costs in today's dollars, escalated at the <strong style="color:var(--text-primary)">Healthcare Inflation</strong> rate (4.5% default) rather than general CPI: <strong style="color:var(--text-primary)">Pre-65 ($20,000 default)</strong> = unsubsidized marketplace premiums + deductibles + copays; <strong style="color:var(--text-primary)">Post-65 Medicare ($9,000 default)</strong> = Part B/D + Medigap + out-of-pocket. Costs begin at semi-retirement: the pre-65 rate applies until you reach 65, then the Medicare rate applies. Everything in this section only ever <em>adjusts</em> these bases: ACA can reduce the pre-65 side; IRMAA can increase the post-65 side; neither ever touches the other side of the 65 line.</p>
+                    <p style="color:var(--text-secondary)">The two sidebar inputs are all-in <em>gross</em> household costs in today's dollars, escalated at the <strong style="color:var(--text-primary)">Healthcare Inflation</strong> rate (4.5% default) rather than general CPI (with the excess over CPI tapering toward zero over time &mdash; see &sect;14.2): <strong style="color:var(--text-primary)">Pre-65 ($20,000 default)</strong> = unsubsidized marketplace premiums + deductibles + copays; <strong style="color:var(--text-primary)">Post-65 Medicare ($9,000 default)</strong> = Part B/D + Medigap + out-of-pocket. Costs begin at semi-retirement: the pre-65 rate applies until you reach 65, then the Medicare rate applies. Everything in this section only ever <em>adjusts</em> these bases: ACA can reduce the pre-65 side; IRMAA can increase the post-65 side; neither ever touches the other side of the 65 line.</p>
                     <p class="mt-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Want the simple model?</strong> Turn both toggles off &rarr; the engine runs flat $20,000 / $9,000 (healthcare-inflation-indexed) with zero ACA/IRMAA adjustments — verified identical to the pre-ACA engine, cell for cell. The MAGI column and the Lifetime ACA Subsidy card hide automatically so the interface matches the simpler model.</p>
+
+                    <h3 id="sec-hc-taper" class="font-semibold text-base mb-2 mt-5">14.2 &mdash; Healthcare inflation tapers toward CPI over time</h3>
+                    <p style="color:var(--text-secondary)">Healthcare costs are assumed to initially grow faster than general inflation, with the excess gradually diminishing over time until healthcare inflation aligns with general inflation. In other words, the <em>gap</em> between your Healthcare Inflation input and your CPI Inflation input &mdash; the <strong style="color:var(--text-primary)">excess premium</strong> &mdash; starts at the full amount you entered and fades to zero as the projection runs, after which healthcare grows at CPI like everything else.</p>
+                    <p class="mt-2" style="color:var(--text-secondary)">The premium is never a fixed number in the code &mdash; it is always computed live as <strong style="color:var(--text-primary)">Healthcare&nbsp;Inflation&nbsp;&minus;&nbsp;CPI&nbsp;Inflation</strong>. So if you set Healthcare Inflation to 4.5% and CPI to 3%, the excess starts at 1.5 points; change either input and the starting excess changes with it. Set the two equal and there is no premium to taper &mdash; healthcare simply grows at CPI throughout.</p>
+                    <div class="rounded-lg p-4 border border-blue-300 my-3" style="background:var(--bg-base);">
+                        <p class="font-semibold" style="color:var(--text-primary)">Why this exists</p>
+                        <p style="color:var(--text-secondary)">The taper represents an assumption about the long-term evolution of healthcare inflation relative to general inflation. It is not intended to predict year-by-year healthcare prices, but to avoid assuming that today's excess inflation rate persists unchanged over an entire retirement horizon. A constant premium, compounded across decades, implies healthcare eventually consumes an implausible share of all spending; letting the excess narrow over time is the more defensible long-run assumption.</p>
+                    </div>
+                    <p style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Worked example.</strong> Suppose Medicare-era costs are entered at their default and Healthcare Inflation is 1.5 points above CPI. In the <em>early</em> years the full premium applies, so healthcare pulls ahead of general prices just as before. In the <em>later</em> years &mdash; deep into retirement, where a constant premium would have compounded most dramatically &mdash; the excess has faded, so a cost shown in today's dollars lands much closer to what you entered than it would under a permanent premium. The result: healthcare is still modeled as outpacing inflation where that is most defensible (the near term), without the runaway late-life figures a fixed-forever premium produces. This applies to regular healthcare and to long-term care alike, since both escalate on the same healthcare-inflation basis.</p>
+                    <p class="mt-2" style="color:var(--text-secondary)"><em>Design note:</em> this reflects a broader principle &mdash; when a long-term assumption is uncertain, prefer a model that gradually converges toward equilibrium rather than assuming today's conditions persist forever. The taper is on by default because it is the model we consider more realistic; you can neutralize it by setting Healthcare Inflation equal to CPI.</p>
 
                     <h3 class="font-semibold text-base mb-2 mt-5">14.2 &mdash; MAGI: the yardstick everything reads</h3>
                     <p style="color:var(--text-secondary)">MAGI (Modified Adjusted Gross Income) is the government's measure of "how much income did you really have this year," used for benefit eligibility. Crucially, <strong style="color:var(--text-primary)">no deductions reduce it</strong> — which is why it differs from the Total Taxable column. Real Estate / Business investments feed MAGI too (Section 15b): the taxable portion of distributions counts as ordinary income, and a sale/exit gain counts like a brokerage gain — so a big exit year can push you over the ACA cliff or into an IRMAA tier exactly as a large conversion would.</p>
@@ -5151,6 +5289,15 @@
                     </div>
 
                     <p class="mt-4" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Funding order (unchanged):</strong> the HSA pays healthcare first, tax-free, up to its balance (Medicare premiums and IRMAA are HSA-qualified); only the uncovered remainder enters the portfolio withdrawal and is grossed up for taxes. A subsidy therefore reduces real account outflows dollar-for-dollar — first preserving HSA, then shrinking Portfolio W/D. The living target still excludes healthcare entirely; these costs ride on top of the $149K. A 3-year subsidy extension has passed the House — the toggle exists precisely because this law may change.</p>
+                </section>
+
+                <!-- 14c. Long-Term Care -->
+                <section id="sec-ltc">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-wheelchair-move mr-2"></i>14c. Long-Term Care</h2>
+                    <p style="color:var(--text-secondary)">Long-term care is modelled as an optional, explicit stress-test rather than a baseline cost, and the toggle is <strong style="color:var(--text-primary)">off by default</strong>. LTC is unlike every other expense in the plan: it is a low-probability, high-severity, late-onset event. Roughly 70% of people turning 65 will need some paid care, but close to a third never do &mdash; so baking an average into every year would overstate the plan for those who escape it and understate the tail for those who don't. Turning it on answers a specific question: <em>if</em> care is needed, does the plan absorb it?</p>
+                    <p class="mt-3" style="color:var(--text-secondary)">There are three inputs: an <strong style="color:var(--text-primary)">onset age</strong>, an <strong style="color:var(--text-primary)">annual cost</strong> (today's dollars), and a <strong style="color:var(--text-primary)">duration</strong> in years. The cost applies in each year your age falls within the window <em>[onset, onset + years)</em> &mdash; so an onset of 84 for 2 years hits ages 84 and 85. It is escalated to future dollars at the <strong style="color:var(--text-primary)">Healthcare Inflation</strong> rate, since LTC costs have historically outpaced general inflation, and it is <strong style="color:var(--text-primary)">stacked on top</strong> of that year's regular healthcare rather than replacing it &mdash; a deliberately conservative choice. The money is drawn from the portfolio through the normal withdrawal waterfall; it is <em>not</em> taken HSA-first, because the HSA is earmarked for ordinary healthcare and is typically spent down well before 84.</p>
+                    <p class="mt-3" style="color:var(--text-secondary)">The defaults are evidence-based, not placeholders. Mean age of entry into paid care is about <strong style="color:var(--text-primary)">84</strong>, and a typical care duration is about <strong style="color:var(--text-primary)">2&ndash;4 years</strong> (the default of 2 reflects the shorter male-average; women average closer to 4, so raise it if planning for a longer episode). The default <strong style="color:var(--text-primary)">$110,000</strong> annual cost sits near the national median for a semi-private nursing-home room; assisted living runs lower (~$75k) and a private room higher (~$130k), so adjust to the kind of care you want to plan for. All figures are national medians and vary widely by state.</p>
+                    <p class="mt-3" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Known simplifications.</strong> A single continuous care episode is modelled &mdash; not multiple separate episodes, nor a gradual escalation from in-home to assisted living to skilled nursing. LTC insurance is not modelled; if you hold a policy, reduce the annual cost by your expected benefit. And because it is a fixed user-set scenario, this is not a probabilistic estimate &mdash; it shows the consequence of the specific event you enter, which is exactly what a stress-test should do.</p>
                 </section>
 
                 <!-- 15. Children -->
