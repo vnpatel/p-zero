@@ -31,6 +31,13 @@
     font-size: 14px; font-weight: 600;
   }
   .summary .big { font-size: 18px; }
+  .filters { margin: -8px 0 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 8px 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+  .filters .filter-label { font-weight: 600; color: var(--text); opacity: 0.8; }
+  .filters .filter-sep { color: var(--border); }
+  .filters .chk { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+  .filters .chk input { cursor: pointer; }
+  .filters .filter-hint { margin-left: auto; opacity: 0.6; font-size: 12px; }
+  .row.hidden-by-filter, .tier.hidden-by-filter, .file-block.hidden-by-filter { display: none; }
   .file-block {
     background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
     margin-bottom: 18px; overflow: hidden;
@@ -84,6 +91,17 @@
       <span class="fail-txt">Fail: <span id="sumFail">0</span></span>
       <span id="sumVerdict"></span>
     </div>
+  </div>
+
+  <div class="filters" id="filters" style="display:none">
+    <span class="filter-label">Show:</span>
+    <label class="chk"><input type="checkbox" id="fltPass" checked onchange="applyFilters()"> <span class="pass-txt">Passed</span></label>
+    <label class="chk"><input type="checkbox" id="fltFail" checked onchange="applyFilters()"> <span class="fail-txt">Failed</span></label>
+    <span class="filter-sep">|</span>
+    <span class="filter-label">App:</span>
+    <label class="chk"><input type="checkbox" id="fltMfj" checked onchange="applyFilters()"> MFJ</label>
+    <label class="chk"><input type="checkbox" id="fltSingle" checked onchange="applyFilters()"> Single / HoH</label>
+    <span class="filter-hint" id="filterHint"></span>
   </div>
 
   <div id="results"></div>
@@ -322,6 +340,27 @@ function tier1(win, fileKey) {
   push('default LTC onset age (H) is 84', dnum('ltcHAge') === '84', `ltcHAge=${dnum('ltcHAge')}`);
   push('default LTC annual cost (H) is $110,000', dnum('ltcHCost') === '110000', `ltcHCost=${dnum('ltcHCost')}`);
   push('default LTC duration (H) is 2 yrs', dnum('ltcHYears') === '2', `ltcHYears=${dnum('ltcHYears')}`);
+
+  // ---- Healthcare taper DOCS + UI cross-refs (header tooltip, LTC subtext, §14.2 numbering) ----
+  const doc = win.document;
+  const taperSec = doc.getElementById('sec-hc-taper');
+  push('taper help section (sec-hc-taper) exists', !!taperSec, taperSec ? 'present' : 'MISSING');
+  const bodyHtml = doc.body.innerHTML;
+  // innerHTML renders &mdash; as the U+2014 char, so match the char, not the entity.
+  const count142 = (bodyHtml.match(/14\.2 \u2014/g) || []).length;
+  push('exactly one "14.2 —" heading (no duplicate section numbers)', count142 === 1, `found ${count142}`);
+  push('taper section is numbered 14.2', !!taperSec && /14\.2/.test(taperSec.textContent), taperSec ? taperSec.textContent.slice(0,20) : 'no sec');
+  const hcTh = [...doc.querySelectorAll('th')].find(t => /Healthcare/.test(t.textContent) && t.getAttribute('data-group') === 'grpCombined');
+  const hcTip = hcTh && hcTh.querySelector('.info-tip');
+  push('Healthcare header has a tooltip linking the taper section', !!hcTip && hcTip.innerHTML.includes("openHelp('sec-hc-taper')"),
+    hcTh ? (hcTip ? 'linked' : 'no tip') : 'no header');
+  push('taper doc does not hardcode the window number (evergreen)',
+    !!taperSec && !/25\s*year|25-year|two decades/i.test(taperSec.textContent),
+    'describe behaviour, not a fixed number');
+  // innerHTML renders &#9680; as the U+25D0 char ◐, so match the char.
+  push('cell sub-lines help documents the LTC annotation',
+    bodyHtml.includes('\u25d0 incl. $X LTC') || bodyHtml.includes('incl. $X LTC'),
+    'the ◐ incl. LTC sub-line should be documented');
 
   // ---- Healthcare inflation TAPER defaults (ANNUAL_CONSTANTS_2026) ----
   // The taper is a modeling assumption: healthcare's EXCESS over CPI fades to zero over a window,
@@ -607,6 +646,33 @@ function tier5(win, fileKey) {
       const restored = eol();
       push('LTC on reduces the end-of-life total vs off', on < off,
         `off $${off.toLocaleString()} -> on $${on.toLocaleString()}`);
+
+  // ---- LTC subtext renders in LTC years (the ◐ incl. LTC cell annotation) ----
+  try {
+    const tog = win.document.getElementById('ltcToggle');
+    if (tog) {
+      const wasChecked = tog.checked;
+      const wasMode = win.dollarMode;
+      tog.checked = true;
+      if (win.toggleLtcInputs) win.toggleLtcInputs();
+      win.setDollarMode && win.setDollarMode('today');
+      recalc(win);
+      const html = win.document.body.innerHTML;
+      const hasSubtext = /incl\.[^<]*LTC/.test(html);
+      const linksHelp = html.includes("openHelp('sec-ltc')");
+      const publishesField = (win.__chartSeries || []).some(y => y.audLtcCost !== undefined);
+      push('LTC year shows the "incl. LTC" cell subtext', hasSubtext, hasSubtext ? 'present' : 'missing');
+      push('LTC subtext links to the LTC help section', linksHelp, 'must link sec-ltc');
+      push('audLtcCost field is published on the row (display-scaled)', publishesField, 'engine must publish audLtcCost');
+      // restore prior state so later tests are unaffected
+      tog.checked = wasChecked;
+      if (win.toggleLtcInputs) win.toggleLtcInputs();
+      if (wasMode) win.setDollarMode(wasMode);
+      recalc(win);
+    }
+  } catch (e) {
+    push('LTC subtext test ran', false, 'error: ' + e.message);
+  }
       push('LTC toggle is reversible (off-state reproduces exactly)', restored === off,
         `restored $${restored.toLocaleString()} vs off $${off.toLocaleString()}`);
     } else {
@@ -3046,6 +3112,45 @@ function updateSummary() {
   document.getElementById('sumVerdict').innerHTML = fail === 0
     ? '<span class="pass-txt">&mdash; ALL GREEN ✓</span>'
     : '<span class="fail-txt">&mdash; ATTENTION NEEDED</span>';
+  document.getElementById('filters').style.display = 'flex';
+  applyFilters();
+}
+
+// ---- Result filtering: by pass/fail state and by app -------------------------------------------
+// Pure DOM show/hide over already-rendered results. Never re-runs tests; the summary counts remain
+// the TRUE totals (all tests), while the filter only changes what rows are visible.
+function applyFilters() {
+  const showPass = document.getElementById('fltPass').checked;
+  const showFail = document.getElementById('fltFail').checked;
+  const showMfj = document.getElementById('fltMfj').checked;
+  const showSingle = document.getElementById('fltSingle').checked;
+  const appVisible = { mfj: showMfj, single: showSingle };
+
+  let shownRows = 0, totalRows = 0;
+  document.querySelectorAll('.file-block').forEach(block => {
+    const fk = (block.id || '').replace('block-', '');
+    const appOk = appVisible[fk] !== false;   // unknown blocks stay visible
+    block.classList.toggle('hidden-by-filter', !appOk);
+    if (!appOk) return;
+    block.querySelectorAll('.tier').forEach(tier => {
+      let anyRowVisible = false;
+      tier.querySelectorAll('.row').forEach(row => {
+        const mark = row.querySelector('.mark');
+        const isFail = mark && mark.classList.contains('f');
+        const isPass = mark && mark.classList.contains('p');
+        const isSkip = mark && mark.classList.contains('s');
+        totalRows++;
+        // skipped rows follow the pass filter (they're non-failures)
+        let visible = (isFail && showFail) || (isPass && showPass) || (isSkip && showPass);
+        row.classList.toggle('hidden-by-filter', !visible);
+        if (visible) { anyRowVisible = true; shownRows++; }
+      });
+      // hide a tier whose rows are all filtered out
+      tier.classList.toggle('hidden-by-filter', !anyRowVisible);
+    });
+  });
+  const hint = document.getElementById('filterHint');
+  if (hint) hint.textContent = (shownRows === totalRows) ? '' : `showing ${shownRows} of ${totalRows}`;
 }
 
 async function runAll() {
