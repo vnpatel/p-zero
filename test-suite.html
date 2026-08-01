@@ -336,6 +336,30 @@ function tier1(win, fileKey) {
     AC ? `hcConvergenceYears=${AC.hcConvergenceYears}` : 'no AC');
   push('taper premium is NOT hardcoded (derived from inputs)', !!AC && AC.hcPremium === undefined && AC.hcExcess === undefined,
     'premium must be computed live as healthcareInflation - CPI, not stored');
+
+  // ---- Healthcare-taper DOCS + UI cross-references (sweep for the header tooltip / LTC subtext) ----
+  const doc = win.document;
+  // 1. The taper help section exists and is uniquely numbered 14.2 (a duplicate 14.2 was a real bug).
+  const taperSec = doc.getElementById('sec-hc-taper');
+  push('taper help section (sec-hc-taper) exists', !!taperSec, taperSec ? 'present' : 'MISSING');
+  const bodyHtml = doc.body.innerHTML;
+  const count142 = (bodyHtml.match(/14\.2 \u2014/g) || []).length;   // innerHTML renders &mdash; as the U+2014 char
+  push('exactly one "14.2 —" heading (no duplicate section numbers)', count142 === 1, `found ${count142}`);
+  // taper section must actually be the one numbered 14.2
+  push('taper section is numbered 14.2', !!taperSec && /14\.2/.test(taperSec.textContent), taperSec ? taperSec.textContent.slice(0,20) : 'no sec');
+  // 2. Healthcare column header carries a tooltip linking to the taper section.
+  const hcTh = [...doc.querySelectorAll('th')].find(t => /Healthcare/.test(t.textContent) && t.getAttribute('data-group') === 'grpCombined');
+  const hcTip = hcTh && hcTh.querySelector('.info-tip');
+  push('Healthcare header has a tooltip', !!hcTip, hcTh ? (hcTip ? 'present' : 'no tip') : 'no header');
+  push('Healthcare header tooltip links to the taper section', !!hcTip && hcTip.innerHTML.includes("openHelp('sec-hc-taper')"),
+    'must link sec-hc-taper');
+  // 3. The taper doc must NOT hardcode the window number (evergreen wording).
+  push('taper doc does not hardcode the window number (evergreen)',
+    !!taperSec && !/25\s*year|25-year|20\s*year|two decades/i.test(taperSec.textContent),
+    'help text should describe behaviour, not a fixed number');
+  // 4. Cell-sublines section documents the LTC informational sub-line.
+  const subLtc = bodyHtml.includes('&#9680; incl. $X LTC') || bodyHtml.includes('\u25c9 incl. $X LTC');
+  push('cell sub-lines help documents the LTC annotation', subLtc, 'the ◐ incl. LTC sub-line should be documented');
   if (!isSingleApp) {
     // Wife row exists only in MFJ. Same onset, longer duration (4 vs 2) per the gender data.
     push('default LTC onset age (W) is 84', dnum('ltcWAge') === '84', `ltcWAge=${dnum('ltcWAge')}`);
@@ -649,6 +673,31 @@ function tier5(win, fileKey) {
     }
   } catch (e) {
     push('taper behavioral test ran', false, 'error: ' + e.message);
+  }
+
+  // ---- LTC subtext renders in LTC years (the ◐ incl. LTC cell annotation) ----
+  try {
+    const tog = win.document.getElementById('ltcToggle');
+    if (tog) {
+      const wasChecked = tog.checked;
+      tog.checked = true;
+      if (win.toggleLtcInputs) win.toggleLtcInputs();
+      win.setDollarMode && win.setDollarMode('today');
+      recalc(win);
+      const html = win.document.body.innerHTML;
+      const hasSubtext = html.includes('incl.') && /incl\.[^<]*LTC/.test(html);
+      const linksHelp = html.includes("openHelp('sec-ltc')");
+      const publishesField = (win.__chartSeries || []).some(y => y.audLtcCost !== undefined);
+      push('LTC year shows the "incl. LTC" cell subtext', hasSubtext, hasSubtext ? 'present' : 'missing');
+      push('LTC subtext links to the LTC help section', linksHelp, 'must link sec-ltc');
+      push('audLtcCost field is published on the row (display-scaled)', publishesField, 'engine must publish audLtcCost');
+      // restore
+      tog.checked = wasChecked;
+      if (win.toggleLtcInputs) win.toggleLtcInputs();
+      recalc(win);
+    }
+  } catch (e) {
+    push('LTC subtext test ran', false, 'error: ' + e.message);
   }
 
   // ---- Proration: the first projection year adds only the remaining-months fraction ----
