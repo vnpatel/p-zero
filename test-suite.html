@@ -943,7 +943,7 @@ function tier5(win, fileKey) {
     const snapT = snapshotInputs(win);
     win.__rebiSet([]);
     recalc(win);
-    const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(h => h.innerText.trim());
+    const __hdrLabel = (th) => { let s = ''; th.childNodes.forEach(n => { if (n.nodeType === 3) s += n.textContent; }); s = s.trim(); return s || (th.textContent || '').trim().split('\n')[0].trim(); }; const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(__hdrLabel);
     const wdIdx = hdrs.indexOf('Portfolio W/D');
     const startYear = new Date().getFullYear();
     // Match on the row's FIRST CELL, trimmed. Rows don't literally start with the year string —
@@ -2511,7 +2511,7 @@ function tier7(win, fileKey) {
         }]);
         recalc(win);
 
-        const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(h => h.innerText.trim());
+        const __hdrLabel = (th) => { let s = ''; th.childNodes.forEach(n => { if (n.nodeType === 3) s += n.textContent; }); s = s.trim(); return s || (th.textContent || '').trim().split('\n')[0].trim(); }; const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(__hdrLabel);
         const hcIdx = hdrs.indexOf('Healthcare'), magiIdx = hdrs.indexOf('MAGI');
         const rowFor = (yr) => [...win.document.querySelectorAll('tbody tr')].find(t => {
           const f = t.querySelector('td'); return f && f.innerText.trim().startsWith(String(yr));
@@ -2524,17 +2524,7 @@ function tier7(win, fileKey) {
         const firstIrmaaYear = series.map(s => s.year).find(y => /IRMAA/.test(cell(y, hcIdx)));
 
         if (!firstIrmaaYear) {
-          // DIAGNOSTIC: capture WHY no IRMAA was found, so the on-screen detail reveals the cause.
-          const _dbgLtc = win.document.getElementById('ltcToggle');
-          const _dbgIrmaa = win.document.getElementById('irmaaToggle');
-          const _dbgHdrsLen = hdrs.length;
-          const _dbgHcIdx = hcIdx;
-          const _dbgFirstRetYr = (series.find(s => s.hAge >= 65) || {}).year;
-          const _dbgSampleYr = (series.find(s => s.hAge >= 67) || {}).year;
-          const _dbgSampleCell = _dbgSampleYr ? cell(_dbgSampleYr, hcIdx) : 'no yr';
-          const _dbgAnyIrmaaInSeries = series.some(s => (s.audIrmaaSurcharge || 0) > 0.5);
-          const _dbg = `hcIdx=${_dbgHcIdx} hdrs=${_dbgHdrsLen} ltc=${_dbgLtc && _dbgLtc.checked} irmaaTgl=${_dbgIrmaa && _dbgIrmaa.checked} sampleCell@${_dbgSampleYr}="${String(_dbgSampleCell).slice(0,24)}" seriesHasIrmaa=${_dbgAnyIrmaaInSeries}`;
-          push('IRMAA fires end-to-end when lookback MAGI exceeds a tier', false, _dbg);
+          push('IRMAA fires end-to-end when lookback MAGI exceeds a tier', false, 'no IRMAA charged in any year');
         } else {
           const magiLookback = num(cell(firstIrmaaYear - 2, magiIdx));
           const magiCurrent = num(cell(firstIrmaaYear, magiIdx));
@@ -2620,7 +2610,7 @@ function tier7(win, fileKey) {
         const rc = win.document.getElementById('rothConvToggle');
         if (rc) rc.checked = false;
 
-        const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(h => h.innerText.trim());
+        const __hdrLabel = (th) => { let s = ''; th.childNodes.forEach(n => { if (n.nodeType === 3) s += n.textContent; }); s = s.trim(); return s || (th.textContent || '').trim().split('\n')[0].trim(); }; const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(__hdrLabel);
         const hcIdx = hdrs.indexOf('Healthcare');
         const subsidyAt = (n) => {
           setInput(win, 'acaHouseholdSize', String(n));
@@ -2650,12 +2640,9 @@ function tier7(win, fileKey) {
 
         setInput(win, 'netDistribution', '60,000');   // restore for the next assertion
 
-        const _dbgAcaTarget = (win.__chartSeries || []).find(x => x.isFullyRetired && x.hAge < 65);
-        const _dbgAcaHdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(hh => hh.innerText.trim());
-        const _dbgAcaLtc = win.document.getElementById('ltcToggle');
         push('ACA cliff fires end-to-end: subsidy paid under 400% FPL, ZERO above it',
           underHasSubsidy && overNoSubsidy,
-          `target=${_dbgAcaTarget ? _dbgAcaTarget.year+'/a'+_dbgAcaTarget.hAge : 'NULL'} hcIdx=${_dbgAcaHdrs.indexOf('Healthcare')} ltc=${_dbgAcaLtc && _dbgAcaLtc.checked} under="${String(under).replace(/\n/g,' ').slice(0,16)}" over="${String(over).replace(/\n/g,' ').slice(0,16)}"`);
+          `under cliff -> "${String(under).replace(/\n/g, ' ')}"; over cliff -> "${String(over).replace(/\n/g, ' ')}"`);
 
         // A larger household raises the FPL, which lowers the FPL ratio, which lowers the
         // applicable percentage — so the subsidy must RISE with household size at fixed MAGI.
