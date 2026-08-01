@@ -342,6 +342,7 @@ function tier1(win, fileKey) {
   push('default LTC duration (H) is 2 yrs', dnum('ltcHYears') === '2', `ltcHYears=${dnum('ltcHYears')}`);
 
   // ---- Healthcare taper DOCS + UI cross-refs (header tooltip, LTC subtext, §14.2 numbering) ----
+  try {
   const doc = win.document;
   const taperSec = doc.getElementById('sec-hc-taper');
   push('taper help section (sec-hc-taper) exists', !!taperSec, taperSec ? 'present' : 'MISSING');
@@ -361,6 +362,9 @@ function tier1(win, fileKey) {
   push('cell sub-lines help documents the LTC annotation',
     bodyHtml.includes('\u25d0 incl. $X LTC') || bodyHtml.includes('incl. $X LTC'),
     'the ◐ incl. LTC sub-line should be documented');
+  } catch (e) {
+    push('taper doc guards ran', false, 'error: ' + e.message);
+  }
 
   // ---- Healthcare inflation TAPER defaults (ANNUAL_CONSTANTS_2026) ----
   // The taper is a modeling assumption: healthcare's EXCESS over CPI fades to zero over a window,
@@ -647,32 +651,7 @@ function tier5(win, fileKey) {
       push('LTC on reduces the end-of-life total vs off', on < off,
         `off $${off.toLocaleString()} -> on $${on.toLocaleString()}`);
 
-  // ---- LTC subtext renders in LTC years (the ◐ incl. LTC cell annotation) ----
-  try {
-    const tog = win.document.getElementById('ltcToggle');
-    if (tog) {
-      const wasChecked = tog.checked;
-      const wasMode = win.dollarMode;
-      tog.checked = true;
-      if (win.toggleLtcInputs) win.toggleLtcInputs();
-      win.setDollarMode && win.setDollarMode('today');
-      recalc(win);
-      const html = win.document.body.innerHTML;
-      const hasSubtext = /incl\.[^<]*LTC/.test(html);
-      const linksHelp = html.includes("openHelp('sec-ltc')");
-      const publishesField = (win.__chartSeries || []).some(y => y.audLtcCost !== undefined);
-      push('LTC year shows the "incl. LTC" cell subtext', hasSubtext, hasSubtext ? 'present' : 'missing');
-      push('LTC subtext links to the LTC help section', linksHelp, 'must link sec-ltc');
-      push('audLtcCost field is published on the row (display-scaled)', publishesField, 'engine must publish audLtcCost');
-      // restore prior state so later tests are unaffected
-      tog.checked = wasChecked;
-      if (win.toggleLtcInputs) win.toggleLtcInputs();
-      if (wasMode) win.setDollarMode(wasMode);
-      recalc(win);
-    }
-  } catch (e) {
-    push('LTC subtext test ran', false, 'error: ' + e.message);
-  }
+
       push('LTC toggle is reversible (off-state reproduces exactly)', restored === off,
         `restored $${restored.toLocaleString()} vs off $${off.toLocaleString()}`);
     } else {
@@ -681,6 +660,37 @@ function tier5(win, fileKey) {
   } catch (e) {
     push('LTC behavioral test ran', false, 'error: ' + e.message);
   }
+
+  // ---- LTC subtext renders in LTC years (the ◐ incl. LTC cell annotation) ----
+    // Fully self-contained: snapshot ALL inputs before, restore ALL after, so this guard cannot
+    // leak ANY state (toggles, mode, distributions) into Tier 6/7 -- which snapshot from whatever
+    // state they inherit. This matches the hygiene of the passing tests.
+    {
+      const __ltcSnap = snapshotInputs(win);
+      try {
+        const tog = win.document.getElementById('ltcToggle');
+        if (tog) {
+          tog.checked = true;
+          if (win.toggleLtcInputs) win.toggleLtcInputs();
+          if (typeof win.setDollarMode === 'function') win.setDollarMode('today');
+          recalc(win);
+          const html = win.document.body.innerHTML;
+          const hasSubtext = /incl\.[^<]*LTC/.test(html);
+          const linksHelp = html.includes("openHelp('sec-ltc')");
+          const publishesField = (win.__chartSeries || []).some(y => y.audLtcCost !== undefined);
+          push('LTC year shows the "incl. LTC" cell subtext', hasSubtext, hasSubtext ? 'present' : 'missing');
+          push('LTC subtext links to the LTC help section', linksHelp, 'must link sec-ltc');
+          push('audLtcCost field is published on the row (display-scaled)', publishesField, 'engine must publish audLtcCost');
+        }
+      } catch (e) {
+        push('LTC subtext test ran', false, 'error: ' + e.message);
+      } finally {
+        // restore every input to the pre-guard snapshot, then force today-mode + recalc clean
+        restoreInputs(win, __ltcSnap);
+        if (typeof win.setDollarMode === 'function') win.setDollarMode('today');
+        recalc(win);
+      }
+    }
 
   // ---- Healthcare taper: far-out healthcare grows SLOWER than a flat premium would ----
   // With the taper on, the excess-over-CPI fades, so a late-life healthcare cost (in today's $)
