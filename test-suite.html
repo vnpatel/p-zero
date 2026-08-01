@@ -2524,7 +2524,17 @@ function tier7(win, fileKey) {
         const firstIrmaaYear = series.map(s => s.year).find(y => /IRMAA/.test(cell(y, hcIdx)));
 
         if (!firstIrmaaYear) {
-          push('IRMAA fires end-to-end when lookback MAGI exceeds a tier', false, 'no IRMAA charged in any year');
+          // DIAGNOSTIC: capture WHY no IRMAA was found, so the on-screen detail reveals the cause.
+          const _dbgLtc = win.document.getElementById('ltcToggle');
+          const _dbgIrmaa = win.document.getElementById('irmaaToggle');
+          const _dbgHdrsLen = hdrs.length;
+          const _dbgHcIdx = hcIdx;
+          const _dbgFirstRetYr = (series.find(s => s.hAge >= 65) || {}).year;
+          const _dbgSampleYr = (series.find(s => s.hAge >= 67) || {}).year;
+          const _dbgSampleCell = _dbgSampleYr ? cell(_dbgSampleYr, hcIdx) : 'no yr';
+          const _dbgAnyIrmaaInSeries = series.some(s => (s.audIrmaaSurcharge || 0) > 0.5);
+          const _dbg = `hcIdx=${_dbgHcIdx} hdrs=${_dbgHdrsLen} ltc=${_dbgLtc && _dbgLtc.checked} irmaaTgl=${_dbgIrmaa && _dbgIrmaa.checked} sampleCell@${_dbgSampleYr}="${String(_dbgSampleCell).slice(0,24)}" seriesHasIrmaa=${_dbgAnyIrmaaInSeries}`;
+          push('IRMAA fires end-to-end when lookback MAGI exceeds a tier', false, _dbg);
         } else {
           const magiLookback = num(cell(firstIrmaaYear - 2, magiIdx));
           const magiCurrent = num(cell(firstIrmaaYear, magiIdx));
@@ -2640,9 +2650,12 @@ function tier7(win, fileKey) {
 
         setInput(win, 'netDistribution', '60,000');   // restore for the next assertion
 
+        const _dbgAcaTarget = (win.__chartSeries || []).find(x => x.isFullyRetired && x.hAge < 65);
+        const _dbgAcaHdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(hh => hh.innerText.trim());
+        const _dbgAcaLtc = win.document.getElementById('ltcToggle');
         push('ACA cliff fires end-to-end: subsidy paid under 400% FPL, ZERO above it',
           underHasSubsidy && overNoSubsidy,
-          `under cliff -> "${String(under).replace(/\n/g, ' ')}"; over cliff -> "${String(over).replace(/\n/g, ' ')}"`);
+          `target=${_dbgAcaTarget ? _dbgAcaTarget.year+'/a'+_dbgAcaTarget.hAge : 'NULL'} hcIdx=${_dbgAcaHdrs.indexOf('Healthcare')} ltc=${_dbgAcaLtc && _dbgAcaLtc.checked} under="${String(under).replace(/\n/g,' ').slice(0,16)}" over="${String(over).replace(/\n/g,' ').slice(0,16)}"`);
 
         // A larger household raises the FPL, which lowers the FPL ratio, which lowers the
         // applicable percentage — so the subsidy must RISE with household size at fixed MAGI.
