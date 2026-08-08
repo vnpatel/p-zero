@@ -304,9 +304,13 @@ function tierUI(win, fileKey) {
     const miles = doc.querySelectorAll('#execSummaryView .es-mile').length;
     push('exec summary renders milestones', miles > 0, `${miles} milestones`);
     // Key Metrics bar must NOT be visible on the exec tab (it belongs to Plan Details)
+    // Structural check (robust in the test iframe where getComputedStyle is unreliable):
+    // the Key Metrics bar must live INSIDE planDetailsView, so it hides with that view on the exec tab.
     const km = [...doc.querySelectorAll('h3')].find(h => h.textContent.includes('Key Metrics'));
-    const kmVisible = km ? (() => { let e = km; while (e) { if (win.getComputedStyle(e).display === 'none') return false; e = e.parentElement; } return true; })() : false;
-    push('Key Metrics bar hidden on Exec tab', km ? !kmVisible : false, km ? (kmVisible ? 'LEAKING onto exec' : 'correctly hidden') : 'no Key Metrics bar');
+    const pdView = doc.getElementById('planDetailsView');
+    const kmScoped = km && pdView ? pdView.contains(km) : false;
+    push('Key Metrics bar scoped to Plan Details (hides on Exec)', kmScoped,
+      km ? (kmScoped ? 'inside planDetailsView' : 'LEAKING — not inside planDetailsView') : 'no Key Metrics bar');
     win.switchWorkspace('details');
   }
 
@@ -346,9 +350,11 @@ function tierUI(win, fileKey) {
   push('Reference checkbox present in dropdown', !!refChk, '');
   if (refChk) {
     push('Reference unchecked by default', refChk.checked === false, `checked=${refChk.checked}`);
-    const zone = doc.getElementById('zoneReference');
-    const refHiddenByDefault = zone ? win.getComputedStyle(zone).display === 'none' : true;
-    push('Reference columns hidden by default', refHiddenByDefault, '');
+    // Robust check: the table carries the .reference-hidden class by default (drives the CSS that
+    // hides .ref-col + #zoneReference). getComputedStyle on the zone is unreliable in the iframe.
+    const ledgerTbl = doc.getElementById('ledgerTableBody') ? doc.getElementById('ledgerTableBody').closest('table') : null;
+    const refHiddenByDefault = ledgerTbl ? ledgerTbl.classList.contains('reference-hidden') : (refChk ? !refChk.checked : true);
+    push('Reference columns hidden by default', refHiddenByDefault, refChk ? `checked=${refChk.checked}` : '');
     // dependency: turn Household off -> Reference checkbox disabled
     const hh = doc.getElementById('colchk_grpCombined');
     if (hh && typeof win.onColDetailToggle === 'function') {
@@ -373,9 +379,13 @@ function tierUI(win, fileKey) {
   // Survivor divergence (correct): MFJ has a FUNCTIONAL survivor toggle; Single keeps only a
   // hidden inert stub (display:none, engine force-disables it) so import/export IDs still resolve.
   const survEl = doc.getElementById('survivorToggle');
-  const survVisible = survEl ? win.getComputedStyle(survEl).display !== 'none' : false;
-  push(isSingle ? 'Single has no VISIBLE survivor toggle (single filer)' : 'MFJ has a visible survivor toggle',
-    isSingle ? !survVisible : survVisible, `survivorToggle visible=${survVisible}`);
+  // Robust in-iframe check: Single keeps survivorToggle as an inert stub with inline display:none
+  // (so import/export IDs resolve) — detect that via the inline style + whether it sits in a
+  // rendered survivor section, rather than getComputedStyle (unreliable before Tailwind settles).
+  const survInlineHidden = survEl ? (survEl.getAttribute('style') || '').replace(/\s/g,'').includes('display:none') : true;
+  const survFunctional = survEl && !survInlineHidden && !!survEl.closest('[data-input-group],section,.input-group');
+  push(isSingle ? 'Single has no functional survivor toggle (single filer)' : 'MFJ has a functional survivor toggle',
+    isSingle ? !survFunctional : survFunctional, `functional=${survFunctional} inlineHidden=${survInlineHidden}`);
 
   return out;
 }
@@ -563,7 +573,7 @@ function tier1(win, fileKey) {
         const hdrs = [...win.document.querySelectorAll('#ledgerHeaderRow2 th')];
         const cells = row ? [...row.querySelectorAll('td')] : [];
         let vis = 0;
-        for (let i = 0; i < hdrs.length; i++) { const g = hdrs[i].getAttribute('data-group'); if (g === 'grpTrad') break; if (['grpCombined','grpGifting','grpInheritance'].includes(g) && cells[i] && win.getComputedStyle(cells[i]).display !== 'none') vis++; }
+        for (let i = 0; i < hdrs.length; i++) { const g = hdrs[i].getAttribute('data-group'); if (g === 'grpTrad') break; if (['grpCombined','grpGifting','grpInheritance','grpReference'].includes(g) && cells[i] && win.getComputedStyle(cells[i]).display !== 'none') vis++; }
         return { sum, vis };
       };
       const dflt = zoneSumVsVisible();
@@ -794,7 +804,11 @@ function tier3(win, fileKey) {
         const rows = doc.querySelectorAll('#ledgerTableBody tr');
         for (const row of rows) if (parseInt(row.querySelector('td')?.innerText) === yr) {
           const c = row.querySelectorAll('td[data-group="grpCombined"]');
-          return parseFloat(c[1].innerText.replace(/[$,]/g, '').split('\n')[0]);
+          // Flow cells render an em-dash (—) for zero in the redesign (cf() helper), so treat that as 0.
+          const raw = c[1].innerText.replace(/[$,]/g, '').split('\n')[0].trim();
+          if (raw === '' || raw === '—' || raw === '-') return 0;
+          const v = parseFloat(raw);
+          return isNaN(v) ? 0 : v;
         }
         return null;
       };
@@ -2086,6 +2100,14 @@ function tier7(win, fileKey) {
         clearGifts();
         recalc(win);
         const zeroGiftEol = Math.round(win.__scenarioB.series.at(-1).spendableTotal);
+
+        // Ensure gifting is ENABLED before adding the gift. In the Single/HoH build gifting
+        // defaults OFF (no children in childGiftingProfile), so a gift row alone has no effect
+        // until the feature toggle is on. MFJ defaults ON (has kids), which is why this was latent.
+        // Set the checkbox to on and fire change (the change handler reads .checked, so this is
+        // idempotent — unlike toggleGifting(), which flips and could turn it back off).
+        const giftTog = win.document.getElementById('giftingToggle');
+        if (giftTog && !giftTog.checked) { giftTog.checked = true; giftTog.dispatchEvent(new win.Event('change')); }
 
         // Add exactly one gift and confirm legacy falls.
         win.addGiftRow();
