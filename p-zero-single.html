@@ -1135,30 +1135,7 @@
                  always stays put — only #chartCollapseBody folds away — so the chart's own controls
                  never vanish with it. State persists in snapshot.preferences, defaults expanded. -->
             
-                <!-- 5c. Column Details Menu & Reference Columns -->
-                <section id="sec-coldetail">
-                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-table-columns mr-2"></i>5c. Column Details Menu &amp; Reference Columns</h2>
-                    <p style="color:var(--text-secondary)">Above the ledger, the <strong style="color:var(--text-primary)">Column Details</strong> dropdown controls which column groups are visible. The table always starts on the <strong style="color:var(--text-primary)">Household</strong> (all-buckets combined) summary; tick any per-account group to reveal its detail columns alongside it.</p>
-
-                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
-                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-list-check mr-1"></i>What each item shows</p>
-                        <ul class="list-disc ml-5" style="color:var(--text-secondary)">
-                            <li><strong style="color:var(--text-primary)">Household</strong> &mdash; the combined summary columns (Grows, Outflows, Cash-In, Withdrawal, Ending). Un-tick it to focus on a single detail bucket without the summary; its Gifting and Inheritance sub-columns hide with it.</li>
-                            <li><strong style="color:var(--text-primary)">Reference</strong> (nested under Household) &mdash; three diagnostic columns: <em>Roth Conv</em> (the year's conversion amount), <em>Total Taxable</em> (ordinary income that hits the brackets), and <em>MAGI</em> (the figure ACA and IRMAA read). Off by default. Because they annotate the Household view, Reference can only be shown while Household itself is shown &mdash; turn Household off and the Reference control greys out.</li>
-                            <li><strong style="color:var(--text-primary)">Traditional / Roth / Brokerage / HSA / 529 / Real&nbsp;Estate</strong> &mdash; each reveals that account's full lifecycle columns (Starting, Contribs, Growth, in/out flows, Ending). HSA and 529 are <strong style="color:var(--text-primary)">separate groups</strong> so you can show one without the other.</li>
-                        </ul>
-                    </div>
-
-                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
-                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-money-bill-transfer mr-1"></i>Two inflow columns worth knowing</p>
-                        <p style="color:var(--text-secondary)">In the <strong style="color:var(--text-primary)">Roth</strong> detail, the <em>Roth Conv</em> column is money arriving <em>into</em> Roth from a conversion that year. In the <strong style="color:var(--text-primary)">Brokerage</strong> detail, the <em>Inflows</em> column is external cash banked to brokerage that year (surplus income and real-estate / business proceeds). Both are shown as flows, so in years with no activity they read as a dash rather than a zero.</p>
-                    </div>
-
-                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
-                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>The reconciliation panel &amp; Notables</p>
-                        <p style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Click any row</strong> to expand a two-column reconciliation panel for that year. The left side itemizes every expense (living, gifts, healthcare, tuition, tax) with its cost and how much came from the portfolio; the right side &mdash; <strong style="color:var(--text-primary)">Notables</strong> &mdash; flags the year's out-of-the-ordinary events: Roth conversions, inheritances received, real-estate/business sales, forced RMDs, surplus banked to brokerage, long-term-care costs, and any tuition shortfall. If a row's Notables side is empty, nothing unusual happened that year.</p>
-                    </div>
-                </section>
+                
 
                 <section class="glass-panel p-5 rounded-xl border border-slate-800">
                 <!-- Single header row: collapse chevron + tab labels on the left, chart toggles on
@@ -6088,6 +6065,31 @@
                 </section>
 
                 <!-- 6. Detail columns -->
+                <!-- 5c. Column Details Menu & Reference Columns -->
+                <section id="sec-coldetail">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-table-columns mr-2"></i>5c. Column Details Menu &amp; Reference Columns</h2>
+                    <p style="color:var(--text-secondary)">Above the ledger, the <strong style="color:var(--text-primary)">Column Details</strong> dropdown controls which column groups are visible. The table always starts on the <strong style="color:var(--text-primary)">Household</strong> (all-buckets combined) summary; tick any per-account group to reveal its detail columns alongside it.</p>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-list-check mr-1"></i>What each item shows</p>
+                        <ul class="list-disc ml-5" style="color:var(--text-secondary)">
+                            <li><strong style="color:var(--text-primary)">Household</strong> &mdash; the combined summary columns (Grows, Outflows, Cash-In, Withdrawal, Ending). Un-tick it to focus on a single detail bucket without the summary; its Gifting and Inheritance sub-columns hide with it.</li>
+                            <li><strong style="color:var(--text-primary)">Reference</strong> (nested under Household) &mdash; three diagnostic columns: <em>Roth Conv</em> (the year's conversion amount), <em>Total Taxable</em> (ordinary income that hits the brackets), and <em>MAGI</em> (the figure ACA and IRMAA read). Off by default. Because they annotate the Household view, Reference can only be shown while Household itself is shown &mdash; turn Household off and the Reference control greys out.</li>
+                            <li><strong style="color:var(--text-primary)">Traditional / Roth / Brokerage / HSA / 529 / Real&nbsp;Estate</strong> &mdash; each reveals that account's full lifecycle columns (Starting, Contribs, Growth, in/out flows, Ending). HSA and 529 are <strong style="color:var(--text-primary)">separate groups</strong> so you can show one without the other.</li>
+                        </ul>
+                    </div>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-money-bill-transfer mr-1"></i>Two inflow columns worth knowing</p>
+                        <p style="color:var(--text-secondary)">In the <strong style="color:var(--text-primary)">Roth</strong> detail, the <em>Roth Conv</em> column is money arriving <em>into</em> Roth from a conversion that year. In the <strong style="color:var(--text-primary)">Brokerage</strong> detail, the <em>Inflows</em> column is external cash banked to brokerage that year (surplus income and real-estate / business proceeds). Both are shown as flows, so in years with no activity they read as a dash rather than a zero.</p>
+                    </div>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>The reconciliation panel &amp; Notables</p>
+                        <p style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Click any row</strong> to expand a two-column reconciliation panel for that year. The left side itemizes every expense (living, gifts, healthcare, tuition, tax) with its cost and how much came from the portfolio; the right side &mdash; <strong style="color:var(--text-primary)">Notables</strong> &mdash; flags the year's out-of-the-ordinary events: Roth conversions, inheritances received, real-estate/business sales, forced RMDs, surplus banked to brokerage, long-term-care costs, and any tuition shortfall. If a row's Notables side is empty, nothing unusual happened that year.</p>
+                    </div>
+                </section>
+
                 <section id="sec-detailcols">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-table-columns mr-2"></i>6. Per-Account Detail Columns</h2>
                     <p class="mb-2">Each bucket (Traditional, Roth, Brokerage, HSA &amp; 529) has a hidden-by-default detail group — reveal them with the "Show Detail" buttons above the table. Columns follow a consistent pattern: <strong>Starting / Contribs / Growth / Dists / Ending</strong>, plus bucket-specific columns:</p>
