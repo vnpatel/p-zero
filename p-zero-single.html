@@ -2183,6 +2183,9 @@
             if (nz(d.income)) cashSources.push(['Income', d.income]);
             if (nz(d.ss)) cashSources.push(['Soc Sec', d.ss]);
             if (nz(d.inheritance)) cashSources.push(['Inheritance', d.inheritance]);
+      if (nz(d.rebiDist)) cashSources.push(['RE/Business income', d.rebiDist]);
+      if (nz(d.rebiRefi)) cashSources.push(['RE/Business refinance', d.rebiRefi]);
+      if (nz(d.rebiExit)) cashSources.push(['RE/Business sale proceeds', d.rebiExit]);
             const totalCash = cashSources.reduce((s, r) => s + r[1], 0);
             const cashDetail = cashSources.length ? cashSources.map(([k, v]) => `${k} ${cR(v)}`).join(' + ') : 'none';
             const isSurplus = totalCash > totalFromP + 0.5;
@@ -4218,6 +4221,7 @@
                         tuitionCost: tuitionBurn, tuitionFromPortfolio: 0,
                         tax: solvedTax,
                         income: gross1099, ss: currentSsPayout, inheritance: inheritanceCashIn,
+                        rebiDist: rebiDistTotal, rebiRefi: rebiRefiCash, rebiExit: rebiExitProceedsGross,
                         pwd: portfolioWithdrawalActual,
                         drawTrad: solvedResult.elecTradDrawn + (forcedRmd||0), drawRoth: solvedResult.elecRothDrawn, drawBrok: solvedResult.elecBrokDrawn,
                         combStart, combCont, combGrow, hsaDraw: hsaDist, ending: spendableNetWorth,
