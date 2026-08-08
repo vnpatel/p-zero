@@ -1212,7 +1212,33 @@
                  read the tiles and scroll the table in one view. The HEADER (title, chevron, HSA/529)
                  always stays put — only #chartCollapseBody folds away — so the chart's own controls
                  never vanish with it. State persists in snapshot.preferences, defaults expanded. -->
-            <section class="glass-panel p-5 rounded-xl border border-slate-800">
+            
+                <!-- 5c. Column Details Menu & Reference Columns -->
+                <section id="sec-coldetail">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-table-columns mr-2"></i>5c. Column Details Menu &amp; Reference Columns</h2>
+                    <p style="color:var(--text-secondary)">Above the ledger, the <strong style="color:var(--text-primary)">Column Details</strong> dropdown controls which column groups are visible. The table always starts on the <strong style="color:var(--text-primary)">Household</strong> (all-buckets combined) summary; tick any per-account group to reveal its detail columns alongside it.</p>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-list-check mr-1"></i>What each item shows</p>
+                        <ul class="list-disc ml-5" style="color:var(--text-secondary)">
+                            <li><strong style="color:var(--text-primary)">Household</strong> &mdash; the combined summary columns (Grows, Outflows, Cash-In, Withdrawal, Ending). Un-tick it to focus on a single detail bucket without the summary; its Gifting and Inheritance sub-columns hide with it.</li>
+                            <li><strong style="color:var(--text-primary)">Reference</strong> (nested under Household) &mdash; three diagnostic columns: <em>Roth Conv</em> (the year's conversion amount), <em>Total Taxable</em> (ordinary income that hits the brackets), and <em>MAGI</em> (the figure ACA and IRMAA read). Off by default. Because they annotate the Household view, Reference can only be shown while Household itself is shown &mdash; turn Household off and the Reference control greys out.</li>
+                            <li><strong style="color:var(--text-primary)">Traditional / Roth / Brokerage / HSA / 529 / Real&nbsp;Estate</strong> &mdash; each reveals that account's full lifecycle columns (Starting, Contribs, Growth, in/out flows, Ending). HSA and 529 are <strong style="color:var(--text-primary)">separate groups</strong> so you can show one without the other.</li>
+                        </ul>
+                    </div>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-money-bill-transfer mr-1"></i>Two inflow columns worth knowing</p>
+                        <p style="color:var(--text-secondary)">In the <strong style="color:var(--text-primary)">Roth</strong> detail, the <em>Roth Conv</em> column is money arriving <em>into</em> Roth from a conversion that year. In the <strong style="color:var(--text-primary)">Brokerage</strong> detail, the <em>Inflows</em> column is external cash banked to brokerage that year (surplus income and real-estate / business proceeds). Both are shown as flows, so in years with no activity they read as a dash rather than a zero.</p>
+                    </div>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>The reconciliation panel &amp; Notables</p>
+                        <p style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Click any row</strong> to expand a two-column reconciliation panel for that year. The left side itemizes every expense (living, gifts, healthcare, tuition, tax) with its cost and how much came from the portfolio; the right side &mdash; <strong style="color:var(--text-primary)">Notables</strong> &mdash; flags the year's out-of-the-ordinary events: Roth conversions, inheritances received, real-estate/business sales, forced RMDs, surplus banked to brokerage, long-term-care costs, and any tuition shortfall. If a row's Notables side is empty, nothing unusual happened that year.</p>
+                    </div>
+                </section>
+
+                <section class="glass-panel p-5 rounded-xl border border-slate-800">
                 <!-- Single header row: collapse chevron + tab labels on the left, chart toggles on
                      the right. The old "Net Worth Trajectory by Bucket" <h3> was removed because the
                      tab label already says it — it was a redundant second header. This row lives
@@ -5977,11 +6003,13 @@
                     <h2 class="font-bold text-base mb-3 text-blue-600"><i class="fa-solid fa-list mr-2"></i>Table of Contents</h2>
                     <div class="grid grid-cols-2 gap-1 text-blue-500 text-sm">
                         <a href="#sec-overview" class="hover:underline cursor-pointer">1. Overview &amp; Purpose</a>
+                        <a href="#sec-interface" class="hover:underline cursor-pointer">1b. Interface: Views, Nav &amp; Settings</a>
                         <a href="#sec-dollars" class="hover:underline cursor-pointer">2. Dollar Display Modes (Today's $ vs Future $)</a>
                         <a href="#sec-inputs" class="hover:underline cursor-pointer">3. Input Parameters Explained</a>
                         <a href="#sec-kpis" class="hover:underline cursor-pointer">4. KPI Cards Explained</a>
                         <a href="#sec-distribution" class="hover:underline cursor-pointer">4b. Distribution Mix</a>
                         <a href="#sec-columns" class="hover:underline cursor-pointer">5. Combined Table Columns</a>
+                        <a href="#sec-coldetail" class="hover:underline cursor-pointer">5c. Column Details Menu &amp; Reference Columns</a>
                         <a href="#sec-detailcols" class="hover:underline cursor-pointer">6. Per-Account Detail Columns</a>
                         <a href="#sec-lifecycle" class="hover:underline cursor-pointer">7. Life Phase Logic</a>
                         <a href="#sec-solver" class="hover:underline cursor-pointer">8. The Iterative Tax &amp; Withdrawal Solver</a>
@@ -6020,6 +6048,35 @@
                             <li>Contributions to all five buckets; two children in college later on</li>
                         </ul>
                         <p class="text-sm mt-2" style="color:var(--text-secondary)">These match the app's out-of-the-box settings, so with nothing changed the examples line up with what's on screen. They're only an illustration &mdash; <strong style="color:var(--text-primary)">your inputs may differ, and the explanations apply regardless of the numbers.</strong> Any concrete calendar years shown in examples (e.g. 2035, 2036) assume the plan starts in the current year and shift forward as the calendar advances &mdash; the projection begins in whatever year you run it, so read the years as offsets from that start (both spouses step down in the plan's 9th year, conversions the year after), not as fixed dates.</p>
+                    </div>
+                </section>
+
+
+                <!-- 1b. Interface: Views, Navigation & Settings -->
+                <section id="sec-interface">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-window-restore mr-2"></i>1b. Interface: Views, Navigation &amp; Settings</h2>
+                    <p style="color:var(--text-secondary)">The workspace is organized as a <strong style="color:var(--text-primary)">funnel</strong>: you set assumptions in the left input panel, then read the results in one of two views selected from the top navigation bar.</p>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-table-columns mr-1"></i>The two workspace views</p>
+                        <p style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">Executive Summary</strong> &mdash; the default landing view. A plain-language, one-page read of the plan: a headline &ldquo;Plan Health&rdquo; score (your projected end age with a Secure / Shortfall verdict), a set of stat cards (peak portfolio, liquid net worth at end, after-tax legacy, lifetime tax, and &mdash; when they apply &mdash; real-estate/business value and any 529 balance remaining), an advisor-style narrative paragraph, a &ldquo;why&rdquo; bullet list, and an <em>Upcoming Milestones</em> timeline built from your ages (full/semi-retirement, Medicare at 65, Social Security claim age, and RMD age).</p>
+                        <p style="color:var(--text-secondary)" class="mt-2"><strong style="color:var(--text-primary)">Plan Details</strong> &mdash; the full analytical view: the Key Metrics bar, KPI cards, the net-worth chart, and the year-by-year ledger table. This is where every dollar is traceable.</p>
+                        <p style="color:var(--text-secondary)" class="mt-2">Switch between them with the <strong style="color:var(--text-primary)">Executive Summary | Plan Details</strong> tabs centered in the top bar. The Executive Summary is a pure read-out &mdash; it recomputes from the same engine every time you change an input, so the two views never disagree.</p>
+                    </div>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-bars-staggered mr-1"></i>Top navigation bar</p>
+                        <p style="color:var(--text-secondary)">The header holds everything that isn't an assumption:</p>
+                        <ul class="list-disc ml-5 mt-1" style="color:var(--text-secondary)">
+                            <li><strong style="color:var(--text-primary)">Analyze</strong> (dropdown) &mdash; opens the deeper tools: <em>Solve For</em> (find the max spend / earliest retirement / required portfolio), <em>Monte Carlo</em> (stress-test against random return sequences), and <em>Compare</em> (view two scenarios side by side).</li>
+                            <li><strong style="color:var(--text-primary)">Utility icons</strong> &mdash; Import / Export profile, Reset to defaults, light/dark theme, and Help (this guide).</li>
+                        </ul>
+                    </div>
+
+                    <div class="rounded-lg p-4 mt-4 mb-4 border border-blue-300" style="background:var(--bg-base);">
+                        <p class="font-semibold text-blue-600 mb-2"><i class="fa-solid fa-sliders mr-1"></i>Settings strip &amp; the left input panel</p>
+                        <p style="color:var(--text-secondary)">At the top of the left panel a <strong style="color:var(--text-primary)">settings strip</strong> groups two global controls: <strong style="color:var(--text-primary)">Filing</strong> and <strong style="color:var(--text-primary)">Dollars</strong>. This build is fixed to <strong style="color:var(--text-primary)">Married-filing-jointly</strong>; the Filing switch is a link that loads the Single build (p-zero-single.html) with its own defaults (inputs do not carry across &mdash; the two builds are separate files that must live in the same folder). <strong style="color:var(--text-primary)">Dollars</strong> (Today's&nbsp;$ vs Future&nbsp;$) is a display toggle that rescales the KPI cards, chart, and table together.</p>
+                        <p style="color:var(--text-secondary)" class="mt-2">Below the strip, inputs are organized into <strong style="color:var(--text-primary)">collapsible groups</strong> (Household, Accounts &amp; Contributions, Distribution &amp; Tax Strategy, Income &amp; Inflows, Care/Education &amp; Gifting, Estate, and Taxes &amp; Global). Only Household is open by default; use the <em>Expand all / Collapse all</em> control to open or close every group at once.</p>
                     </div>
                 </section>
 

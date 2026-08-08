@@ -285,6 +285,101 @@ const FIXTURES = {
 };
 
 // ============================ TIER 1: STRUCTURAL ============================
+function tierUI(win, fileKey) {
+  const out = [];
+  const push = (name, pass, detail) => out.push({ name, pass, detail });
+  const doc = win.document;
+  const isSingle = fileKey === 'single';
+
+  // --- Redesign-era UI parity (added Aug-2026 parity session) ---
+
+  // Executive Summary workspace + toggle
+  push('Executive Summary view exists', !!doc.getElementById('execSummaryView'), '');
+  push('Plan Details view wrapper exists', !!doc.getElementById('planDetailsView'), '');
+  push('workspace toggle present', !!doc.getElementById('workspaceToggle') || !!doc.getElementById('wsBtnExec'), '');
+  // exec renders a hero + milestones after switching
+  if (typeof win.switchWorkspace === 'function') {
+    win.switchWorkspace('exec');
+    push('exec summary renders hero', !!doc.querySelector('#execSummaryView .es-hero'), '');
+    const miles = doc.querySelectorAll('#execSummaryView .es-mile').length;
+    push('exec summary renders milestones', miles > 0, `${miles} milestones`);
+    // Key Metrics bar must NOT be visible on the exec tab (it belongs to Plan Details)
+    const km = [...doc.querySelectorAll('h3')].find(h => h.textContent.includes('Key Metrics'));
+    const kmVisible = km ? (() => { let e = km; while (e) { if (win.getComputedStyle(e).display === 'none') return false; e = e.parentElement; } return true; })() : false;
+    push('Key Metrics bar hidden on Exec tab', km ? !kmVisible : false, km ? (kmVisible ? 'LEAKING onto exec' : 'correctly hidden') : 'no Key Metrics bar');
+    win.switchWorkspace('details');
+  }
+
+  // Unified nav
+  push('Analyze dropdown button present', !!doc.getElementById('analyzeBtn'), '');
+  push('settings strip present', !!doc.querySelector('.settings-strip'), '');
+
+  // Input groups (7 collapsible, 1 open by default)
+  const groups = doc.querySelectorAll('[data-input-group]');
+  push('7 collapsible input groups', groups.length === 7, `${groups.length} groups`);
+  const openGroups = [...groups].filter(g => g.classList.contains('open')).length;
+  push('exactly one input group open by default', openGroups === 1, `${openGroups} open`);
+
+  // All toggle sliders uniform (single track class)
+  const sidebar = doc.getElementById('sidebarPanel');
+  if (sidebar) {
+    const sliders = [...sidebar.querySelectorAll('input.sr-only.peer, input[class*="sr-only"]')];
+    const nonUniform = sliders.filter(inp => {
+      const trk = inp.parentElement && inp.parentElement.querySelector('div');
+      return trk && !trk.classList.contains('toggle-track');
+    }).length;
+    push('all left-panel sliders use toggle-track', nonUniform === 0, `${nonUniform} non-standard of ${sliders.length}`);
+  }
+
+  // Ledger: Column Details dropdown + column parity
+  push('Column Details dropdown present', !!doc.getElementById('colDetailTrigger'), '');
+  const tr = doc.querySelector('.recon-row');
+  if (tr) {
+    const count = g => tr.querySelectorAll(`td[data-group="${g}"]`).length;
+    push('Roth group has 6 columns (incl. Roth Conv)', count('grpRoth') === 6, `${count('grpRoth')} cols`);
+    push('Brokerage group has 6 columns (incl. Inflows)', count('grpBrok') === 6, `${count('grpBrok')} cols`);
+    push('HSA and 529 are separate groups', count('grpHsa') === 5 && count('grpF529') === 5, `hsa=${count('grpHsa')} f529=${count('grpF529')}`);
+  }
+
+  // Reference: default hidden, dependent on Household
+  const refChk = doc.getElementById('colchk_grpReference');
+  push('Reference checkbox present in dropdown', !!refChk, '');
+  if (refChk) {
+    push('Reference unchecked by default', refChk.checked === false, `checked=${refChk.checked}`);
+    const zone = doc.getElementById('zoneReference');
+    const refHiddenByDefault = zone ? win.getComputedStyle(zone).display === 'none' : true;
+    push('Reference columns hidden by default', refHiddenByDefault, '');
+    // dependency: turn Household off -> Reference checkbox disabled
+    const hh = doc.getElementById('colchk_grpCombined');
+    if (hh && typeof win.onColDetailToggle === 'function') {
+      hh.checked = false; win.onColDetailToggle('grpCombined');
+      push('Reference disabled when Household off', refChk.disabled === true, `disabled=${refChk.disabled}`);
+      hh.checked = true; win.onColDetailToggle('grpCombined');
+    }
+  }
+
+  // Notables twin card (reconciliation panel two-column)
+  if (tr) {
+    tr.click();
+    push('reconciliation panel is two-column (Notables)', !!doc.querySelector('.recon-col-right'), '');
+    tr.click();
+  }
+
+  // Filing link points to the OTHER build
+  const seg = doc.querySelector('.settings-strip .seg-off');
+  const expectHref = isSingle ? 'index.html' : 'p-zero-single.html';
+  push('Filing link targets the other build', seg ? (seg.getAttribute('href') || '').includes(expectHref) : false, seg ? seg.getAttribute('href') : 'no link');
+
+  // Survivor divergence (correct): MFJ has a FUNCTIONAL survivor toggle; Single keeps only a
+  // hidden inert stub (display:none, engine force-disables it) so import/export IDs still resolve.
+  const survEl = doc.getElementById('survivorToggle');
+  const survVisible = survEl ? win.getComputedStyle(survEl).display !== 'none' : false;
+  push(isSingle ? 'Single has no VISIBLE survivor toggle (single filer)' : 'MFJ has a visible survivor toggle',
+    isSingle ? !survVisible : survVisible, `survivorToggle visible=${survVisible}`);
+
+  return out;
+}
+
 function tier1(win, fileKey) {
   const out = [];
   const push = (name, pass, detail) => out.push({ name, pass, detail });
@@ -395,6 +490,162 @@ function tier1(win, fileKey) {
     for (let i = 1; i < s.length; i++) if (s[i].year !== s[i-1].year + 1) { contiguous = false; gap = `${s[i-1].year}->${s[i].year}`; break; }
     push('years contiguous (no gaps)', contiguous, gap || 'ok');
   }
+
+  // ---- Inheritance + Gifting toggle defaults & the Gifting column rename ----
+  const inhTog = win.document.getElementById('inheritanceToggle');
+  push('inheritance toggle exists and defaults OFF', !!inhTog && !inhTog.checked, inhTog ? `checked=${inhTog.checked}` : 'no toggle');
+  const giftTog = win.document.getElementById('giftingToggle');
+  const expectGiftOn = fileKey !== 'single';
+  push(`gifting toggle default is ${expectGiftOn ? 'ON' : 'OFF'} for ${fileKey}`,
+    !!giftTog && giftTog.checked === expectGiftOn, giftTog ? `checked=${giftTog.checked}` : 'no toggle');
+  const __hdrLabel1 = (th) => { let s = ''; th.childNodes.forEach(n => { if (n.nodeType === 3) s += n.textContent; }); s = s.trim(); return s || (th.textContent || '').trim().split('\n')[0].trim(); };
+  const hdrLabels = [...win.document.querySelectorAll('thead tr:last-child th')].map(__hdrLabel1);
+  push('column "Life Event" was renamed to "Gifting"', hdrLabels.includes('Gifting') && !hdrLabels.includes('Life Event'),
+    hdrLabels.includes('Gifting') ? 'Gifting present' : 'Gifting MISSING');
+  push('new "Inheritance" column header exists', hdrLabels.includes('Inheritance'), hdrLabels.includes('Inheritance') ? 'present' : 'MISSING');
+  push('inheritance help section (sec-inheritance) exists', !!win.document.getElementById('sec-inheritance'),
+    win.document.getElementById('sec-inheritance') ? 'present' : 'MISSING');
+  push('inheritance test hooks are exposed', typeof win.__inheritanceSet === 'function' && typeof win.__inheritanceGet === 'function', 'need __inheritanceSet/Get');
+
+  // Education Planning: "Children" section renamed, has a toggle, defaults per app (MFJ on / Single off).
+  const eduTog = win.document.getElementById('educationToggle');
+  const expectEduOn = fileKey !== 'single';
+  push(`education toggle default is ${expectEduOn ? 'ON' : 'OFF'} for ${fileKey}`,
+    !!eduTog && eduTog.checked === expectEduOn, eduTog ? `checked=${eduTog.checked}` : 'no toggle');
+  push('"Children" section renamed to "Education Planning"',
+    /Education Planning/.test(win.document.body.textContent) && !/>Children</.test(win.document.body.innerHTML),
+    'label check');
+
+  // Reconciliation expand panel: each ledger row has a hidden expand row that reconciles
+  // (Starting + Contribs + Growth − W/D = Ending) and whose colspan is computed live (not hardcoded).
+  {
+    const dataRows = win.document.querySelectorAll('.recon-row').length;
+    const expRows = win.document.querySelectorAll('.recon-exp').length;
+    push('reconciliation expand row exists for every ledger row', dataRows > 0 && dataRows === expRows,
+      `rows=${dataRows} expand=${expRows}`);
+    // colspan must equal the live header-row-2 column count (dynamic, toggle-safe)
+    const head2Cols = win.document.querySelectorAll('#ledgerHeaderRow2 th').length;
+    const firstExpTd = win.document.querySelector('.recon-exp td');
+    const colspan = firstExpTd ? parseInt(firstExpTd.getAttribute('colspan')) : -1;
+    push('expand-row colspan matches live column count (not hardcoded)', colspan === head2Cols,
+      `colspan=${colspan} cols=${head2Cols}`);
+    // reconcile a sample row: expand it, read the "Year reconciles" numbers, verify S+C+G-W = E
+    const sample = win.document.querySelector('.recon-row[data-recon-year]');
+    if (sample) {
+      sample.click();
+      const yr = sample.getAttribute('data-recon-year');
+      const exp = win.document.querySelector(`.recon-exp[data-recon-for="${yr}"]`);
+      const box = exp ? exp.querySelector('.recon-box') : null;
+      let reconciles = false, detail = 'no box';
+      if (box) {
+        const nums = (box.textContent.match(/\$[0-9,]+/g) || []).map(s => parseFloat(s.replace(/[$,]/g,'')));
+        // [Starting, Contribs, Growth, W/D, Ending]
+        if (nums.length === 5) {
+          const [S,C,G,W,E] = nums;
+          reconciles = Math.abs((S + C + G - W) - E) <= 2;
+          detail = `${S}+${C}+${G}-${W}=${E}`;
+        }
+      }
+      push('expand panel reconciles (Starting+Contribs+Growth−W/D=Ending)', reconciles, detail);
+      sample.click(); // collapse
+    }
+  }
+
+    // Phase 2: zone-band headers. Six zone bands replace the single combined banner. Their colspans
+    // must ALWAYS sum to the number of visible combined data columns (else bands desync from columns).
+    {
+      const zoneIds = ['zoneGrows','zoneOutflows','zoneCashIn','zoneReference','zoneWithdrawal','zoneEnding'];
+      const allBandsExist = zoneIds.every(id => win.document.getElementById(id));
+      push('six zone bands present', allBandsExist, zoneIds.filter(id => !win.document.getElementById(id)).join(',') || 'all present');
+      const zoneSumVsVisible = () => {
+        const sum = zoneIds.reduce((s, id) => { const el = win.document.getElementById(id); return s + (el && win.getComputedStyle(el).display !== 'none' ? parseInt(el.getAttribute('colspan')) : 0); }, 0);
+        const row = win.document.querySelector('#ledgerTableBody .recon-row');
+        const hdrs = [...win.document.querySelectorAll('#ledgerHeaderRow2 th')];
+        const cells = row ? [...row.querySelectorAll('td')] : [];
+        let vis = 0;
+        for (let i = 0; i < hdrs.length; i++) { const g = hdrs[i].getAttribute('data-group'); if (g === 'grpTrad') break; if (['grpCombined','grpGifting','grpInheritance'].includes(g) && cells[i] && win.getComputedStyle(cells[i]).display !== 'none') vis++; }
+        return { sum, vis };
+      };
+      const dflt = zoneSumVsVisible();
+      push('zone colspans sum to visible columns (default)', dflt.sum === dflt.vis, `sum=${dflt.sum} vis=${dflt.vis}`);
+      const acaEl = win.document.getElementById('acaToggle');
+      if (acaEl) {
+        const wasChecked = acaEl.checked;
+        acaEl.checked = true; acaEl.dispatchEvent(new Event('change', { bubbles: true }));
+        if (typeof win.triggerRecalculate === 'function') win.triggerRecalculate();
+        const withAca = zoneSumVsVisible();
+        push('zone colspans stay in sync after ACA toggle', withAca.sum === withAca.vis, `sum=${withAca.sum} vis=${withAca.vis}`);
+        acaEl.checked = wasChecked; acaEl.dispatchEvent(new Event('change', { bubbles: true }));
+        if (typeof win.triggerRecalculate === 'function') win.triggerRecalculate();
+      }
+    }
+
+    // Phase 2: surplus-year reconciliation. When cash-in exceeds costs, W/D floors at $0 and the panel
+    // must show a "+ Surplus" term so the row reconciles (Starting+Contribs+Growth-W/D+Surplus=Ending).
+    {
+      if (typeof win.__inheritanceSet === 'function' && typeof win.triggerRecalculate === 'function') {
+        win.__inheritanceSet([{ id: 1, name: 'Test', amount: 300000, isNominal: false, arrivalYear: 2050, type: 'taxfree' }], true);
+        win.triggerRecalculate();
+        const row = win.document.querySelector('.recon-row[data-recon-year="2050"]');
+        let surplusOk = false, detail = 'no 2050 row';
+        if (row) {
+          row.click();
+          const box = win.document.querySelector('.recon-exp[data-recon-for="2050"] .recon-box');
+          if (box) {
+            const t = box.textContent.replace(/\s+/g, ' ');
+            const hasSurplus = /Surplus/.test(t);
+            const nums = (t.match(/\$[0-9,]+/g) || []).map(s => parseFloat(s.replace(/[$,]/g, '')));
+            if (hasSurplus && nums.length === 6) { const [S, C, G, W, Su, E] = nums; surplusOk = Math.abs((S + C + G - W + Su) - E) <= 2; detail = `${S}+${C}+${G}-${W}+${Su}=${E}`; }
+            else { detail = hasSurplus ? `num count ${nums.length}` : 'no Surplus term'; }
+          }
+          row.click();
+        }
+        push('surplus year shows "+ Surplus" term and reconciles', surplusOk, detail);
+        win.__inheritanceSet([], false);
+        win.triggerRecalculate();
+      }
+    }
+
+  // Total Taxable column: shows a "cap gains & div" preferential-income sub-line in years with LTCG/qual
+  // dividends, and a header tooltip explaining ordinary-vs-preferential. The column is ordinary-only, so
+  // Taxes can exceed it -- the sub-line + tooltip make that legible instead of looking like a bug.
+  {
+    const __hl = (th) => { let s=''; th.childNodes.forEach(n=>{if(n.nodeType===3)s+=n.textContent;}); s=s.trim(); return s || (th.textContent||'').trim().split('\n')[0].trim(); };
+    const ths = [...win.document.querySelectorAll('thead tr:last-child th')];
+    const ttTh = ths.find(t => __hl(t) === 'Total Taxable');
+    push('Total Taxable header still resolves by name with its tooltip (iframe-safe)', !!ttTh, ttTh ? 'ok' : 'label broke');
+    const tip = ttTh && ttTh.querySelector('.info-tip');
+    push('Total Taxable header tooltip explains preferential income', !!tip && /preferential/.test(tip.textContent), tip ? 'present' : 'missing');
+    const ttIdx = ths.map(__hl).indexOf('Total Taxable');
+    let sublineFound = false;
+    for (const tr of win.document.querySelectorAll('tbody tr')) {
+      const cell = [...tr.querySelectorAll('td')][ttIdx];
+      if (cell && /cap gains &(amp;)? div/.test(cell.innerHTML)) { sublineFound = true; break; }
+    }
+    push('Total Taxable cell shows a "cap gains & div" sub-line in a preferential-income year', sublineFound,
+      sublineFound ? 'sub-line present' : 'no sub-line found (may be no pref-income years in this scenario)');
+  }
+
+  // Total Taxable column: shows a "cap gains & div" preferential-income sub-line in years with LTCG/
+  // qualified dividends, and its header carries an explanatory tooltip. The column is ordinary-income
+  // only, so a preferential sub-line is what reconciles it against the (larger) Taxes column. Header is
+  // read via __hdrLabel so the tooltip text can't leak into the column-name lookup (hidden-iframe safe).
+  {
+    const __hl = (th) => { let s=''; th.childNodes.forEach(n=>{ if(n.nodeType===3) s+=n.textContent; }); s=s.trim(); return s || (th.textContent||'').trim().split('\n')[0].trim(); };
+    const ths = [...win.document.querySelectorAll('thead tr:last-child th')];
+    const ttTh = ths.find(t => __hl(t) === 'Total Taxable');
+    push('Total Taxable header still resolves by name with its tooltip', !!ttTh, ttTh ? 'ok' : 'label leaked or missing');
+    const tip = ttTh && ttTh.querySelector('.info-tip');
+    push('Total Taxable header has the preferential-income tooltip', !!tip && /preferential/i.test(tip.textContent), tip ? 'present' : 'missing');
+    // find any year cell that carries the sub-line (default scenarios throw off brokerage gains/divs)
+    const ttIdx = ths.map(__hl).indexOf('Total Taxable');
+    const anyCap = [...win.document.querySelectorAll('tbody tr')].some(tr => {
+      const c = [...tr.querySelectorAll('td')][ttIdx];
+      return c && /cap gains &amp; div|cap gains & div/.test(c.innerHTML);
+    });
+    push('Total Taxable cell shows a "cap gains & div" sub-line in a preferential-income year', anyCap, anyCap ? 'present' : 'no sub-line found');
+  }
+
   return out;
 }
 
@@ -1002,6 +1253,105 @@ function tier5(win, fileKey) {
     }
   } catch (e) {
     push('Global control placement check ran', false, 'error: ' + e.message);
+  }
+
+  // ---- Inheritance feature (off = no-op; on = inflow, correct tax timing, reconciliation) --------
+  // Fully self-contained: snapshot ALL inputs before, restore after; reads columns via __hdrLabel.
+  {
+    const __inhSnap = snapshotInputs(win);
+    const __hdrLabel = (th) => { let s = ''; th.childNodes.forEach(n => { if (n.nodeType === 3) s += n.textContent; }); s = s.trim(); return s || (th.textContent || '').trim().split('\n')[0].trim(); };
+    try {
+      if (typeof win.__inheritanceSet === 'function' && win.__inheritanceGet) {
+        const eol = () => Math.round(win.__scenarioB.series.at(-1).spendableTotal);
+        const yr = new Date().getFullYear() + 19;
+
+        win.__inheritanceSet([], false);
+        win.setDollarMode && win.setDollarMode('today');
+        recalc(win);
+        const baseOff = eol();
+
+        win.__inheritanceSet([{ id: 1, name: 'T', amount: 200000, isNominal: false, arrivalYear: yr, type: 'taxfree' }], true);
+        recalc(win);
+        const withTaxfree = eol();
+        push('Inheritance (tax-free) raises the end-of-life total', withTaxfree > baseOff,
+          `off $${baseOff.toLocaleString()} -> on $${withTaxfree.toLocaleString()}`);
+
+        const hdrs = [...win.document.querySelectorAll('thead tr:last-child th')].map(__hdrLabel);
+        const inhIdx = hdrs.indexOf('Inheritance');
+        push('Inheritance column resolves by name (tooltip/iframe-safe lookup)', inhIdx >= 0, `inhIdx=${inhIdx}`);
+        const rowFor = (y) => [...win.document.querySelectorAll('tbody tr')].find(t => { const f = t.querySelector('td'); return f && f.textContent.trim().startsWith(String(y)); });
+        const tr = rowFor(yr);
+        const cellTxt = (tr && inhIdx >= 0) ? [...tr.querySelectorAll('td')][inhIdx].textContent : '';
+        push('Inheritance cell shows the inflow with a tax-free sub-line', /tax-free/.test(cellTxt) && /[1-9]/.test(cellTxt), `cell="${cellTxt.slice(0, 24)}"`);
+
+        win.setDollarMode && win.setDollarMode('future');
+        win.__inheritanceSet([{ id: 2, name: 'IRD', amount: 100000, isNominal: false, arrivalYear: yr, type: 'taxable_now' }], true);
+        recalc(win);
+        const yrRow = (win.__chartSeries || []).find(x => x.year === yr);
+        const taxNowFires = yrRow && (yrRow.audInheritanceTaxable || 0) > 0.5;
+        push('Inheritance (taxable now) adds ordinary income in the arrival year', !!taxNowFires,
+          `taxable=${yrRow ? Math.round(yrRow.audInheritanceTaxable || 0) : 'n/a'}`);
+
+        win.__inheritanceSet([{ id: 3, name: 'IRA', amount: 500000, isNominal: false, arrivalYear: yr, type: 'taxable_10yr' }], true);
+        recalc(win);
+        const taxedYears = (win.__chartSeries || []).filter(y => (y.audInheritanceTaxable || 0) > 0.5).length;
+        push('Inheritance (10-yr) spreads ordinary income across exactly 10 years', taxedYears === 10, `taxedYears=${taxedYears}`);
+
+        win.__inheritanceSet([{ id: 4, name: 'Nom', amount: 1000000, isNominal: true, arrivalYear: yr, type: 'taxfree' }], true);
+        recalc(win);
+        const nomGross = Math.round(((win.__chartSeries || []).find(x => x.year === yr) || {}).audInheritanceGross || 0);
+        win.__inheritanceSet([{ id: 5, name: 'Tod', amount: 1000000, isNominal: false, arrivalYear: yr, type: 'taxfree' }], true);
+        recalc(win);
+        const todGross = Math.round(((win.__chartSeries || []).find(x => x.year === yr) || {}).audInheritanceGross || 0);
+        push('Inheritance nominal stays as-entered; today\u2019s-$ escalates', Math.abs(nomGross - 1000000) < 2 && todGross > nomGross,
+          `nominal=${nomGross.toLocaleString()} todays=${todGross.toLocaleString()}`);
+
+        const sr = (win.__chartSeries || [])[Math.floor((win.__chartSeries || []).length / 2)];
+        const reconOk = sr && Math.abs((sr.trad + sr.roth + sr.brok + sr.hsa) - sr.spendableTotal) < 2;
+        push('Inheritance preserves within-row reconciliation', !!reconOk, reconOk ? 'balances' : 'IMBALANCE');
+
+        win.setDollarMode && win.setDollarMode('today');
+        win.__inheritanceSet([], false);
+        recalc(win);
+        push('Inheritance off returns exactly to baseline', eol() === baseOff, `revert $${eol().toLocaleString()} vs base $${baseOff.toLocaleString()}`);
+
+        // (i) export profile includes inheritance state (so a saved profile round-trips)
+        if (typeof win.exportConfig === 'function') {
+          const src = win.exportConfig.toString();
+          const exportsInh = /inheritanceItems/.test(src) && /inheritanceEnabled/.test(src) && /giftingEnabled/.test(src);
+          push('export profile saves inheritance + gifting state', exportsInh, exportsInh ? 'saved' : 'export omits inheritance');
+        }
+
+        // (j) the Gifting toggle actually GATES the gifts (off must stop them applying, not just hide UI)
+        if (typeof win.__giftingSet === 'function') {
+          const gt = win.document.getElementById('giftingToggle');
+          if (gt) {
+            const wasOn = gt.checked;
+            win.setDollarMode && win.setDollarMode('today');
+            // force ON, measure; force OFF, measure. If the app HAS gifts, EOL must differ.
+            gt.checked = true; win.toggleGifting && win.toggleGifting(); recalc(win);
+            const eolGiftOn = Math.round(win.__scenarioB.series.at(-1).spendableTotal);
+            gt.checked = false; win.toggleGifting && win.toggleGifting(); recalc(win);
+            const eolGiftOff = Math.round(win.__scenarioB.series.at(-1).spendableTotal);
+            // only assert a difference when the schedule actually has gifts (MFJ); Single is empty so equal is fine
+            const hasGifts = win.__scenarioB.series.some(s => (s.audGift || 0) > 0.5) || eolGiftOn !== eolGiftOff;
+            const gates = hasGifts ? (eolGiftOff > eolGiftOn) : (eolGiftOff === eolGiftOn);
+            push('gifting toggle gates the gifts (off stops them applying)', gates,
+              `on $${eolGiftOn.toLocaleString()} off $${eolGiftOff.toLocaleString()}`);
+            gt.checked = wasOn; win.toggleGifting && win.toggleGifting(); recalc(win);
+          }
+        }
+      } else {
+        push('Inheritance test hooks present', false, 'no __inheritanceSet/__inheritanceGet');
+      }
+    } catch (e) {
+      push('Inheritance feature test ran', false, 'error: ' + e.message);
+    } finally {
+      restoreInputs(win, __inhSnap);
+      if (win.__inheritanceSet) win.__inheritanceSet([], false);
+      if (typeof win.setDollarMode === 'function') win.setDollarMode('today');
+      recalc(win);
+    }
   }
 
   return out;
@@ -3026,6 +3376,10 @@ async function runFile(frameId, fileKey, fileLabel) {
   // Tier 1
   recalc(win);
   fileRes.tiers['Tier 1 — Structural'] = tier1(win, fileKey);
+
+  // UI parity tier (Aug-2026 parity session)
+  recalc(win);
+  fileRes.tiers['Tier UI — Redesign Parity'] = tierUI(win, fileKey);
 
   // Tier 2 across fixtures
   const t2 = [];
