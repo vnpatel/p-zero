@@ -3732,6 +3732,15 @@ function tier10(win, fileKey) {
       }
 
       
+    // ---- Header chrome parity ----
+    const hdr = doc.querySelector('header.glass-panel.sticky');
+    if (hdr) {
+      const bt = win.getComputedStyle(hdr).borderTopColor;
+      push('header has orange top-border signature', /228, 154, 98/.test(bt), `border=${bt}`);
+    }
+    const wsTabs = doc.querySelectorAll('.ws-tab').length;
+    push('workspace tabs present (Exec / Plan Details)', wsTabs >= 2, `${wsTabs} tabs`);
+
 // ---- Exec-summary 6-card KPI redesign (this session) ----
       try {
         if (win.switchWorkspace) win.switchWorkspace('exec');
@@ -3837,14 +3846,6 @@ function tier10(win, fileKey) {
       }
 
       
-    // ---- Header chrome parity ----
-    const hdr = doc.querySelector('header.glass-panel.sticky');
-    if (hdr) {
-      const bt = win.getComputedStyle(hdr).borderTopColor;
-      push('header has orange top-border signature', /228, 154, 98/.test(bt), `border=${bt}`);
-    }
-    const wsTabs = doc.querySelectorAll('.ws-tab').length;
-    push('workspace tabs present (Exec / Plan Details)', wsTabs >= 2, `${wsTabs} tabs`);
 
   } catch (e) {
     push('Tier 10 ran without fatal error', false, 'error: ' + e.message);
