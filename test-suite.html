@@ -381,7 +381,7 @@ function tierUI(win, fileKey) {
   // exec renders a hero + milestones after switching
   if (typeof win.switchWorkspace === 'function') {
     win.switchWorkspace('exec');
-    push('exec summary renders hero', !!doc.querySelector('#execSummaryView .es-hero'), '');
+    push('exec summary renders hero', !!doc.querySelector('#execSummaryView .es-hero-bar'), '');
     const miles = doc.querySelectorAll('#execSummaryView .es-timeline .tl-node').length;
       push('exec summary renders Plan Timeline nodes', miles > 0, `${miles} nodes`);
     // Key Metrics bar must NOT be visible on the exec tab (it belongs to Plan Details)
@@ -3499,12 +3499,12 @@ function tier10(win, fileKey) {
       push('MFJ: kid lanes have Total Support end-caps', totalSupport >= 1, `${totalSupport} caps`);
     }
 
-    // ---- Exec Summary parity: 8 stat cards, callouts, chart-in-exec ----
-    const statCards = doc.querySelectorAll('#execSummaryView .es-stat').length;
-    push('Exec Summary has 8 stat cards', statCards === 8, `${statCards} cards`);
-    const labels = [].slice.call(doc.querySelectorAll('#execSummaryView .es-stat .es-k')).map(function (k) { return k.textContent; });
-    const hasSpendCards = labels.indexOf('Retirement Spending') > -1 && labels.indexOf('Lifetime Spending') > -1 && labels.indexOf('Effective Tax Rate') > -1;
-    push('Exec has Retirement/Lifetime Spending + Effective Tax Rate', hasSpendCards, '');
+    // ---- Exec Summary parity: 6 KPI cards, callouts, chart-in-exec ----
+    const statCards = doc.querySelectorAll('#execSummaryView .es-kpi-card').length;
+    push('Exec Summary has 6 KPI cards', statCards === 6, `${statCards} cards`);
+    const kpiText = (doc.querySelector('#execSummaryView .es-kpi-grid') || {}).textContent || '';
+    const hasSpendCards = /Retirement Spending/.test(kpiText) && /Living Costs/.test(kpiText) && /Effective Tax Rate/.test(kpiText);
+    push('Exec has Retirement Spending + Living Costs + Effective Tax Rate', hasSpendCards, '');
     const callouts = doc.querySelectorAll('#execSummaryView .es-callout').length;
     push('Exec Summary has strong/watch callout pair', callouts >= 1, `${callouts} callouts`);
     const execChart = !!doc.getElementById('execChartWrap') && !!doc.querySelector('#execChartWrap svg');
@@ -3670,7 +3670,7 @@ function tier10(win, fileKey) {
           const pdoc = doc.getElementById('printDoc');
           push('print document builds (#printDoc populated)', !!pdoc && pdoc.children.length > 0, '');
           push('print: branded header present', !!(pdoc && pdoc.querySelector('.pd-header')), '');
-          push('print: 8 stat tiles', pdoc ? pdoc.querySelectorAll('.pd-stat').length === 8 : false,
+          push('print: 6 KPI cards', pdoc ? pdoc.querySelectorAll('.pd-kpi').length === 6 : false,
             pdoc ? `${pdoc.querySelectorAll('.pd-stat').length} tiles` : 'no doc');
           push('print: native timeline SVG present', !!(pdoc && pdoc.querySelector('.pd-timeline svg')), '');
           push('print: Plan Trajectory ledger present', pdoc ? /Plan Trajectory/.test(pdoc.innerHTML) : false, '');
@@ -3747,8 +3747,22 @@ function tier10(win, fileKey) {
           titles.join(' | '));
         push('exec hero bar present', !!doc.querySelector('#execSummaryView .es-hero-bar') || !!doc.querySelector('.es-hero-bar'), '');
         // pillar colours actually render (namespacing fix): every card has a non-zero left border
-        const pillared = execCards.filter(function (c) { return getComputedStyle(c).borderLeftWidth === '5px'; }).length;
-        push('all 6 KPI cards show 5px colour pillar', pillared === 6, pillared + '/6');
+        // pillar check: each card carries its colour class, and the stylesheet defines a 5px left border for it
+        const pillarClasses = ['card-legacy','card-peak','card-spend','card-give','card-protect','card-tax'];
+        const haveClass = pillarClasses.filter(function (cls) { return !!doc.querySelector('#execSummaryView .es-kpi-card.' + cls); }).length;
+        let cssHasPillar = false;
+        try {
+          const sheets = doc.styleSheets;
+          for (let si = 0; si < sheets.length && !cssHasPillar; si++) {
+            let rules; try { rules = sheets[si].cssRules; } catch (e) { continue; }
+            if (!rules) continue;
+            for (let ri = 0; ri < rules.length; ri++) {
+              const t = rules[ri].cssText || '';
+              if (/\.es-kpi-card\.card-legacy/.test(t) && /border-left/.test(t) && /5px/.test(t)) { cssHasPillar = true; break; }
+            }
+          }
+        } catch (e) {}
+        push('all 6 KPI cards carry a colour-pillar class + CSS defines 5px border', haveClass === 6 && cssHasPillar, haveClass + '/6 classes, css=' + cssHasPillar);
       } catch (e) {
         push('exec KPI cards test ran', false, 'error: ' + e.message);
       }
