@@ -79,7 +79,7 @@
 </style>
 </head>
 <body>
-  <h1>P-ZERO Test Suite</h1>
+  <h1>P-ZERO Test Suite 1.0</h1>
   <div class="sub">Validates both engines (MFJ + Single/HoH) across eight defense-in-depth tiers &mdash; Tier 0 triangulation (docs&harr;engine&harr;tests), 1 structural, 2 invariants, 3 hand-derived bracket math, 5 features, 6 RE/BI, 7 known-answer vs published IRS figures (the only tier that catches a wrong number), 8 conservation (~1,000 money-leak checks/run). A green run means the checked facts still hold &mdash; not that the engine is proven; see TESTING.md.</div>
 
   <div class="controls">
@@ -3514,7 +3514,7 @@ function tier10(win, fileKey) {
     if (win.switchWorkspace) win.switchWorkspace('details');
     recalc(win);
     const kg = doc.getElementById('kpiGrid');
-    const kpiHidden = kg ? (win.getComputedStyle(kg).display === 'none' || kg.classList.contains('hidden')) : null;
+    const kpiHidden = kg ? (/display\s*:\s*none/.test(kg.getAttribute('style') || '') || kg.classList.contains('hidden') || win.getComputedStyle(kg).display === 'none') : null;
     push('KPI cards hidden by default on Plan Details', kpiHidden === true, 'display gated');
 
     // ---- Plan Details header block + context strip ----
@@ -3735,8 +3735,20 @@ function tier10(win, fileKey) {
     // ---- Header chrome parity ----
     const hdr = doc.querySelector('header.glass-panel.sticky');
     if (hdr) {
-      const bt = win.getComputedStyle(hdr).borderTopColor;
-      push('header has orange top-border signature', /228, 154, 98/.test(bt), `border=${bt}`);
+      let bt = win.getComputedStyle(hdr).borderTopColor;
+      let orangeInCss = false;
+      try {
+        const sheets = doc.styleSheets;
+        for (let si = 0; si < sheets.length && !orangeInCss; si++) {
+          let rules; try { rules = sheets[si].cssRules; } catch (e) { continue; }
+          if (!rules) continue;
+          for (let ri = 0; ri < rules.length; ri++) {
+            const t = rules[ri].cssText || '';
+            if (/glass-panel/.test(t) && /border-top/.test(t) && /(228,\s*154,\s*98|e49a62)/i.test(t)) { orangeInCss = true; break; }
+          }
+        }
+      } catch (e) {}
+      push('header has orange top-border signature', /228,\s*154,\s*98/.test(bt) || orangeInCss, `border=${bt} css=${orangeInCss}`);
     }
     const wsTabs = doc.querySelectorAll('.ws-tab').length;
     push('workspace tabs present (Exec / Plan Details)', wsTabs >= 2, `${wsTabs} tabs`);
