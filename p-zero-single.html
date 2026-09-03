@@ -1863,16 +1863,16 @@
             // Head of Household brackets (used automatically when dependents > 0)
             hohOrdinary: [
                 { from: 0, rate: 10 }, { from: 17700, rate: 12 }, { from: 67450, rate: 22 },
-                { from: 105700, rate: 24 }, { from: 201775, rate: 32 }, { from: 256250, rate: 35 },
+                { from: 105700, rate: 24 }, { from: 201775, rate: 32 }, { from: 256225, rate: 35 },
                 { from: 640600, rate: 37 }
             ],
             // --- Long-term capital gains breakpoints ---
-            singleLtcg: [ { from: 0, rate: 0 }, { from: 49450, rate: 15 }, { from: 545050, rate: 20 } ],
-            hohLtcg:    [ { from: 0, rate: 0 }, { from: 66200, rate: 15 }, { from: 577350, rate: 20 } ],
+            singleLtcg: [ { from: 0, rate: 0 }, { from: 49450, rate: 15 }, { from: 545500, rate: 20 } ],
+            hohLtcg:    [ { from: 0, rate: 0 }, { from: 66200, rate: 15 }, { from: 579600, rate: 20 } ],
 
             // --- Standard deductions ---
-            stdDedSingle: 15750,
-            stdDedHoH: 23625,
+            stdDedSingle: 16100,
+            stdDedHoH: 24150,
 
             // --- IRMAA tiers (SINGLE-filer MAGI thresholds; per-person annual Part B+D surcharge) ---
             irmaaTiers: [
@@ -3952,6 +3952,7 @@
             const from529 = Math.max(0, (y.audTuitionBurn||0) - (y.audF529Shortfall||0));
             const sources = {
                 'Traditional': y.audElecTrad||0, 'Roth': y.audElecRoth||0, 'Brokerage': y.audElecBrok||0,
+                'RMD': Math.max(0, (y.audForcedRmd||0) - (y.audExcessRmd||0)),
                 'Social Security': y.incomeSS||0, 'RE/Business': y.rebiDist||0, '1099 Income': y.audGross1099||0,
                 'HSA': y.audHsaDist||0, '529': from529
             };
@@ -3969,6 +3970,10 @@
             // spent-down buckets (e.g. Traditional 0.00096, HSA 3.9e-33). Those pass a >0 test,
             // then get a minimum-floor ribbon and render as "$0 (0%)" — visually implying money
             // moves when none does. Anything under a dollar is not a flow worth drawing.
+            //
+            // LABEL-COLUMN layout: proportional heights floored at minPx, then the leftover slack
+            // is spread as GAPS between boxes so the column is flush top and bottom (fills H). This
+            // is the outer (label) edge; the ribbon's spine edge is sized separately (see build).
             const items = Object.entries(entries).filter(([k,v])=>v>=1);
             if (!items.length) return {items:[],total:0};
             const total = items.reduce((a,[,v])=>a+v,0);
@@ -3979,60 +3984,113 @@
                 const slackT = arr.filter(r=>r.h>minPx).reduce((a,r)=>a+(r.h-minPx),0);
                 if (slackT>0) arr = arr.map(r=>(r.h>minPx)?{...r,h:r.h-over*((r.h-minPx)/slackT)}:r);
             }
-            return {items:arr, total};
+            // spread remaining slack as inter-box gaps so the column is flush top & bottom
+            const sum = arr.reduce((a,r)=>a+r.h,0);
+            const boxGap = n>1 ? (H - sum)/(n-1) : 0;
+            return {items:arr, total, boxGap};
         }
 
         function distFmt(v){ return '$'+Math.round(v).toLocaleString(); }
         function distFmtK(v){ return v>=1000 ? '$'+Math.round(v/1000)+'k' : '$'+Math.round(v); }
 
+        // Rounded label-box path (open on the spine side so the color tab reads as the edge).
+        function distBoxPath(x,y,w,h,r,side){
+            r=Math.min(r,h/2);
+            return side==='left'
+                ? `M${x+w},${y} H${x+r} A${r},${r} 0 0 0 ${x},${y+r} V${y+h-r} A${r},${r} 0 0 0 ${x+r},${y+h} H${x+w} Z`
+                : `M${x},${y} H${x+w-r} A${r},${r} 0 0 1 ${x+w},${y+r} V${y+h-r} A${r},${r} 0 0 1 ${x+w-r},${y+h} H${x} Z`;
+        }
+
         // Build one Sankey SVG. opts sizes it for compact vs zoom. Labels show $ + side-relative %.
+        // Look & feel (2026-09 reskin): flush label columns (both sides fill the same single spine,
+        // flush top and bottom), ribbons run from the full-height label box to a spine edge sized by
+        // value on ONE shared dollar scale — so every ribbon edge (including the top & bottom ones)
+        // is an S-curve, never a flat top. Ribbons use the app's DIST_COLORS as a faded horizontal
+        // gradient (not a solid fill), strengthened on hover. All existing behavior is preserved:
+        // the v>=1 materiality filter, DIST_COLORS/DIST_SHORT, distFmtK, the mouse+touch tooltip
+        // handlers, and the {svg,inTot,outTot} return contract renderDistribution() depends on.
         function distBuildSVG(flows, opts) {
             const {W,H,pad,minPx,gap,spineW,fs,labelGap} = opts;
-            const cx = W/2;
-            const inS = distSized(flows.sources, H-pad*2, minPx, gap);
-            const outS = distSized(flows.spend, H-pad*2, minPx, gap);
-            let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;">`;
-            // The spine spans exactly the flush ribbon stack -- no overhang past the first/last
-            // ribbon. Sources and Spend can flush to different totals (different counts, different
-            // minimum floors), so the spine takes the TALLER of the two and both stacks are
-            // top-aligned: the top edges of the first source ribbon, the spine, and the first spend
-            // ribbon all land on the same line.
-            const inFlush = inS.items.reduce((a,r)=>a+r.h,0);
-            const outFlush = outS.items.reduce((a,r)=>a+r.h,0);
-            const sTop = pad, sH = Math.max(inFlush, outFlush);
-            svg += `<rect x="${cx-spineW/2}" y="${sTop}" width="${spineW}" height="${sH}" fill="var(--dist-spine)"/>`;
-            svg += `<text x="${cx}" y="${sTop-6}" text-anchor="middle" font-size="${fs-1}" fill="var(--text-muted)" font-weight="700" font-family="ui-monospace,monospace" letter-spacing="0.06em">SOURCE → SPEND</text>`;
-            const leftX = pad+labelGap, rightX = W-pad-labelGap;
-            // Ribbons hold CONSTANT thickness end to end -- a $69k flow has one value, so it gets
-            // one thickness. The flowing look comes from the OUTER edge being gapped (so labels have
-            // room) while the SPINE edge is packed flush; each ribbon slides vertically to close its
-            // gap, and the bezier does the rest. The flush stack is centered against the spine.
-            let y=pad, sy=pad;   // top-aligned: flush stack starts at the spine's top edge
-            inS.items.forEach(it=>{
-                const c=DIST_COLORS[it.k]; const y0=y,y1=y+it.h,s0=sy,s1=sy+it.h,x0=leftX,x1=cx-spineW/2;
-                const pctExact = inS.total ? (it.v/inS.total*100).toFixed(2) : '0.00';
-                svg += `<path d="M${x0},${y0} C${(x0+x1)/2},${y0} ${(x0+x1)/2},${s0} ${x1},${s0} L${x1},${s1} C${(x0+x1)/2},${s1} ${(x0+x1)/2},${y1} ${x0},${y1} Z" fill="${c}" opacity="0.82" style="cursor:pointer" onmousemove="distTipShow(event.clientX,event.clientY,'${it.k}',${it.v},'${pctExact}','sources')" onmouseleave="distTipHide()" ontouchstart="distTipShow(event.touches[0].clientX,event.touches[0].clientY,'${it.k}',${it.v},'${pctExact}','sources')"></path>`;
-                const m=(y0+y1)/2, pct=inS.total?Math.round(it.v/inS.total*100):0;
-                svg += `<text x="${x0-5}" y="${m-1}" text-anchor="end" font-size="${fs}" fill="var(--text-secondary)">${DIST_SHORT[it.k]||it.k}</text>`;
-                svg += `<text x="${x0-5}" y="${m+fs+1}" text-anchor="end" font-size="${fs}" fill="var(--text-primary)" font-weight="700" font-family="ui-monospace,monospace">${distFmtK(it.v)} (${pct}%)</text>`;
-                y=y1+gap; sy=s1;   // flush: no gap at the spine
-            });
-            y=pad; sy=pad;   // top-aligned, same as sources
-            outS.items.forEach(it=>{
-                const c=DIST_COLORS[it.k]; const y0=y,y1=y+it.h,s0=sy,s1=sy+it.h,x0=cx+spineW/2,x1=rightX;
-                const pctExact = outS.total ? (it.v/outS.total*100).toFixed(2) : '0.00';
-                svg += `<path d="M${x0},${s0} C${(x0+x1)/2},${s0} ${(x0+x1)/2},${y0} ${x1},${y0} L${x1},${y1} C${(x0+x1)/2},${y1} ${(x0+x1)/2},${s1} ${x0},${s1} Z" fill="${c}" opacity="0.82" style="cursor:pointer" onmousemove="distTipShow(event.clientX,event.clientY,'${it.k}',${it.v},'${pctExact}','spend')" onmouseleave="distTipHide()" ontouchstart="distTipShow(event.touches[0].clientX,event.touches[0].clientY,'${it.k}',${it.v},'${pctExact}','spend')"></path>`;
-                const m=(y0+y1)/2, pct=outS.total?Math.round(it.v/outS.total*100):0;
-                svg += `<text x="${x1+5}" y="${m-1}" text-anchor="start" font-size="${fs}" fill="var(--text-secondary)">${it.k}</text>`;
-                svg += `<text x="${x1+5}" y="${m+fs+1}" text-anchor="start" font-size="${fs}" fill="var(--text-primary)" font-weight="700" font-family="ui-monospace,monospace">${distFmtK(it.v)} (${pct}%)</text>`;
-                y=y1+gap; sy=s1;   // flush: no gap at the spine
-            });
-            svg += `</svg>`;
+            const cx = W/2, colH = H - pad*2, sTop = pad;
+            const inS = distSized(flows.sources, colH, minPx, gap);
+            const outS = distSized(flows.spend, colH, minPx, gap);
+            // Sources always equal Spend to the dollar (cash conservation), so ONE spine spans the
+            // full column height and both sides flush it top and bottom. Guard the degenerate case.
+            const scaleTotal = Math.max(inS.total, outS.total) || 1;
+            const perDollar = colH / scaleTotal;
+            const uid = 'dg'+Math.random().toString(36).slice(2,8);   // unique gradient ids per panel
+
+            // lay out outer (label-box) edges using boxGap, and spine edges packed by value
+            let ly=sTop; inS.items.forEach(it=>{ it.ly=ly; ly+=it.h+inS.boxGap; });
+            let lsy=sTop; inS.items.forEach(it=>{ it.sh=it.v*perDollar; it.sy=lsy; lsy+=it.sh; });
+            let ry=sTop; outS.items.forEach(it=>{ it.ly=ry; ry+=it.h+outS.boxGap; });
+            let rsy=sTop; outS.items.forEach(it=>{ it.sh=it.v*perDollar; it.sy=rsy; rsy+=it.sh; });
+
+            const boxW = labelGap;                 // label box width == the space reserved for labels
+            const leftBoxX = pad, rightBoxX = W-pad-boxW;
+            const LX = pad+boxW, RX = W-pad-boxW;   // ribbon outer x (box inner face)
+            const LSP = cx-spineW/2, RSP = cx+spineW/2;
+
+            let defs='', body='';
+
+            const ribbon = (it, side) => {
+                const c = DIST_COLORS[it.k] || 'var(--text-muted)';
+                const gid = `${uid}_${side}_${(it.k||'').replace(/[^a-zA-Z0-9]/g,'_')}`;
+                // faded horizontal gradient: strong at the label edge, faint at the spine
+                const rest = side==='l' ? ['0.50','0.12'] : ['0.12','0.50'];
+                const hi   = side==='l' ? ['0.82','0.30'] : ['0.30','0.82'];
+                const ramp = (sfx,st)=>`<linearGradient id="${gid}${sfx}" x1="0%" x2="100%" y1="0" y2="0">`
+                    +`<stop offset="0%" stop-color="${c}" stop-opacity="${st[0]}"/>`
+                    +`<stop offset="100%" stop-color="${c}" stop-opacity="${st[1]}"/></linearGradient>`;
+                defs += ramp('',rest)+ramp('_hi',hi);
+                const pctExact = (side==='l'?inS.total:outS.total) ? (it.v/(side==='l'?inS.total:outS.total)*100).toFixed(2) : '0.00';
+                const sideArg = side==='l' ? 'sources' : 'spend';
+                const x0 = side==='l' ? LX  : RSP;
+                const x1 = side==='l' ? LSP : RX;
+                const aT = side==='l' ? it.ly : it.sy, aB = aT + (side==='l'?it.h:it.sh);
+                const bT = side==='l' ? it.sy : it.ly, bB = bT + (side==='l'?it.sh:it.h);
+                const c1=x0+(x1-x0)*0.45, c2=x0+(x1-x0)*0.55;
+                const p = `M${x0},${aT} C${c1},${aT} ${c2},${bT} ${x1},${bT} L${x1},${bB} C${c2},${bB} ${c1},${aB} ${x0},${aB} Z`;
+                return `<path d="${p}" fill="url(#${gid})" style="cursor:pointer;transition:fill .12s ease" `
+                    +`onmouseenter="this.setAttribute('fill','url(#${gid}_hi)')" `
+                    +`onmousemove="distTipShow(event.clientX,event.clientY,'${it.k}',${it.v},'${pctExact}','${sideArg}')" `
+                    +`onmouseleave="this.setAttribute('fill','url(#${gid})');distTipHide()" `
+                    +`ontouchstart="this.setAttribute('fill','url(#${gid}_hi)');distTipShow(event.touches[0].clientX,event.touches[0].clientY,'${it.k}',${it.v},'${pctExact}','${sideArg}')"></path>`;
+            };
+
+            const labelBox = (it, total, side) => {
+                const c = DIST_COLORS[it.k] || 'var(--text-muted)';
+                const x = side==='l' ? leftBoxX : rightBoxX;
+                const mid = it.ly + it.h/2;
+                const r = Math.min(7, it.h/2);
+                const tx = side==='l' ? leftBoxX + boxW/2 : rightBoxX + boxW/2;
+                const pct = total ? Math.round(it.v/total*100) : 0;
+                const tab = side==='l'
+                    ? `<rect x="${LX-3}" y="${it.ly}" width="3" height="${it.h}" fill="${c}"/>`
+                    : `<rect x="${RX}" y="${it.ly}" width="3" height="${it.h}" fill="${c}"/>`;
+                return `<path d="${distBoxPath(x,it.ly,boxW,it.h,r,side==='l'?'left':'right')}" fill="var(--bg-elevated)" stroke="var(--border-strong)" stroke-width="1"/>`
+                    + tab
+                    + `<text x="${tx}" y="${mid-2}" text-anchor="middle" font-size="${fs}" fill="var(--text-secondary)">${DIST_SHORT[it.k]||it.k}</text>`
+                    + `<text x="${tx}" y="${mid+fs}" text-anchor="middle" font-size="${fs}" fill="var(--text-primary)" font-weight="700" font-family="ui-monospace,monospace">${distFmtK(it.v)} (${pct}%)</text>`;
+            };
+
+            inS.items.forEach(it=>{ body += ribbon(it,'l'); });
+            outS.items.forEach(it=>{ body += ribbon(it,'r'); });
+            inS.items.forEach(it=>{ body += labelBox(it, inS.total, 'l'); });
+            outS.items.forEach(it=>{ body += labelBox(it, outS.total, 'r'); });
+
+            const spine = `<rect x="${LSP}" y="${sTop}" width="${spineW}" height="${colH}" fill="var(--dist-spine)" rx="${Math.min(2,spineW/2)}"/>`;
+            const header = `<text x="${cx}" y="${sTop-6}" text-anchor="middle" font-size="${fs-1}" fill="var(--text-muted)" font-weight="700" font-family="ui-monospace,monospace" letter-spacing="0.06em">SOURCE → SPEND</text>`;
+
+            const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;">`
+                + `<defs>${defs}</defs>${header}${body}${spine}</svg>`;
             return { svg, inTot:inS.total, outTot:outS.total };
         }
 
-        const DIST_COMPACT = {W:300,H:290,pad:20,minPx:18,gap:6,spineW:6,fs:9,labelGap:52};
-        const DIST_ZOOM = {W:1000,H:440,pad:36,minPx:26,gap:8,spineW:24,fs:13,labelGap:130};
+        // labelGap now doubles as the label-BOX width (the reskin wraps each label in a rounded
+        // box), so it's wider than the old text-offset values. W widened to fit the two boxes.
+        const DIST_COMPACT = {W:360,H:300,pad:16,minPx:34,gap:6,spineW:6,fs:9,labelGap:96};
+        const DIST_ZOOM = {W:1040,H:460,pad:34,minPx:44,gap:8,spineW:12,fs:13,labelGap:150};
 
         // Determine the three default life-phase years from the current inputs.
         function distDefaultYears() {
@@ -4929,7 +4987,7 @@
                 const brokAvailForElec = Math.max(0, brok);
 
                 // --- Iterative solve ---
-                const cashSources = gross1099 + currentSsPayout + rebiDistTotal + rebiRefiCash + rebiExitProceedsGross + inheritanceCashIn;
+                const cashSources = gross1099 + currentSsPayout + rebiDistTotal + rebiRefiCash + rebiExitProceedsGross + inheritanceCashIn + forcedRmd;
                 // Healthcare-from-portfolio is now iteration-dependent (ACA subsidy reacts to
                 // MAGI), so only the truly fixed needs are outside the loop.
                 const baseNeedFixed = plannedTargetDraw + childGiftAmt + __auditShortfall;
@@ -6530,6 +6588,9 @@
             guide.style.background = vBg;
             document.getElementById('mcPctText').innerHTML =
                 `<p class="text-[11px] mb-2" style="color:var(--text-secondary)"><strong style="color:var(--text-primary)">What you'd have left at the end</strong>, depending on how lucky your market timing turns out (today's dollars):</p>
+                 <div class="text-[11px] mb-2 px-3 py-2 rounded-lg" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.28);color:var(--text-muted);line-height:1.5">
+                     <strong style="color:#93c5fd"><i class="fa-solid fa-book-open mr-1"></i>How to read these:</strong> each is a <em>threshold</em>, not a prediction. <strong style="color:#ef4444">Unlucky</strong> &mdash; only 1 in 10 runs did worse; <strong style="color:var(--text-primary)">Typical</strong> &mdash; the middle run; <strong style="color:#10b981">Lucky</strong> &mdash; only 1 in 10 did better. The wide spread <em>is</em> the point: your ending wealth hinges enormously on <em>when</em> good and bad years land. For &ldquo;will I be OK?&rdquo;, trust the <strong style="color:var(--text-secondary)">success rate</strong> up top &mdash; not these.
+                 </div>
                  <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="p-2 rounded-lg border border-slate-700" style="background:var(--bg-base)">
                         <div class="text-[10px] uppercase tracking-wide" style="color:var(--text-muted)">Unlucky <span class="normal-case">(10th pct)</span></div>
@@ -7592,7 +7653,7 @@
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                                 <li><strong style="color:var(--text-primary)">Semi-Retirement Age (default 55):</strong> Drawdown begins when you step down from full-time work. Contributions stop, semi-retirement income begins (default $25K, running from your semi-retirement age to your full-retirement age), healthcare costs begin, and portfolio withdrawals start covering any shortfall.</li>
                                 <li><strong style="color:var(--text-primary)">Full Retirement Age (default 60):</strong> Full retirement begins when you reach your full-retirement age.</li>
-                                <li><strong style="color:var(--text-primary)">RMD age (default 75):</strong> When you reach this age, forced minimum distributions from the Traditional bucket begin (Section 11).</li>
+                                <li><strong style="color:var(--text-primary)">RMD age (default 75):</strong> When you reach this age, forced minimum distributions from the Traditional bucket begin (Section 11). The RMD is taxed as ordinary income; the cash first covers that year's spending, and any part not needed is reinvested in the taxable Brokerage account (so it keeps working rather than sitting idle).</li>
                             </ul>
                         </div>
                         <div>
@@ -7638,7 +7699,7 @@
                             <ul class="list-disc ml-6 space-y-1" style="color:var(--text-secondary)">
                                 <li><strong style="color:var(--text-primary)">Nominal ROI (default 6%):</strong> applied identically to all five buckets every year.</li>
                                 <li><strong style="color:var(--text-primary)">Inflation (default 3%):</strong> inflates spending targets, healthcare, contributions, tax brackets, the standard deduction, and gift/tuition amounts; also drives the Today's $ deflator.</li>
-                                <li>Federal ordinary brackets, LTCG brackets, standard deduction (<span data-example="stdDeduction">$15,750</span> Single / $23,625 Head of Household), the IRS Uniform Lifetime RMD divisors, and the IRMAA tiers are <em>read-only reference values</em> shown in the <strong style="color:var(--text-primary)">Federal Tax Details</strong> tab &mdash; sourced from the app's built-in tax-year data (IRS_2026), not editable, and never saved in a profile. Bracket thresholds are inflation-indexed each simulated year. Your <em>personal</em> settings &mdash; state tax (2.90%), county/local tax (1.5%), the &ldquo;State Exempts Social Security&rdquo; choice, and the heir tax rates for the After-Tax Legacy KPI &mdash; are editable in the left input panel (State &amp; Local Tax and Legacy / Heir Assumptions sections) and are saved with your profile.</li>
+                                <li>Federal ordinary brackets, LTCG brackets, standard deduction (<span data-example="stdDeduction">$16,100</span> Single / $24,150 Head of Household), the IRS Uniform Lifetime RMD divisors, and the IRMAA tiers are <em>read-only reference values</em> shown in the <strong style="color:var(--text-primary)">Federal Tax Details</strong> tab &mdash; sourced from the app's built-in tax-year data (IRS_2026), not editable, and never saved in a profile. Bracket thresholds are inflation-indexed each simulated year. Your <em>personal</em> settings &mdash; state tax (2.90%), county/local tax (1.5%), the &ldquo;State Exempts Social Security&rdquo; choice, and the heir tax rates for the After-Tax Legacy KPI &mdash; are editable in the left input panel (State &amp; Local Tax and Legacy / Heir Assumptions sections) and are saved with your profile.</li>
                             </ul>
                         </div>
                     </div>
@@ -7682,7 +7743,7 @@
                     <p class="mb-3">The chart area at the top has two tabs. <strong style="color:var(--text-primary)">Net Worth Trajectory</strong> shows balances growing and drawing down over the whole plan; <strong style="color:var(--text-primary)">Distribution Mix</strong> answers a different question for a single year &mdash; <em>where did the money come from, and what did it pay for?</em> It is a cash-flow (Sankey) view, not a balance view.</p>
                     <p class="mb-3">Three panels default to life-phase milestones (semi-retirement, full retirement, and Social&nbsp;Security claim age). Each panel tracks its milestone automatically &mdash; change a birth year or a semi/full-retirement age and the panels follow to the new years. Pick a specific year from a panel&rsquo;s dropdown to pin it there instead; a pinned panel keeps your year even as other inputs change, and a <span aria-hidden="true">&#8634;</span> reset button appears to hand it back to automatic tracking. Each panel shows <span style="color:var(--dist-sources);font-weight:600">Sources</span> on the left flowing into <span style="color:var(--dist-spend);font-weight:600">Spend</span> on the right, with a running total for each side.</p>
                     <ul class="list-disc ml-6 mb-3 space-y-1" style="color:var(--text-secondary)">
-                        <li><strong style="color:var(--text-primary)">Sources</strong>: Traditional, Roth, and Brokerage withdrawals; Social Security; RE/Business distributions; 1099 / part-time income (gross); HSA; and the 529 (the portion of tuition it funds).</li>
+                        <li><strong style="color:var(--text-primary)">Sources</strong>: Traditional, Roth, and Brokerage withdrawals; RMDs; Social Security; RE/Business distributions; 1099 / part-time income (gross); HSA; and the 529 (the portion of tuition it funds).</li>
                         <li><strong style="color:var(--text-primary)">Spend</strong>: Living, Healthcare, Taxes (the year's full tax, including any capital-gains tax), Gifting, and Tuition.</li>
                         <li>Ribbon thickness is proportional to each flow's share, with a small minimum so tiny slices stay visible. Labels show the rounded figure and share; <strong style="color:var(--text-primary)">hover any ribbon</strong> for the exact dollar amount and precise percent.</li>
                         <li>The numbers reconcile to the projection table for the same year, and each panel's Sources and Spend totals balance to the dollar. The view honors the Today's&nbsp;$ / Future&nbsp;$ toggle. The Include&nbsp;HSA / Include&nbsp;529 controls apply only to the trajectory chart's balances, so they are hidden on this tab.</li>
@@ -7843,7 +7904,7 @@
                 <section id="sec-tax">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-building-columns mr-2"></i>12. Tax Calculations</h2>
                     <h3 class="font-semibold mb-2">Ordinary Income Tax</h3>
-                    <p style="color:var(--text-secondary)">Applied to: semi-retirement income (1099 income is reduced by the &frac12; SE-tax deduction; W-2 wages are fully taxable), RMDs, elective Traditional withdrawals, Roth conversions, the taxable share of Social Security, and the taxable portion of Real Estate / Business distributions (Section 15b &mdash; you set what percentage of each deal's distribution is currently taxable; the sheltered remainder is untaxed). The standard deduction (<span data-example="stdDeduction">$15,750</span> Single / $23,625 Head of Household, inflation-indexed) is subtracted, then the single-filer marginal brackets (thresholds inflation-indexed) apply. If you add one or more dependents, filing status switches automatically to Head of Household, which uses its own wider brackets and larger standard deduction.</p>
+                    <p style="color:var(--text-secondary)">Applied to: semi-retirement income (1099 income is reduced by the &frac12; SE-tax deduction; W-2 wages are fully taxable), RMDs, elective Traditional withdrawals, Roth conversions, the taxable share of Social Security, and the taxable portion of Real Estate / Business distributions (Section 15b &mdash; you set what percentage of each deal's distribution is currently taxable; the sheltered remainder is untaxed). The standard deduction (<span data-example="stdDeduction">$16,100</span> Single / $24,150 Head of Household, inflation-indexed) is subtracted, then the single-filer marginal brackets (thresholds inflation-indexed) apply. If you add one or more dependents, filing status switches automatically to Head of Household, which uses its own wider brackets and larger standard deduction.</p>
                     <h3 class="font-semibold mb-2 mt-4">Long-Term Capital Gains</h3>
                     <p style="color:var(--text-secondary)">Only the gain portion of brokerage withdrawals (per the tracked basis ratio) is LTCG income &mdash; plus the gain on a Real Estate / Business exit (Section 15b), which flows through this same machinery. It stacks on top of ordinary taxable income against the LTCG brackets (0%/15%/20% structure), so low-ordinary-income years can realize gains at 0%. State + county rates also apply to the gain.<br><br><strong style="color:var(--text-primary)">Depreciation recapture (RE/BI exits only):</strong> the recapture slice of a sale &mdash; your Recapture % of invested capital, capped at the gain &mdash; is taxed at the 25% recapture rate rather than LTCG, and is added on top of the year's other taxes. See Section 15b.</p>
                     <h3 class="font-semibold mb-2 mt-4">Self-Employment Tax</h3>
@@ -8192,12 +8253,12 @@
                         <li data-fact="rmd.divisor.73" data-value="26.5" data-source="IRS Pub 590-B Table III">RMD Uniform Lifetime divisor at age 73: <strong>26.5</strong> &mdash; a $1M balance forces $37,736.</li>
                         <li data-fact="rmd.divisor.95" data-value="8.9" data-source="IRS Pub 590-B Table III">RMD divisor at age 95: <strong>8.9</strong> &mdash; a $1M balance forces $112,360.</li>
                         <li data-fact="stdDed.mfj" data-value="32200" data-source="IRS Rev. Proc. 2025-32">Standard deduction, MFJ: <strong>$32,200</strong>.</li>
-                        <li data-fact="stdDed.single" data-value="15750" data-source="IRS Rev. Proc. 2025-32">Standard deduction, Single: <strong>$15,750</strong> &mdash; note this is <em>not</em> half of MFJ.</li>
+                        <li data-fact="stdDed.single" data-value="16100" data-source="IRS Rev. Proc. 2025-32">Standard deduction, Single: <strong>$16,100</strong> &mdash; note this is <em>not</em> half of MFJ.</li>
                         <li data-fact="ordinary.mfj.top" data-value="768700" data-source="IRS Rev. Proc. 2025-32">37% bracket begins, MFJ: <strong>$768,700</strong>.</li>
                         <li data-fact="ordinary.single.top" data-value="640600" data-source="IRS Rev. Proc. 2025-32">37% bracket begins, Single: <strong>$640,600</strong> &mdash; <em>not</em> half of MFJ ($384,350). This is the widow&rsquo;s penalty.</li>
                         <li data-fact="ltcg.mfj.15pct" data-value="98900" data-source="IRS Rev. Proc. 2025-32">0%/15% LTCG breakpoint, MFJ: <strong>$98,900</strong>. Gains stack <em>on top of</em> ordinary income.</li>
                         <li data-fact="ltcg.mfj.20pct" data-value="613700" data-source="IRS Rev. Proc. 2025-32">15%/20% LTCG breakpoint, MFJ: <strong>$613,700</strong>.</li>
-                        <li data-fact="ltcg.single.20pct" data-value="545050" data-source="IRS Rev. Proc. 2025-32">15%/20% LTCG breakpoint, Single: <strong>$545,050</strong> &mdash; <em>not</em> half of MFJ ($306,850).</li>
+                        <li data-fact="ltcg.single.20pct" data-value="545500" data-source="IRS Rev. Proc. 2025-32">15%/20% LTCG breakpoint, Single: <strong>$545,500</strong> &mdash; <em>not</em> half of MFJ ($306,850).</li>
                         <li data-fact="irmaa.mfj.tier1" data-value="218000" data-source="CMS 2026 Part B/D premiums">IRMAA first tier, MFJ: <strong>$218,000</strong> of MAGI from <em>two years prior</em>.</li>
                         <li data-fact="irmaa.single.tier1" data-value="109000" data-source="CMS 2026 Part B/D premiums">IRMAA first tier, Single: <strong>$109,000</strong>.</li>
                         <li data-fact="irmaa.surcharge.tier1" data-value="1148" data-source="CMS 2026 Part B/D premiums">IRMAA tier-1 surcharge: <strong>$1,148</strong>/person/year (Part B + D). Top tier: $6,936.</li>

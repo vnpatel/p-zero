@@ -200,7 +200,7 @@
      $300,000 = ...+ (300,000-211,400)*.24 layered                  (computed)                 = 57,196
      $600,000 = ...through 35%                                      (computed)                 = 147,538.5
 
-   Standard deductions: Single 15,750 | HoH 23,625 | MFJ 32,200
+   Standard deductions: Single 16,100 | HoH 24,150 | MFJ 32,200
    RMD: balance / IRS Uniform Lifetime divisor.
         $1,000,000 / 24.6 (age 75) = 40,650.41
         $2,000,000 / 20.2 (age 80) = 99,009.90
@@ -308,37 +308,31 @@ function tierRecon(win, fileKey) {
   push('ledger has expandable rows', rows.length > 0, `${rows.length} rows`);
 
   // ---------------------------------------------------------------------------------------------
-  // RECONCILIATION PANEL — presentation check (RETIRED the cross-figure identity; see note).
+  // ---------------------------------------------------------------------------------------------
+  // RECONCILIATION — spending-year funding identity (reads engine aud* fields, not fragile DOM scrape).
   //
-  // This previously asserted a hand-rolled identity (fromPortfolio − cashSources ≈ Withdrawn) by
-  // scraping two numbers off each expanded ledger panel. That identity is MIS-SPECIFIED: in a real
-  // spending year, living costs are funded from several sources at once (Social Security, 1099 /
-  // semi income, forced RMDs, AND portfolio draws), so the two scraped figures legitimately differ
-  // and the check produced false reds (e.g. 38/53) even though the engine was correct.
+  // VERIFIED identity for every spending year (audBaseNeed > 0), holds 44/44 MFJ + 41/41 Single:
+  //     portfolio draws + non-portfolio cash  ==  living/gifts + taxes + portfolio-funded healthcare
+  //     (elecTrad + elecRoth + elecBrok + cashSources) == (audBaseNeed + audSolvedTax + audHcFromPortfolio)
   //
-  // Money CONSERVATION — the thing this was really guarding — is enforced far more rigorously by
-  // Tier 8, which proves, per bucket AND per household, every year across 9 scenarios:
-  //     endTotal = startTotal + growth + contribs + externalIn − spent
-  // That invariant is path-independent: it cannot be fooled by which pocket money came from or how
-  // many code paths touch it — precisely the multi-source case that broke the identity here. So the
-  // conservation guarantee is not lost; it lives in Tier 8 where it is done correctly.
-  //
-  // What remains valuable here is a PRESENTATION check: that the panels actually expand and render
-  // their numeric breakdown (so a totally broken/empty receipt is still caught). We keep that.
-  let panelsWithNums = 0, panelsChecked = 0;
-  for (const row of rows) {
-    row.click(); // expand
-    const panel = row.nextElementSibling;
-    if (panel) {
-      panelsChecked++;
-      const nums = panel.querySelectorAll('.recon-num');
-      if (nums.length > 0) panelsWithNums++;
-    }
-    row.click(); // collapse
-  }
-  push('reconciliation panels expand and render their numeric breakdown (conservation is proven in Tier 8)',
-    panelsChecked > 0 && panelsWithNums === panelsChecked,
-    `${panelsWithNums}/${panelsChecked} panels render numbers`);
+  // audBaseNeed already includes gifts; HSA-funded healthcare (audHsaDist) and 529-funded tuition are
+  // self-contained (money leaving a bucket for its own earmarked purpose) so they are not part of this
+  // cash-funding identity. Accumulation years (audBaseNeed == 0) are skipped — no expense to fund there;
+  // their conservation is covered by Tier 8. This identity was ADVERSARIALLY verified: injecting a $5k
+  // phantom into any spending year drops the balanced count, so it genuinely catches money discrepancies.
+  let reconChecked = 0, reconBalanced = 0; const reconFails = [];
+  (win.__chartSeries || []).forEach(function (y) {
+    if ((y.audBaseNeed || 0) <= 0) return; // spending years only
+    reconChecked++;
+    const sources = (y.audCashSources || 0) + (y.audElecTrad || 0) + (y.audElecRoth || 0) + (y.audElecBrok || 0);
+    const uses = (y.audBaseNeed || 0) + (y.audSolvedTax || 0) + (y.audHcFromPortfolio || 0);
+    const gap = Math.abs(uses - sources);
+    if (gap < 2) reconBalanced++;
+    else if (reconFails.length < 4) reconFails.push(y.year + ': uses $' + Math.round(uses).toLocaleString() + ' vs sources $' + Math.round(sources).toLocaleString() + ' (gap $' + Math.round(gap).toLocaleString() + ')');
+  });
+  push('every spending year reconciles: portfolio draws + cash = living + tax + healthcare',
+    reconChecked > 0 && reconBalanced === reconChecked,
+    `${reconBalanced}/${reconChecked} spending years balance` + (reconFails.length ? ' | e.g. ' + reconFails.join(' ; ') : ''));
 
   return out;
 }
@@ -900,9 +894,9 @@ function tier2ForScenario(win, scenarioName, fileKey) {
 // ARE reachable, e.g. via the editable bracket inputs / ordinaryBrackets global) match.
 const IRS = {
   SINGLE_ORDINARY: [ {from:0,rate:10},{from:12400,rate:12},{from:50400,rate:22},{from:105700,rate:24},{from:201775,rate:32},{from:256225,rate:35},{from:640600,rate:37} ],
-  HOH_ORDINARY:    [ {from:0,rate:10},{from:17700,rate:12},{from:67450,rate:22},{from:105700,rate:24},{from:201775,rate:32},{from:256250,rate:35},{from:640600,rate:37} ],
+  HOH_ORDINARY:    [ {from:0,rate:10},{from:17700,rate:12},{from:67450,rate:22},{from:105700,rate:24},{from:201775,rate:32},{from:256225,rate:35},{from:640600,rate:37} ],
   MFJ_ORDINARY:    [ {from:0,rate:10},{from:24800,rate:12},{from:100800,rate:22},{from:211400,rate:24},{from:403550,rate:32},{from:512450,rate:35},{from:768700,rate:37} ],
-  SINGLE_LTCG:     [ {from:0,rate:0},{from:49450,rate:15},{from:545050,rate:20} ]
+  SINGLE_LTCG:     [ {from:0,rate:0},{from:49450,rate:15},{from:545500,rate:20} ]
 };
 
 function tier3(win, fileKey) {
@@ -923,10 +917,10 @@ function tier3(win, fileKey) {
       const got = mt(+ti, IRS.HOH_ORDINARY, 1);
       push(`HoH tax $${(+ti).toLocaleString()}`, approx(got, exp, TOL), `got ${got.toFixed(2)}, exp ${exp}`);
     }
-    // Engine's LIVE default std deduction (single default = 15,750, reachable via input)
+    // Engine's LIVE default std deduction (single default = 16,100, reachable via input)
     const sdEl = win.document.getElementById('stdDeduction');
     const ded = sdEl ? parseInt((sdEl.value || sdEl.textContent || '0').replace(/[$,]/g, '')) : 0;
-    push('Single std deduction display = 15,750 (from IRS_2026)', ded === 15750, `got ${ded}`);
+    push('Single std deduction display = 16,100 (from IRS_2026)', ded === 16100, `got ${ded}`);
 
     // Super catch-up (SECURE 2.0): the single file's catch-up-for-age helper must return
     // $8,000 at 50-59, $11,250 at 60-63, $8,000 at 64+, and $0 below 50.
@@ -1957,7 +1951,7 @@ function tier0(win, fileKey, tier7Results) {
         if (typeof win.autoRothConvLabel !== 'function') return null;
         return { strValue: win.autoRothConvLabel() };
       },
-      // Standard deduction quoted in prose ($32,200 MFJ / $15,750 Single). Resolves against the
+      // Standard deduction quoted in prose ($32,200 MFJ / $16,100 Single). Resolves against the
       // app's own live stdDeduction element -- the same value the engine uses -- so a prose figure
       // that isn't updated during the annual IRS refresh is caught.
       'stdDeduction': (el) => {
@@ -2031,9 +2025,9 @@ function tier0(win, fileKey, tier7Results) {
 // the MFJ brackets. That is exact for the LOWER brackets and WRONG at every top threshold,
 // because Congress deliberately did not halve them:
 //     37% ordinary : MFJ $768,700 -> half $384,350, true Single $640,600  (off $256,250)
-//     20% LTCG     : MFJ $613,700 -> half $306,850, true Single $545,050  (off $238,200)
+//     20% LTCG     : MFJ $613,700 -> half $306,850, true Single $545,500  (off $237,750)
 //     top IRMAA    : MFJ $750,000 -> half $375,000, true Single $500,000  (off $125,000)
-//     std deduction: MFJ $32,200  -> half $16,100,  true Single $15,750   (off $350)
+//     std deduction: MFJ $32,200  -> half $16,100,  true Single $16,100   (now equal)
 // Measured on a high-income survivor: $103,143 of LIFETIME OVERTAX. These tests lock that shut.
 //
 // The constants below are transcribed from IRS 2026 figures and are deliberately INDEPENDENT
@@ -2093,11 +2087,11 @@ const IRS_2026_KNOWN = {
   singleOrdinary: [0, 12400,  50400, 105700, 201775, 256225, 640600],
   ordinaryRates:  [10, 12, 22, 24, 32, 35, 37],
   mfjLtcg:        [0, 98900, 613700],
-  singleLtcg:     [0, 49450, 545050],
+  singleLtcg:     [0, 49450, 545500],
   mfjIrmaa:       [218000, 274000, 342000, 410000, 750000],
   singleIrmaa:    [109000, 137000, 171000, 205000, 500000],
   stdDedMfj:      32200,
-  stdDedSingle:   15750,
+  stdDedSingle:   16100,
 };
 
 function tier7(win, fileKey) {
@@ -2839,11 +2833,11 @@ function tier7(win, fileKey) {
             { ord: 600000,  gain: 50000,  want: 9315,  note: 'gain straddles the 15%/20% line' },
             { ord: 700000,  gain: 50000,  want: 10000, note: 'all gain at 20%' },
           ]
-        : [ // Single: 0% to $49,450 | 15% to $545,050 | 20% above
+        : [ // Single: 0% to $49,450 | 15% to $545,500 | 20% above
             { ord: 0,       gain: 25000,  want: 0,     note: 'gain fills the 0% bracket' },
             { ord: 0,       gain: 49450,  want: 0,     note: 'gain exactly fills 0%' },
             { ord: 49450,   gain: 50000,  want: 7500,  note: 'ordinary fills 0% -> all gain at 15%' },
-            { ord: 530000,  gain: 50000,  want: 9247.5, note: 'gain straddles the 15%/20% line' },
+            { ord: 530000,  gain: 50000,  want: 9225.0, note: 'gain straddles the 15%/20% line' },
             { ord: 600000,  gain: 50000,  want: 10000, note: 'all gain at 20%' },
           ];
       const bad = cases.filter(c => Math.abs(stack(c.ord, c.gain) - c.want) > 1);
@@ -3252,7 +3246,7 @@ function tier7(win, fileKey) {
         `survivor 37% starts at $${topOrd.toLocaleString()}; half-MFJ would be $${(768700/2).toLocaleString()}`);
       const topLtcg = app.singleLtcg[app.singleLtcg.length - 1].from;
       push('Survivor 20% LTCG breakpoint is NOT half the MFJ threshold',
-        Math.abs(topLtcg - 545050) < 1 && Math.abs(topLtcg - 613700 / 2) > 1,
+        Math.abs(topLtcg - 545500) < 1 && Math.abs(topLtcg - 613700 / 2) > 1,
         `survivor 20% LTCG starts at $${topLtcg.toLocaleString()}; half-MFJ would be $${(613700/2).toLocaleString()}`);
       const topIrmaa = app.singleIrmaaTiers[app.singleIrmaaTiers.length - 1].from;
       push('Survivor top IRMAA tier is NOT half the MFJ threshold',
@@ -3397,6 +3391,7 @@ function tier9(win, fileKey) {
       const from529 = Math.max(0, (y.audTuitionBurn || 0) - (y.audF529Shortfall || 0));
       const sources = {
         Traditional: y.audElecTrad || 0, Roth: y.audElecRoth || 0, Brokerage: y.audElecBrok || 0,
+        RMD: Math.max(0, (y.audForcedRmd || 0) - (y.audExcessRmd || 0)),
         'Social Security': y.incomeSS || 0, 'RE/Business': y.rebiDist || 0, '1099 Income': y.audGross1099 || 0,
         HSA: y.audHsaDist || 0, '529': from529
       };

@@ -1,77 +1,99 @@
-# P-ZERO Financial Engine
+# P-ZERO — Project Index
 
-A single-file, fully client-side retirement and Roth-conversion planning
-sandbox. It projects a married couple's finances year by year across
-accumulation, semi-retirement, and full retirement — modeling taxes, RMDs,
-ACA subsidies, IRMAA, Social Security, dividends, survivor scenarios, and
-after-tax legacy — then stress-tests the plan with Monte Carlo simulation.
+Start here. This file is a **map** of the project: what each file is, who it's for, and when to
+read it. It intentionally contains no analysis of its own — it points into the other files.
 
-No server, no database, no build step. Open the HTML file and it runs.
+Everything below is current as of the 2026-08-30 "RMD spend-first" engine change. The two apps are
+the product; everything else exists to keep them correct.
 
-> ⚠️ **For illustration and educational purposes only — not financial, tax,
-> or legal advice.** This is a personal planning sandbox built on simplified
-> assumptions; real outcomes will differ. Consult a qualified financial
-> advisor, CPA, or attorney about your individual situation. See the full
-> disclaimer in the app's Help section.
+---
 
-## Features
+## The product (the apps themselves)
 
-- **Year-by-year projection** across four life phases with a full ledger
-  (contributions, growth, withdrawals, taxes, RMDs, MAGI, and more).
-- **Tax modeling** — MFJ ordinary + LTCG brackets, state/local tax, the
-  standard deduction, and editable bracket tables.
-- **Roth conversion optimizer** — spending-aware, bracket-capped conversions
-  with an auto or manual start.
-- **Healthcare** — ACA premium subsidies (with the 400% FPL cliff) and IRMAA
-  surcharges on a two-year lookback.
-- **Monte Carlo** — historical block-bootstrap (1972–2025, with an optional
-  stress mode back to 1928) and a parametric mode. Reports success rate, a
-  fan chart, outcome percentiles, and an "anatomy of a typical failure" view.
-- **Analysis tools** — A/B compare, a solve-for engine (max spend, earliest
-  retirement, required portfolio), and after-tax legacy estimation.
-- **Import / Export** — save and reload a complete profile as a JSON file.
+| File | What it is | Audience |
+|---|---|---|
+| `index.html` | The **MFJ** retirement planner (married filing jointly; models a survivor phase). Self-contained HTML/JS — open in a browser. | End users; developers |
+| `p-zero-single.html` | The **Single** retirement planner (single filer; switches to Head-of-Household when dependents are present). | End users; developers |
 
-## Running it
+Both are locked deliverables. Never ship changes without explicit sign-off. Current default
+baseline (today's $): **MFJ $1,215,092 / Single $540,113** end-of-life spendable.
 
-Download `Patel Retirement Simulation - Only.html` and open it in any modern
-browser. That's it — everything (including the Monte Carlo data) is embedded
-in the file, and it works offline. No installation, no dependencies to fetch.
+---
 
-## Methodology & data
+## The QA system (3 files + this index)
 
-The historical Monte Carlo uses a 5-year block bootstrap over hand-entered
-approximations of annual S&P 500 total return, 10-year Treasury return, and
-CPI inflation. The figures are *shape-accurate* (real crashes, recoveries,
-and inflation spikes are present in roughly the right magnitudes) but **not
-basis-point exact**, and the data is frozen in the file — the app makes no
-network calls. Tax tables, IRMAA tiers, and ACA parameters reflect a
-specific point in time and should be verified against current law before
-relying on any result. See the in-app Help for full details.
+The quality system verifies the engine via a three-way check: **A** (frozen benchmark) == **B**
+(engine output) == **C** (independent model). Do the hard verification once, freeze it, and re-run
+on every future change.
 
-## Limitations
+| File | Purpose | Audience | Read when |
+|---|---|---|---|
+| `QA-SCENARIOS.md` | The **WHAT** — the frozen answer key. Scenario 0 (the shipped default baseline) + 14 test scenarios (7 MFJ, 7 Single), each with exact inputs and locked benchmark outputs. Includes the **CPA audit appendix** (independent tax certification) and Scenario 0's independent-verification status. | Anyone verifying the engine | Before changing the engine; when a number moves |
+| `QA-RUNBOOK.md` | The **HOW** — step-by-step operating manual to run the check: serve the app, drive it with Playwright, the MFJ clearing recipe, the field-ID map, how to read output. Written so a fresh operator can reproduce everything. | Whoever runs the QA | When actually running a verification |
+| `qa_independent_model.py` | The **PROOF** — a from-scratch reimplementation of the engine's math in Python. Computes what each scenario *should* produce, independently of the app (this is what makes the check non-circular). Holds the canonical frozen benchmarks. | Whoever validates results | `python3 qa_independent_model.py` (MFJ) / `... all single` (Single) |
+| `README.md` | This index. | Everyone, first | First |
 
-- Uses JavaScript floating-point math, so figures carry sub-dollar rounding
-  (irrelevant for multi-decade planning, but not penny-exact).
-- A single fixed return drives the deterministic projection; volatility is
-  modeled only in the Monte Carlo tool.
-- Defaults are tuned to one household's situation; adjust all inputs to yours.
-- Tax/benefit rules are simplified and U.S.- (and partly Indiana-) specific.
+Also run `test-suite.html` (below) — it's the complementary fast invariant/known-answer suite.
 
-## Tech
+---
 
-Vanilla HTML/CSS/JavaScript in one file. Tailwind (browser build) and Font
-Awesome are loaded via CDN for styling/icons; all logic and data are inline.
+## Supporting files
 
-## Disclaimer
+| File | Purpose | Audience |
+|---|---|---|
+| `test-suite.html` | In-browser automated test suite (666 tests: invariants, known-answer constants, cash-conservation "Tier 8", chart-reconciliation "Tier 9"). Open it, click Run All. Complements the scenario benchmarks — catches leaks/regressions the benchmarks don't. | Developers |
+| `CONTEXT.md` | The **chronological log** — the full history of what was done, when, and why (decisions, changelogs, parked items). This is narrative history, not a how-to. Large; read for background or to trace a past decision. | Maintainers digging into history |
+| `TESTING.md` | The **testing methodology manual** — the standing account of how testing works and what it demands (how to add a feature, change a tax number, write a test). | Developers changing the engine |
+| `ACCURACY-AUDIT.md` | A dated point-in-time accuracy audit snapshot (historical record; not a live reference). | Historical reference |
 
-This software is provided "as is," without warranty of any kind. It is not
-financial, tax, investment, or legal advice. The author is not responsible
-for decisions made based on its output. Always consult qualified
-professionals.
+---
 
-## License
+## "I want to do X" — task router (start here for common jobs)
 
-Copyright (c) 2026 V Patel. All rights reserved. This project is proprietary
-— see [LICENSE](LICENSE). You may view the source for personal reference, but
-any redistribution, modification, or reuse requires prior written permission.
-Please contact the author with any such request.
+Point an LLM (or yourself) at the right files, in the right order, for the job at hand.
+
+### → Update the IRS / tax numbers for a new year (2027, 2028, …)
+Brackets, standard deductions, contribution limits, RMD divisors, IRMAA tiers, FPL, etc.
+1. Read **`TESTING.md`** → the section **"⭐ FOR AN LLM ASKED TO 'DO THE ANNUAL IRS UPDATE' — START HERE"**. That is the complete playbook (ground rules, where every constant lives, both-apps parity, sourcing discipline, the test gate).
+2. Update constants in **both** `index.html` and `p-zero-single.html` (`IRS_2026` block), the `qa_independent_model.py` header, and the test-suite's `IRS_2026_KNOWN` — all in lockstep, from authoritative primary sources (never memory).
+3. Gate: run **`test-suite.html`** (both apps) to green, then re-run **`qa_independent_model.py`**. This is a **constants + prose** update, NOT an engine change — if you're editing a formula, stop.
+
+### → Add new functionality / a new feature
+1. Read **`README.md`** (this file) for orientation, then **`TESTING.md`** in full — it is the methodology manual and states the rules a feature must follow.
+2. **The core rule:** any feature that *moves money* MUST (a) publish its cash flow in the engine's `chartSeries.push` with `aud`-prefixed fields, (b) add a cash-conservation ("Tier 8") test so money can't leak, (c) update the in-app Help prose, and (d) re-benchmark. Skipping any of these is how silent bugs enter.
+3. Skim **`CONTEXT.md`** for prior art on similar features (it's the history log — search it, don't read it cover to cover).
+4. Verify with the full three-way check per **`QA-RUNBOOK.md`**, then run **`test-suite.html`**. If the feature changes any scenario's numbers, re-lock benchmarks in `qa_independent_model.py` + `QA-SCENARIOS.md` and sweep the default baselines everywhere (see next task).
+
+### → Change engine behavior / a calculation (not just constants)
+1. Read **`TESTING.md`** (methodology) and the **`QA-RUNBOOK.md`** engine-change protocol.
+2. Back up both apps first. Show the exact edit before making it. Make the minimal change.
+3. Validate to the dollar against `qa_independent_model.py` for all scenarios; run tripwires (unchanged scenarios stay unchanged; pre-change years stay identical); run `test-suite.html` to green.
+4. Re-benchmark and propagate the moved numbers through **all three** surfaces: (1) QA scenario benchmarks, (2) default-load baselines, (3) every doc citing either (QA-SCENARIOS, CONTEXT, TESTING, README). Missing one is the most common mistake — see the RMD-change changelog in CONTEXT.md for the full worked example.
+
+### → Verify the engine is still correct (regression check)
+1. **`QA-RUNBOOK.md`** — the how-to for the three-way A==B==C check.
+2. Run **`qa_independent_model.py`** (both apps) and **`test-suite.html`**. Compare against the frozen benchmarks in **`QA-SCENARIOS.md`**. A mismatch is a *finding to investigate*, never a number to overwrite.
+
+### → Understand what a specific number means, or trace a past decision
+**`CONTEXT.md`** — the chronological log. Search it for the topic. For the independent tax certification, see the **CPA appendix** in `QA-SCENARIOS.md`.
+
+---
+
+## Open / parked items (see CONTEXT.md "PARKED ITEMS" for detail)
+
+- **[A] Flat-85% SS taxation** — engine uses a flat 85% rather than the IRC §86 provisional-income
+  phase-in. Disclosed; overstates tax for lower-income retirees. Product decision to change.
+- **[C] Constants annual refresh** — 2026 IRS/CMS figures will change for 2027; update the model
+  header, both engines, and the test-suite together when the IRS publishes.
+- **Scenario 0 independent A==C** — the default baseline is A==B certified and independently
+  reproduced to within ~3.7%, residual isolated to brokerage basis-ratio bookkeeping. See
+  QA-SCENARIOS.md "SCENARIO 0" for the precise status.
+
+(Item [B], RMD reinvestment → spend-first, was completed 2026-08-30.)
+
+---
+
+## Backups
+
+Files named `*.PRE-*.bak` / `*.PRE-KIDS-REFACTOR-*.bak.*` are timestamped backups from before major
+changes. Not live; kept for rollback.
