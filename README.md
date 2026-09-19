@@ -81,8 +81,17 @@ Brackets, standard deductions, contribution limits, RMD divisors, IRMAA tiers, F
 
 ## Open / parked items (see CONTEXT.md "PARKED ITEMS" for detail)
 
-- **[A] Flat-85% SS taxation** — engine uses a flat 85% rather than the IRC §86 provisional-income
-  phase-in. Disclosed; overstates tax for lower-income retirees. Product decision to change.
+- **[D] Cashflow tab (2026-09-18, ported to Single + several bug fixes 2026-09-19+)** — a third Plan
+  Details chart tab, display-only (no engine change), reconciling Sources==Spend for every retirement
+  year including RE/Biz sale/refi and inheritance years (a gap Distribution Mix's own panel still has —
+  documented, not fixed, by explicit scope decision). Full feature parity between MFJ and Single as of
+  this pass. See CONTEXT.md and QA-SCENARIOS.md PART 4 (including its "Single port + subsequent fixes"
+  table) for the full history — several real bugs (a double inflation-adjustment on the 4% Rule metric,
+  a stuck orphaned tooltip, dollar-label crowding on long horizons, a milestone-icon filter that missed
+  the common case) were found via direct user testing after the initial build and fixed in both apps.
+
+- **[A] ✅ DONE (2026-09-09)** — Social Security now uses the IRC §86 provisional-income phase-in
+  (recomputed yearly); the "% of SS Taxed" field is an optional override. Verified vs IRS Pub 915.
 - **[C] Constants annual refresh** — 2026 IRS/CMS figures will change for 2027; update the model
   header, both engines, and the test-suite together when the IRS publishes.
 - **Scenario 0 independent A==C** — the default baseline is A==B certified and independently
@@ -97,3 +106,5 @@ Brackets, standard deductions, contribution limits, RMD divisors, IRMAA tiers, F
 
 Files named `*.PRE-*.bak` / `*.PRE-KIDS-REFACTOR-*.bak.*` are timestamped backups from before major
 changes. Not live; kept for rollback.
+
+- **`qa-panel-reconciliation.js`** — comprehensive Plan Details panel validator (display vs engine, 8-scenario matrix × both apps × all years). Run: serve outputs on :8199, `node qa-panel-reconciliation.js` → must be 0 violations. Scenarios documented in QA-SCENARIOS.md PART 3.

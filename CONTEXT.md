@@ -25,7 +25,7 @@
 
 These surfaced during QA validation. None are bugs; all are disclosed. Listed so they are not lost.
 
-- **[A] Flat-85% Social Security taxation.** The engine taxes SS at a flat user-editable % (default
+- **[A] ✅ DONE 2026-09-09 — Social Security §86 phase-in implemented (was: flat-85%).** The engine taxes SS at a flat user-editable % (default
   85%) rather than the statutory IRC §86 provisional-income phase-in. Accurate for high-provisional-
   income retirees; OVERSTATES taxable SS (and thus tax) for retirees whose provisional income is
   below ~$108k. Disclosed in-app. Decision: leave as documented simplification, or implement the
@@ -40,6 +40,146 @@ These surfaced during QA validation. None are bugs; all are disclosed. Listed so
   (header + SINGLE/HOH/MFJ blocks) and the engines + test-suite `IRS_2026_KNOWN`. When the new
   Rev. Proc. drops, re-verify all three against IRS.gov/CMS and update together. No automated
   reminder exists yet.
+  - **[D] State tax has no standard deduction/exemption.** State+county tax is charged from the first dollar (stLocalBase = totalOrdinary − exempt-SS; preferential gains taxed at the same flat rate; no state standard deduction). OVERSTATES state tax in low-income years (e.g. a year with ~$27k income below the $32,200 federal deduction shows $0 federal but nonzero state). Conservative (never understates). Surfaced 2026-09-13 when the redesigned income/tax panel first made federal vs state visible separately. Decision: accept as documented simplification, or add a state deduction/exemption constant. (Engine change → benchmark re-lock + model + test-suite required.)
+
+## 2026-09-13 — Net Worth Trajectory: area chart -> stacked bar chart (both apps)
+
+Replaced the stacked-AREA chart under the Plan Details "Net Worth Trajectory" tab with a stacked
+BAR chart, both apps. Display-only — engine/model untouched (A==C PASS both apps; test-suite 666/666;
+panel QA harness still 0 violations).
+
+Rewrote renderNetWorthChart() to render per-year stacked bars (data-idx + data-key on each segment)
+instead of Catmull-Rom area paths. PRESERVED: scenario-A comparison overlay, depletion marker,
+legend, theme-awareness, and the existing two-tab showChartTooltip/hideChartTooltip system (the SVG
+is cloned into Plan Details + Exec tabs). Hover is delegated on the SVG (elementFromPoint -> nearest
+rect[data-idx]) so it survives re-renders; segment hover highlights that slice (white stroke, others
+dim) and the tooltip shows the full per-account breakdown following the cursor.
+
+NEW: "Every 5 Yrs / Every Year" granularity toggle next to Include HSA/529 (default every-5th; window
+.__nwtGranularity + setNwtGranularity() re-renders from cached window.__chartSeriesFull WITHOUT an
+engine recompute). Every-Year shows all ~53 bars with rotated year labels; Every-5-Yrs shows totals
+on top of each bar.
+
+NOT TOUCHED: Distribution Mix chart, the year table, the expansion panel, the engine. Backups:
+index.html.PRE-NWTBAR.*, p-zero-single.html.PRE-NWTBAR.*.
+
+## 2026-09-13 — Comprehensive panel QA + RE/Business distribution income-row fix
+
+Built a comprehensive assertion harness (qa-panel-reconciliation.js) that checks the Plan Details
+expanded panel's DISPLAY against the engine's raw __chartSeries fields, for every section (expenses
+self-proving split, funding rows→total, income rows→subtotals + panel-vs-engine on taxableSS/pref/
+taxableOrd, taxes fed+state=total and vs engine audSolvedTax/audStLocalTax, and the balance-sheet
+identity), across a scenario matrix × both apps × all years:
+  working (no withdrawals), semi-retirement (1099), retired ±SS, RMD years, RE/Business refinance,
+  RE/Business sale (recapture), inheritance.
+
+FOUND + FIXED a real bug: RE/Business annual Distribution (taxable ordinary) and Taxable Inheritance
+were included in the engine's ordinaryTotal but had NO display rows in the Income "Ordinary" bucket,
+so the ordinary rows didn't sum to the subtotal in RE/BI and taxable-inheritance years. Added both
+rows (exposed rebiDistTaxable + inheritanceTaxable on taxDetail). Display-only; engine untouched
+(model A==C PASS both apps).
+
+RESULT: 0 violations across 8 scenarios × 2 apps × all years. (Initial run: 120 violations → the real
+RE/BI-distribution bug plus validator artifacts where Single stores surplus in audExcessRmd, not
+reconSurplusBanked; validator corrected to check the balance identity directly.)
+
+Re-run anytime: serve outputs on :8199 and `node qa-panel-reconciliation.js`.
+
+## 2026-09-13 — KNOWN LIMITATION flagged: state tax has no standard deduction
+
+While validating the redesigned Plan Details income/tax panel, a user spotted a year with $0 federal
+tax but ~$1,190 state tax (2030: total income ~$27,056, below the $32,200 federal standard deduction,
+so federal taxable = $0). The state figure is correct *per the engine's current model*, but it exposes
+a pre-existing SIMPLIFICATION (not a display bug — the panel faithfully shows the engine):
+
+  - State/county tax base (both apps): stLocalBase = max(0, totalOrdinary − (stateExemptsSS ? taxableSS : 0)),
+    taxed at (stateRate + countyRate). Preferential gains: ltcgStateTax = preferentialGains × same rate.
+  - There is NO state standard deduction or personal exemption. State tax is charged from the first
+    dollar of income, whereas most states have some deduction/exemption.
+
+CONSEQUENCE: the engine OVERSTATES state tax in low-income years (a real state would tax little or
+nothing on ~$27k after its own deduction). It is conservative (never understates). This has always
+been the behavior; the new income/tax breakdown just made it VISIBLE for the first time by showing
+federal and state separately.
+
+STATUS: documented modeling limitation, NOT scheduled. A future refinement could add a per-state (or
+generic) state standard deduction/exemption to the IRS_2026-style constants and subtract it from
+stLocalBase. That would be an ENGINE change (moves projection numbers → full benchmark re-lock +
+model + test-suite validation required per the harness protocol), so it is deliberately NOT done
+reactively. Logged here so it is a known decision, not a hidden approximation.
+
+## 2026-09-12 — Plan Details expanded-row redesign: card-layout tax panel (both apps)
+
+Replaced the dense table-style expanded row with a card-based layout (baseline design approved via
+mockups). Display-only — no engine/projection change (model A==C PASS both apps; test-suite 666/666).
+
+Layout: header (year + Portfolio W/D pill, Marginal + Effective tax pills). Left column: Expenses
+This Year (Category / Cost / HSA / 529 / Other, self-proving split, HSA/529 cols auto-hide) →
+Funding Sources (all cash in: HSA, 529, SS, 1099, RE/BI, inheritance, Trad/Roth/Brok draws, with
+Total Funded; a note line in surplus years explains cash redeployed to Brokerage) → Year Reconciles
+(vertical: Starting / +Contribs / +Growth / −W/D / −HSA / +Surplus / =Ending). Right column: Income
+Recognized (Ordinary / Preferential buckets → Taxable after std ded) → Tax Detail (fed ord / fed
+LTCG / state / SE / IRMAA / penalty → total) → Notable This Year (+ Roth conversion cost callout).
+
+Data-driven: every engine field that can appear has a home; zero/absent rows hide. Wired to the
+app's --recon-* theme variables (renders in light + dark). Reconciliation is visible & exact:
+Funding total = Expenses + Surplus banked (verified diff $0 across simple / RMD-surplus / tuition /
+inheritance years). The income/tax/conversion-cost data behind the cards is the CPA-verified,
+penny-exact Part 1/2 engine exposure (see prior entries: §86 taxable SS, tax-component split,
+marginal/effective rates, and the shadow-solve Roth conversion true cost).
+
+Test updates: 4 recon-panel structure/reconcile tests updated from old .recon-box/.recon-columns
+selectors to the new .tc-grid / .tc-recon-list card structure (same substance: panel present +
+reconciles). Backups: index.html.PRE-TAXCARDS.*, p-zero-single.html.PRE-TAXCARDS.*,
+index.html.PRE-TAXEXPOSE.* / PRE-CONVCOST.* (Part 1/2). Note: the earlier Part-1 incomeTaxHtml/
+notablesHtml builders are now superseded by the card builders but left in place (harmless, unused).
+
+## 2026-09-10 — SS §86: explicit "Auto (§86)" toggle (UX polish, both apps)
+
+Follow-up to the §86 change. Replaced the hidden "85 = auto" sentinel with an explicit
+"Auto (IRS §86)" checkbox (checked by default) above the "% of SS Taxed" field. Checked: field
+shows "Auto" (greyed, non-editable), engine runs §86. Unchecked: a number field appears and its %
+is used as a fixed override — so a user can now force an exact 85% (previously impossible, since
+typing 85 meant "auto"). No change to the §86 tax MATH: the edit only changes how the override is
+SIGNALED (from value≠85 to the checkbox state). Engine reads ssPctOverridden = !ssTaxAutoToggle.checked.
+
+Wiring: new checkbox #ssTaxAutoToggle + toggleSsTaxAuto() show/hide handler; registered in inputIds
+(save/load); synced at the 3 init/import/reset call sites; old profiles lacking the key load as
+auto (checked) by default — backward compatible (import only applies keys present in the file).
+Validation both apps: default byte-identical (auto=§86), override 50% differs, forced 85% now
+differs from auto (the fix), auto is reversible, save/load round-trips incl. old-profile compat,
+test-suite 668/668 (the §86-default test now toggles the checkbox), model still A==C both apps,
+0 JS errors. Backups: *.PRE-SSAUTOTOGGLE.*.
+
+## 2026-09-09 — Social Security §86 phase-in (both apps) — engine change
+
+Replaced the flat-85% taxable-Social-Security assumption with the statutory IRC §86 provisional-
+income phase-in (IRS Pub 915 Worksheet 1), recomputed each year from that year's income, in BOTH
+apps. Taxable share now correctly slides 0%→85% as income changes (a year-varying value the old
+flat rate and the static input could not represent). The "% of SS Taxed" input is now an OPTIONAL
+OVERRIDE: 85 = automatic §86; any other value forces a fixed %.
+
+Engine edit (5 spots, contained): a §86 helper + a tax-path adjustment ("- ssFlat + ss86") applied
+ONLY to totalOrdinary/state-base/ACA-MAGI. The Roth-conversion sizing and ACA-preserve paths were
+deliberately LEFT on the old basis (they read preWithdrawOrdinary, unchanged) — a documented
+containment boundary so the change stays independently validatable. MFJ uses MFJ thresholds
+(survivor→single); Single app always uses Single thresholds (Single & HoH both use the §86 single
+set). Thresholds read from IRS_2026 (statutory-frozen, NOT inflation-indexed).
+
+VERIFICATION (the accuracy bar): §86 formula verified to the dollar against IRS Pub 915's OWN
+worked examples (Casey&Pat $0; George White $2,990; 85%-tier $19,600) — a third independent source,
+breaking circularity. Engine == independent model to the dollar on all 14 scenarios (after fixing
+a bug found IN THE MODEL: it had wrongly inflation-scaled the §86 thresholds; the engine correctly
+does not). Default byte-identical (SS off → §86 is a no-op; proven edited==unedited same-date).
+Only S3 (SS scenario) moved: MFJ EOL +58,695, Single +32,264. Test-suite 666/666 both apps, 0 JS
+errors. Hand-trace of an SS year against the IRS worksheet confirmed. Backups: index.html.PRE-SS86.*,
+p-zero-single.html.PRE-SS86.*.
+
+TWO METHODOLOGY LESSONS recorded (see TESTING.md): (1) first-year contribution proration is DYNAMIC
+from the actual current month — frozen EOL benchmarks are month-dependent in year 1, so validation
+must compare engine-vs-model at the SAME month, never against a stale frozen dollar figure captured
+in a different month. (2) When engine and model disagree, arbitrate against an external primary
+source (here, IRS Pub 915), because both are our own implementations and can share an error.
 
 ## 2026-09-02 — Distribution Mix chart reskin (visual only, both apps)
 
@@ -3163,3 +3303,301 @@ The parity work continued past the interface-docs session into the Executive Sum
 **Regression baselines held at every step:** MFJ `$1,176,702` / Single `$528,223` (today's $), 0 console errors.
 
 **Final shipped md5s this session:** MFJ `index.html` = `e7c20ade…`; Single `p-zero-single.html` = `f3b09fa1…`; `test-suite.html` = `aabe69da…`; `TESTING.md` = `82a28f36…`. (Single went through several intermediate ships during the parity/doc work; these are the current heads.)
+
+---
+
+## Cashflow tab — new Plan Details chart (MFJ only, shipped 2026-09-18)
+
+**What was built.** A third chart tab, "Cashflow," added between Net Worth Trajectory and Distribution
+Mix (matches the tab order in the UI). It answers the same question Distribution Mix does — *what
+funded this year's spending, and what did it pay for?* — but as a **diverging bar trend across the
+whole plan** (inflows stacked up from $0, outflows stacked down, one bar per year or every 5th year),
+with a gold "Portfolio Draw" line and a persistent side panel that follows whichever bar the user is
+hovering. Working years show only Contributions (no portfolio spending is tracked pre-retirement, by
+design); semi/full-retirement years show the full Sources-vs-Spend breakdown.
+
+**This is a pure DISPLAY feature — no new mechanic, no engine change.** Every dollar figure it reads
+was already published in `chartSeries.push` before this session (confirmed by inspection: `assetDist`,
+`audTradCont`/`audRothCont`/`brokCont`/`audHsaCont`/`audF529Cont`, `rebiRefi`/`rebiExit`,
+`audInheritanceGross`, `audBrokInflow`, `audLtcCost`, and the full set `distFlowsFor` (Distribution
+Mix's own helper) already reads). Per TESTING.md's own rule, a feature that doesn't move money doesn't
+need a `CONSERVATION_SCENARIOS` entry — the closest applicable precedent is the "Panel display changes"
+rule at the end of TESTING.md ("must be validated... catches display-doesn't-match-engine bugs"), which
+is exactly the class of bug this session actually found and fixed (below).
+
+**Two genuine display bugs found and fixed this session (not hypothetical — verified against real
+scenario numbers):**
+1. **Sources undercounted Spend in a RE/Biz sale/refi or inheritance year.** `distFlowsFor`'s own
+   `'RE/Business'` source only ever reads ongoing distributions (`rebiDist`), never refi cash-out or
+   sale proceeds — and never read inheritance at all. Both already correctly reduce the withdrawal in
+   the engine's own math (they sit inside `cashSources`, same as SS/1099); only the LABELED breakdown
+   was incomplete. Concretely verified: a $400K sale year showed Sources $243,332 against Spend
+   $507,780 — a $264,447 gap matching the sale almost to the dollar. **Fix (Cashflow only, `distFlowsFor`
+   left untouched by explicit instruction):** `cashflowFlowsFor()` layers two additional source
+   categories on top of `distFlowsFor`'s own — `'RE/Biz Sale/Refi'` (`rebiRefi + rebiExit`) and
+   `'Inheritance'` (`audInheritanceGross`) — computed unconditionally (a sale/refi/inheritance can
+   happen in ANY year, not just retirement, which was a second bug: the function used to early-return
+   to contributions-only for any pre-retirement year, skipping the capital-event check entirely).
+   **Distribution Mix keeps its pre-existing (undercounting) behavior** — this was a deliberate scope
+   decision, not an oversight; Distribution Mix's own Help section (§4b) now carries an explicit
+   "Known gap" note about it rather than silently overclaiming reconciliation it doesn't have in a
+   sale/refi/inheritance year.
+2. **The LTC info-tooltip got orphaned and stuck on-screen.** The LTC sub-line badge was originally
+   nested inside a `.cf-row` div that has its own hover handler which rebuilds the entire panel
+   (`renderCashflowChart()`) — so hovering anywhere on the Healthcare row destroyed the badge mid-hover,
+   after `positionInfoTip()` had already portaled its tooltip to `document.body` and stored a reference
+   on the (now-destroyed) wrap element to find it again on mouseleave. Symptom: tooltip pinned at the
+   viewport's top-left corner (a detached element's `getBoundingClientRect()` returns all zeros) and
+   never disappeared (its mouseleave handler was on a node no longer in the document). Fixed by making
+   the badge a sibling of the row instead of a child of it, which also fixed a row-alignment bug the
+   nested structure had caused. Verified the full lifecycle directly (not just that it renders): the
+   badge survives the row's own re-render, the tooltip portals correctly, and on mouseleave it both
+   hides AND returns to its origin element rather than staying orphaned.
+
+**Design decisions worth recording (several revised mid-session after user pushback, each time for a
+real, specific reason — not just because a different design was requested):**
+- **"Portfolio Draw" line, not "Net Cash Flow."** First implementation was `inflow − outflow`, which is
+  ~$0 almost every retirement year by construction (the solver sizes the elective draw specifically to
+  close that exact gap), making the line uninformative. Corrected to read `assetDist` (the same
+  Portfolio W/D figure the ledger displays) directly — always ≥0 by the engine's own floor. Then
+  further corrected, on user request, to NET that figure against whatever went back INTO the same three
+  buckets that year: `audBrokInflow` (retirement-year surplus banking) AND, during accumulation,
+  Traditional/Roth/Brokerage contributions (`audTradCont+audRothCont+brokCont`) — HSA/529 contributions
+  deliberately excluded, matching the "(excl. HSA, 529)" label `assetDist` itself already carries. A
+  meaningfully negative value now means "money flowing INTO the portfolio net," shown as "added to
+  portfolio."
+- **Accumulation-year Outflows.** A brokerage-dividend "tax only" sale (the same quirk the ledger's own
+  "◐ tax only" badge documents — the portfolio sells a sliver of itself to cover dividend tax even while
+  still working, since the model doesn't simulate a paycheck) was showing as an unexplained Portfolio
+  Draw with an empty Outflows box. Fixed by surfacing `audSolvedTax` as a Taxes outflow whenever nonzero
+  during accumulation (Living/Healthcare/Gifting/Tuition correctly stay empty — those genuinely aren't
+  tracked pre-retirement).
+- **LTC row treatment.** Considered breaking LTC out as its own category/color, but the ledger has
+  already made a deliberate, documented choice to keep it folded into Healthcare with an informational
+  "◐ incl. $X LTC" badge (not added on top). Matched that exactly — same wording, same color, same
+  tooltip text, same Help-section link — rather than introduce a second, disagreeing convention.
+- **Milestone-icon snapping removed (Net Worth Trajectory, touched in the same session).** In "Every 5
+  Yrs" mode, life-event icons used to snap to the nearest SHOWN bar when their true year fell between
+  grid points, which could place an icon up to 2 years off (confirmed: a 2038 tuition milestone was
+  rendering on the 2036 bar). Changed to only draw an icon on a year that has its own visible bar — a
+  missing icon (switch to "Every Year" to see it) is more honest than a misplaced one, and it matches
+  how the bars themselves already behave (a skipped year's balance isn't approximated either).
+- **Interaction model simplified to sticky-hover, no click.** Click-to-pin was built first, but hover
+  always took priority over the pin for both panel content and outline — so clicking a bar you were
+  already hovering produced literally no visible change; the pin only became observable if you moved
+  the mouse entirely off the chart, which nobody would think to do. Removed click entirely; hovering a
+  bar now just stays shown after the mouse leaves, until something else is hovered.
+- **Height-jitter fix uses a measured, animated transition — not a fixed/min-height.** The Inflows/
+  Outflows boxes' row count varies a lot by year (2 rows vs a dozen). A fixed or min-height box was
+  considered and rejected: it would leave visible dead space in the common case (most years need far
+  fewer than the worst-case row count). Used a measure-before/measure-after technique instead (CSS can't
+  transition to/from `auto` directly) so the box always sizes to exactly what it needs, just animates
+  smoothly between sizes rather than snapping.
+- **A structural chart-sizing bug, unrelated to bar count.** `#cashflowChartWrap` carried its own 14px
+  padding on the same element whose measured width the SVG was sized to match exactly — so the SVG was
+  always ~28px wider than its own padded content area, forcing a horizontal scrollbar regardless of
+  screen width or granularity. NWT never had this bug because its own wrap carries no padding (the card
+  styling lives on an outer ancestor). Restructured Cashflow to match: padding now lives on a new outer
+  `.cf-chart-card` wrapper, the measured/scrolling element is unpadded.
+- **The Cashflow chart+legend and the side panel had to be grouped into separate grid columns**, not
+  three flat grid items, because CSS Grid row height is shared across all columns in that row — a
+  legend placed as a third flat grid item would still shift vertically whenever the panel's height
+  changed (more/fewer line items per year), even without spanning both columns. Wrapping the chart card
+  + legend into their own `.cf-chart-col` div makes the legend's position depend only on the chart's
+  own (fixed) height, never the panel's (variable) one.
+
+**Docs updated:**
+- **Help (`index.html` only — see MFJ-only note below):** new §4a "Cashflow (the multi-year trend)",
+  modeled directly on §4b's existing structure/tone. §4b (Distribution Mix) intro corrected from "two
+  tabs" to "three tabs" (now stale otherwise) and given an honest "Known gap" note about the
+  Sources-undercounting behavior described above, rather than continuing to claim balance it doesn't
+  have in a sale/refi/inheritance year. TOC updated (new "4a" entry fills a numbering gap that already
+  existed — "4" jumped straight to "4b" with no "4a" ever assigned).
+- **test-suite.html (Tier 10, MFJ + Single):** added a Cashflow test block covering: structural
+  presence (chart/legend/panel render; Single asserts the tab is correctly ABSENT rather than being
+  skipped, matching the existing kid-lanes precedent of asserting per-app state rather than silently
+  skipping); the Sources==Spend reconciliation invariant across every retirement year in the default
+  scenario; dedicated regression guards reproducing the exact RE/Biz-sale and pre-retirement-inheritance
+  scenarios that exposed the two bugs above (asserting both the new source line AND that Sources==Spend
+  now holds in that specific year); Portfolio Draw sign correctness for a self-funded year, an
+  accumulation year (contribution-netting), and a forced-surplus year; the LTC badge; and a
+  display-only invariant mirroring the existing gift-routing test (hovering/switching granularity must
+  not change `__scenarioB.eolNetWorth`). Mutation-tested the core reconciliation guard by hand: removing
+  the `'RE/Biz Sale/Refi'` key from a real sale year's sources and re-checking confirmed a −$264,447 gap
+  — well over the $2 tolerance, i.e. this test would have caught the actual pre-fix bug.
+- **QA-SCENARIOS.md:** new PART 4 (below) documenting the reconciliation invariant and the scenario
+  matrix used to verify it this session — no benchmark table changed, since nothing about the engine's
+  actual dollar output moved.
+- **This entry.**
+
+**MFJ only — not yet ported to Single.** `p-zero-single.html` has none of this (confirmed: no
+`chartTabCashflow` element). Porting was explicitly deferred earlier in the session pending MFJ
+sign-off; the test-suite addition already asserts Single's current (correct, MFJ-only) state rather
+than a stale expectation, so it won't need touching again once Single is caught up — only extending.
+
+**Baselines unchanged (as expected for a pure display feature):** MFJ default EOL stayed exactly
+`$1,215,092` throughout — every scenario used for Cashflow verification (RE/Biz sale, inheritance,
+LTC) was applied and then explicitly cleared via `__rebiSet([])` / `__inheritanceSet([], false)` before
+moving on, and the display-only test asserts this directly (`__scenarioB.eolNetWorth` identical before
+and after every Cashflow interaction tried).
+
+**Sandbox limitation (honest note, same class as prior sessions).** This session's verification used
+the same `jsdom`-based direct-execution technique used throughout (no Playwright, no HTTP server
+available in this sandbox) — real numbers read from `window.__chartSeriesFull`, `window.__scenarioB`,
+and the actual rendered DOM after calling the app's own functions (`cashflowFlowsFor`,
+`cfPortfolioDraw`, `renderCashflowChart`, real `onmouseenter` handlers pulled off rendered SVG elements
+and `eval`'d, exactly mirroring a real hover), not hand-computed expectations. This is not the same as
+running `test-suite.html`'s `runAll()` harness end-to-end in a real browser — that step (and any pixel-
+level visual check) is the user's to run via `python3 -m http.server` + a real browser, per the existing
+QA-RUNBOOK procedure. The new test-suite.html assertions were written to the file's existing Tier 10
+conventions and verified logically sound (and mutation-tested) via the same jsdom technique, but not
+literally executed inside `test-suite.html`'s own harness in this sandbox.
+
+---
+
+## Cashflow ported to Single, drawer + NWT parity, and a long tail of bug fixes (2026-09-19+ sessions)
+
+**What was built.** Everything from the previous entry (side drawer, NWT chart fixes, Cashflow tab) was
+ported from MFJ to `p-zero-single.html` in the same order it was originally built: drawer migration →
+NWT chart fixes → Cashflow tab → docs/tests. Followed by several rounds of bug fixes discovered through
+direct user testing on both apps (not found during the original build), applied identically to both.
+
+**One approved, minimal engine touch.** `p-zero-single.html`'s `chartSeries.push` was missing an
+`audBrokInflow` field MFJ already had (Single's engine computes the identical `surplusCash` internally,
+just never published it as its own chartSeries field). Added `audBrokInflow: surplusCash * dispScale,`
+— confirmed byte-identical output against the completely untouched original file before and after (same
+EOL, $502,261 this session's actual run — not the stale $540,113 frozen benchmark, see TESTING.md's
+month-of-year proration warning). Explicitly asked and approved before making this change, per standing
+instruction on any engine-adjacent edit.
+
+**Porting nuances (Single is not just "MFJ minus a spouse"):**
+- Single's `chartSeries` rows still carry BOTH `hAge` and `wAge` — the engine "mirrors" the wife fields
+  internally even for a single filer — but the wife INPUT ROW is hidden in the UI. The correct signal for
+  "does this app actually have a second person" is checking whether `#wBirthYear`'s row is visible
+  (`offsetParent !== null`), not whether the field exists. `computeYearMilestones()` was ported as a
+  genuinely single-person rewrite (no H/W pairing at all — MFJ's `pairMilestone()` produces "Both X" /
+  "H X" / "W X" variants depending on whether the two spouses hit a milestone the same year; Single just
+  adds one milestone per event using the same "h"-prefixed field IDs MFJ uses for the first spouse).
+- Single's phase-detection fields (`isSemiRetired`/`isFullyRetired`/`isCovered`) are published via JS
+  shorthand property syntax, not `field: value` — an early grep for `isSemiRetired:` returned zero
+  matches and looked like a gap; it wasn't, just a grep-pattern miss caught before assuming anything.
+- `distFlowsFor`/`DIST_COLORS` were already byte-identical between the two apps before this session
+  (confirmed by diff) — Cashflow's own Sources/Spend logic ported almost verbatim on top of them.
+
+**Drawer/NWT porting gaps found afterward (not caught during the initial port — found via direct user
+comparison between the two apps, each its own follow-up round):**
+- **Zebra striping showed in Single but not MFJ.** Root cause: in BOTH apps, the OLD inline-expand
+  structure interleaved `<tr class="recon-exp">` between `<tr class="recon-row">` rows, which breaks
+  `:nth-child(even)` (every recon-row always lands on an odd DOM position). Dead code in both apps
+  identically, for the identical reason. MFJ's team had already caught this during the ORIGINAL drawer
+  build (moving panels out of the table would silently resurrect the dead CSS) and deliberately disabled
+  it, adding a working `:hover` rule instead. The same port to Single that correctly moved the panels out
+  of the table didn't also carry that styling decision — so Single's zebra rule got silently reactivated
+  as an accidental side effect, and it was missing the hover rule MFJ added to replace it. Fixed to match
+  MFJ: zebra commented out, light-theme hover rule added.
+- **Selected-row highlight had no effect in Single.** The JS was already correctly toggling the
+  `.selected` class (ported along with the rest of the drawer JS) — it simply had no CSS to render it.
+  Added MFJ's exact blue-highlight-with-left-accent-bar rule, both themes.
+- **"Starting"/"Ending" ledger columns were plain white in Single's light theme instead of gray.** A
+  broad `[data-theme="light"] #planDetailsView [class*="bg-slate-900"]:not(thead *) { background:
+  #f8fafc !important; }` rule existed in MFJ (catching any `bg-slate-900*` Tailwind utility class,
+  overriding the general white-background rule via `!important`) but was never ported to Single. Added.
+- **Two-column drawer layout never appeared, or overflowed instead of collapsing, in both apps.** Two
+  separate issues: (1) the resize handler re-applied the *stored* drawer width on every window resize
+  without re-clamping it against the current (possibly smaller) 60%-of-viewport cap, so a drawer dragged
+  wide and left after a window shrink could exceed the viewport and force page-level horizontal scroll
+  while `.tc-grid`'s container query still saw it as "wide enough" for two columns. Fixed: the resize
+  handler now re-clamps. (2) Single was completely missing the `@container recon-drawer (max-width:
+  860px)` collapse rule (confirmed: zero `@container` rules in the file at all, despite having the
+  container-context CSS properties and the base 2-column rule both present and correct) — added,
+  matching MFJ. (3) Once both were fixed, the 860px threshold itself was judged too high in practice
+  (required dragging the drawer nearly to its own max-width clamp before two columns ever showed) —
+  lowered to 700px in both apps, a design decision, not a bug.
+- **"Living (Planned Dist)" label in Single's drawer** never got the same wording simplification MFJ's
+  had (just "Living") — fixed to match.
+- **"− SE tax deduction" / "Less Standard Deduction"** simplified to "− SE Tax" / "− Std Deduction" in
+  BOTH apps (this wording existed identically in both — not a parity fix, a fresh simplification applied
+  to both at once, since the minus sign already implies "deduction"/"less").
+
+**Cashflow-specific bug fixes (both apps, same root cause each time unless noted):**
+- **Portfolio Draw's percentage metric went through three iterations.** First a rolling %-of-current-
+  balance (mechanically climbs into double digits late in any healthy retirement — not a warning sign,
+  just arithmetic of an intentionally-shrinking pot; user flagged this as misleading). Replaced with a
+  Day-1-anchored classic 4% Rule metric (draw ÷ starting Traditional/Roth/Brokerage balance the year
+  real portfolio withdrawals began, compounded forward by inflation) — which turned out to be
+  automatically correct about WHICH spouse's retirement anchors "Day 1" for MFJ without any explicit
+  spouse-comparison code: `isSemiRetired` only turns true once BOTH spouses have individually stopped
+  working, confirmed directly in the engine's own phase-detection logic, so "first year
+  cashflowIsSpendingPhase is true" is already anchored to whichever spouse retires second. That metric
+  then had its own real bug: compounding the baseline forward by inflation happened unconditionally, but
+  in Today's $ display mode every chartSeries figure (draw AND baseline) is already deflated to today's
+  dollars via `dispScale` — compounding again on top double-adjusted, understating the rate by roughly
+  `(1+inflation)^yearsElapsed` (confirmed ~2-3× gap between Today's $ and Future $ modes on a
+  late-retirement year). Fixed to only compound in Future $ (nominal) mode; Today's $ mode now compares
+  the two already-deflated figures directly. Confirmed: the two modes agree to within ~3% relative
+  afterward (ordinary rounding noise, not a structural mismatch).
+- **The draw amount's amber color was hard to read in light mode** — theme-aware now (`#b45309` in
+  light, unchanged `#fbbf24` in dark).
+- **LTC sub-line tooltip got stuck on-screen, never disappeared.** Root cause: the badge was nested
+  INSIDE the `.cf-row` div, which has its own hover handler that rebuilds the whole panel — so hovering
+  anywhere on the Healthcare row destroyed the badge mid-hover, after `positionInfoTip()` had already
+  portaled its tooltip to `<body>` and stored a reference on the (now-destroyed) wrap element to find it
+  again on mouseleave. Fixed by making the badge a sibling of the row instead of a child (this also fixed
+  a row-alignment bug the nested structure had separately caused). Verified the full lifecycle directly:
+  survives the row's own re-render, portals correctly, and on mouseleave both hides AND returns to its
+  origin element rather than staying orphaned.
+- **Dollar labels on every bar were unreadable in Every Year mode on a long horizon** — confirmed
+  directly from a user screenshot of a ~53-year horizon, total visual collision (no spacing check
+  existed at all). Fixed by gating to the same "every 5th bar + last" rule the x-axis year labels
+  already used (12 labels instead of up to 106 possible instances on that same horizon).
+- **Year-axis showed dots for most years in Every Year mode** — a separate, later request once the
+  dollar-label fix was in: replaced the dot fallback with actual year text on every bar (reusing the
+  already-tuned rotated/small-font treatment), independent of and unaffected by the dollar-label gating.
+- **Semi/Full retirement milestone icons added to Cashflow's bars**, reusing NWT's own
+  `computeYearMilestones()` filtered to just these two types (explicitly not the full life-event set —
+  tuition/gifting/LTC/inheritance/RE-Biz-sale stay NWT-only). Built non-interactive first; a follow-up
+  request added hover, reusing NWT's exact tooltip machinery (extended host-resolution to recognize
+  `#cashflowChartWrap`, added the `#chartTooltip` div Cashflow's own SVG output never had, prefixed keys
+  so Cashflow's milestone entries can't collide with NWT's in the shared lookup object). Caught a real
+  filter bug before shipping: MFJ's `pairMilestone()` emits `'full-h'`/`'full-w'` (not just `'full'`)
+  whenever the two spouses retire in different years — the common case, not the exception — so an
+  exact-match filter silently missed most real scenarios; fixed with `.startsWith(...)`. Own test script
+  had this exact same bug independently (comparing against a self-computed "expected" count using the
+  same flawed exact-match filter) — caught by re-deriving the expectation a second, independent way
+  rather than trusting a first "looks right" result.
+
+**Help docs — three staleness issues found and fixed in both apps, not just a straight MFJ→Single port:**
+§4a still described click-to-pin (removed in favor of sticky-hover several fixes ago, but the doc text
+was never updated when that shipped), didn't mention the 4% Rule sub-metric at all, and didn't mention
+the new milestone icons. Fixed in MFJ directly; the corrected version (not the stale one) is what got
+ported to Single, which also needed its own fresh §4a (was completely absent) and a §4b fix (still said
+"two tabs"). Single's wording uses "your" instead of "your household's" throughout, matching the
+precedent already set in the Portfolio Draw tooltip text.
+
+**test-suite.html.** The Cashflow Tier 10 block was previously MFJ-only, with an explicit branch
+asserting Single's Cashflow tab was ABSENT — now actively wrong given full parity, so it was rewritten
+to run the identical, expanded suite for both apps (no more `isSingle` skip). Added regression guards
+for every fix above: milestone icons (including the `-h`/`-w` filter bug, verified against a scenario
+where the two spouses retire in different years), the 4%-Rule dollar-mode consistency check, the
+dollar-label crowding gate, the year-text-always-shows fix, and a structural check that the LTC badge is
+a sibling of its row (not nested) as an explicit regression guard against the stuck-tooltip bug.
+**A real bug was found in the new test code itself before it shipped**: the milestone-hover simulation
+wrapped the handler call in `(function(g){ g.dispatchEvent ? null : null; ... })()` — called immediately
+with zero arguments, so `g` was `undefined` and the vestigial dispatchEvent check threw. Caught by
+actually running the test logic via jsdom against both real apps (not just reading the code), fixed by
+removing the broken wrapper, then re-verified — all 9 assertions pass cleanly in both apps afterward.
+
+**QA-SCENARIOS.md PART 4** retitled (dropped "MFJ only"), extended with a table covering every fix in
+this entry, all cited with their real verified before/after numbers, matching the format already
+established there.
+
+**Baselines held throughout.** MFJ $1,136,417 / Single $502,261 (this session's actual runs — see
+TESTING.md's month-of-year proration warning on why these don't match older frozen benchmarks) —
+confirmed unchanged after every single fix in this entry, including the one approved `audBrokInflow`
+engine touch (verified byte-identical against the untouched original file specifically, not just "EOL
+looks the same").
+
+**Sandbox limitation, same as every prior entry**: verified via direct `jsdom` execution against the
+real files (real onmouseenter/onmouseleave handlers pulled off rendered SVG/DOM elements and fired, not
+hand-simulated), not by running `test-suite.html`'s own `runAll()` harness in a real browser — that step
+remains the user's, per the existing QA-RUNBOOK procedure.

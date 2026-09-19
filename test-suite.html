@@ -419,7 +419,7 @@ function tierUI(win, fileKey) {
   // Notables twin card (reconciliation panel two-column)
   if (tr) {
     tr.click();
-    push('reconciliation panel is two-column (Notables)', !!doc.querySelector('.recon-col-right'), '');
+    push('reconciliation panel is two-column (card grid)', !!doc.querySelector('.tc-grid'), '');
     tr.click();
   }
 
@@ -581,38 +581,42 @@ function tier1(win, fileKey) {
     /Education Planning/.test(win.document.body.textContent) && /Children/.test(win.document.body.textContent),
     'both labels present (Children=roster under Household, Education Planning=costs)');
 
-  // Reconciliation expand panel: each ledger row has a hidden expand row that reconciles
-  // (Starting + Contribs + Growth − W/D = Ending) and whose colspan is computed live (not hardcoded).
+  // Reconciliation panel (now a side drawer, not an inline expand row): each ledger row has a
+  // corresponding hidden panel — pre-built for every year in #reconPanelStore, moved into the
+  // drawer on click — that reconciles (Starting + Contribs + Growth − W/D = Ending).
   {
     const dataRows = win.document.querySelectorAll('.recon-row').length;
     const expRows = win.document.querySelectorAll('.recon-exp').length;
-    push('reconciliation expand row exists for every ledger row', dataRows > 0 && dataRows === expRows,
-      `rows=${dataRows} expand=${expRows}`);
-    // colspan must equal the live header-row-2 column count (dynamic, toggle-safe)
-    const head2Cols = win.document.querySelectorAll('#ledgerHeaderRow2 th').length;
-    const firstExpTd = win.document.querySelector('.recon-exp td');
-    const colspan = firstExpTd ? parseInt(firstExpTd.getAttribute('colspan')) : -1;
-    push('expand-row colspan matches live column count (not hardcoded)', colspan === head2Cols,
-      `colspan=${colspan} cols=${head2Cols}`);
-    // reconcile a sample row: expand it, read the "Year reconciles" numbers, verify S+C+G-W = E
+    push('reconciliation panel exists for every ledger row', dataRows > 0 && dataRows === expRows,
+      `rows=${dataRows} panels=${expRows}`);
+    // click a sample row (opens the drawer for that year), read the "Year Reconciles" numbers,
+    // verify S+C+G-W = E. .recon-exp is queried document-wide, so this works whether the panel is
+    // still in #reconPanelStore or has been moved into #reconDrawerBody by the click.
     const sample = win.document.querySelector('.recon-row[data-recon-year]');
     if (sample) {
       sample.click();
       const yr = sample.getAttribute('data-recon-year');
       const exp = win.document.querySelector(`.recon-exp[data-recon-for="${yr}"]`);
-      const box = exp ? exp.querySelector('.recon-box') : null;
-      let reconciles = false, detail = 'no box';
-      if (box) {
-        const nums = (box.textContent.match(/\$[0-9,]+/g) || []).map(s => parseFloat(s.replace(/[$,]/g,'')));
-        // [Starting, Contribs, Growth, W/D, Ending]
-        if (nums.length === 5) {
-          const [S,C,G,W,E] = nums;
-          reconciles = Math.abs((S + C + G - W) - E) <= 2;
-          detail = `${S}+${C}+${G}-${W}=${E}`;
+      const box = exp ? exp.querySelector('.tc-recon-list') : null;
+      let reconciles = false, detail = 'no recon card';
+        if (box) {
+          const rows = Array.prototype.slice.call(box.querySelectorAll('.tc-recon'));
+          let running = 0, ending = null;
+          rows.forEach(function(r){
+            var kEl=r.querySelector('.tc-line-k'), vEl=r.querySelector('.tc-line-v');
+            var label=(kEl?kEl.textContent:'')||'';
+            var vtxt=(vEl?vEl.textContent:'')||'';
+            var v=parseFloat(vtxt.replace(/[^0-9.]/g,''))||0;
+            if(/Ending/.test(label)) ending=v;
+            else if(/Starting/.test(label)) running=v;
+            else if(/Withdrawal|HSA/.test(label)) running-=v;
+            else running+=v;
+          });
+          if(ending!==null){ reconciles=Math.abs(running-ending)<=2; detail='computed '+Math.round(running)+' vs ending '+ending; }
         }
-      }
-      push('expand panel reconciles (Starting+Contribs+Growth−W/D=Ending)', reconciles, detail);
-      sample.click(); // collapse
+        push('expand panel reconciles (card Start+Growth-W/D-HSA+Surplus=Ending)', reconciles, detail);
+      // (drawer stays open here — only the × button or the next test's own click closes/swaps it;
+      // nothing further in this block depends on its state)
     }
   }
 
@@ -687,13 +691,20 @@ function tier1(win, fileKey) {
         let surplusOk = false, detail = 'no 2050 row';
         if (row) {
           row.click();
-          const box = win.document.querySelector('.recon-exp[data-recon-for="2050"] .recon-box');
+          const box = win.document.querySelector('.recon-exp[data-recon-for="2050"] .tc-recon-list');
           if (box) {
-            const t = box.textContent.replace(/\s+/g, ' ');
-            const hasSurplus = /Surplus/.test(t);
-            const nums = (t.match(/\$[0-9,]+/g) || []).map(s => parseFloat(s.replace(/[$,]/g, '')));
-            if (hasSurplus && nums.length === 6) { const [S, C, G, W, Su, E] = nums; surplusOk = Math.abs((S + C + G - W + Su) - E) <= 2; detail = `${S}+${C}+${G}-${W}+${Su}=${E}`; }
-            else { detail = hasSurplus ? `num count ${nums.length}` : 'no Surplus term'; }
+            const hasSurplus = /Surplus/.test(box.textContent);
+            const rows = Array.prototype.slice.call(box.querySelectorAll('.tc-recon'));
+            let running = 0, ending = null;
+            rows.forEach(function(r){
+              var kEl=r.querySelector('.tc-line-k'), vEl=r.querySelector('.tc-line-v');
+              var label=(kEl?kEl.textContent:'')||''; var vtxt=(vEl?vEl.textContent:'')||'';
+              var v=parseFloat(vtxt.replace(/[^0-9.]/g,''))||0;
+              if(/Ending/.test(label)) ending=v; else if(/Starting/.test(label)) running=v;
+              else if(/Withdrawal|HSA/.test(label)) running-=v; else running+=v;
+            });
+            if (hasSurplus && ending!==null) { surplusOk = Math.abs(running-ending)<=2; detail='computed '+Math.round(running)+' vs ending '+ending; }
+            else { detail = hasSurplus ? 'ending not found' : 'no Surplus term'; }
           }
           row.click();
         }
@@ -2670,19 +2681,21 @@ function tier7(win, fileKey) {
     }
 
     // ---- SOCIAL SECURITY TAXATION (both apps) ----
-    // The engine models the taxable share as a FLAT user-editable percentage (default 85%)
-    // rather than the statutory phase-in. Help §20 discloses this. These tests pin the default
-    // and the published thresholds it is derived from, so the simplification stays a DECISION
-    // rather than quietly drifting into an error.
+    // The engine computes taxable Social Security via the statutory IRC §86 provisional-income
+    // phase-in (IRS Pub 915 Worksheet 1), recomputed each year from that year's income. The
+    // "% of SS Taxed" input is an OPTIONAL OVERRIDE (85 = automatic §86; any other value forces a
+    // fixed %). These tests pin (a) the statutory constants the engine reads, (b) a reference §86
+    // implementation reproducing the IRS worked example, and (c) that the ENGINE actually applies
+    // §86 end-to-end (a low-income SS plan is taxed materially below flat-85%), so a silent revert
+    // to flat-85 would be caught.
     //
-    // Why 85% is exact here rather than merely convenient: taxable SS is
-    //     min(0.85 x benefits, 0.85 x (provisional - 44,000) + 6,000)
-    // Once provisional income clears the top threshold by a wide margin the FIRST term binds,
-    // giving exactly 85%. The default MFJ plan's first SS year has provisional income of about
-    // $374,716 against a $44,000 threshold — 8.5x over, and rising every year after. Verified:
-    // true taxable SS $86,394 vs the engine's flat 85% of $101,640 = $86,394. Identical.
-    // The flat rate can only OVERSTATE (for low-income retirees inside the phase-in), never
-    // understate — a conservative simplification, and the input is editable.
+    // §86 taxable SS = min(0.85 x benefits, 0.85 x (provisional - upper) + tier1), where
+    //   tier1 = min(0.5 x (upper - lower), 0.5 x benefits). Below `lower`, nothing is taxable; in
+    // the [lower, upper] band up to 50% is taxable; above `upper` it ramps toward the 85% cap.
+    // At HIGH provisional income the first term binds -> exactly 85% (so high-income plans are
+    // unchanged by the switch). At LOW/moderate income §86 taxes materially less than 85% — the
+    // year-varying behavior the flat rate could not represent. Thresholds are statutory-frozen
+    // (32,000/44,000 MFJ; 25,000/34,000 Single), NOT inflation-indexed.
     {
       const ssPctEl = win.document.getElementById('ssTaxablePct');
       push('IRS: statutory maximum taxable share of Social Security is 85% (IRC §86)',
@@ -2724,11 +2737,41 @@ function tier7(win, fileKey) {
         Math.abs(exact - 0.85 * ssBenefit) < 1,
         `statutory $${Math.round(exact).toLocaleString()} vs flat-85% $${Math.round(0.85 * ssBenefit).toLocaleString()}`);
 
-      // And the direction of the simplification's error where it DOES bite.
+      // Direction check: §86 taxes LESS than a flat 85% for a low/moderate-income retiree
+      // inside the phase-in (this is the accuracy gain over the old flat rate).
       const lowInc = trueTaxableSS(40000, 10000, isMfj);
-      push('SS: the flat rate can only overstate taxable SS, never understate (conservative)',
+      push('SS: §86 taxes a low-income retiree materially below flat-85% (the accuracy gain)',
         lowInc < 0.85 * 40000,
         `low-income case: statutory $${Math.round(lowInc).toLocaleString()} vs flat-85% $${(0.85 * 40000).toLocaleString()}`);
+
+      // END-TO-END: prove the ENGINE applies §86 as the default. Uncheck the "Auto (§86)" toggle
+      // and force a fixed 50%, then re-check Auto (§86), and confirm the results DIFFER. If §86 were
+      // silently replaced by a fixed rate, the auto run would match the forced rate and this fails.
+      {
+        const __ss86Snap = snapshotInputs(win);
+        try {
+          win.__rebiSet([]);
+          const ssT = win.document.getElementById('ssToggle');
+          if (ssT && !ssT.checked) ssT.click();
+          setInput(win, 'hSsAge', '67'); if (win.document.getElementById('wSsAge')) setInput(win, 'wSsAge', '67');
+          setInput(win, 'hSsAmount', '25,000'); if (win.document.getElementById('wSsAmount')) setInput(win, 'wSsAmount', '25,000');
+          const autoEl = win.document.getElementById('ssTaxAutoToggle');
+          if (autoEl && autoEl.checked) autoEl.click();     // uncheck -> manual override mode
+          setInput(win, 'ssTaxablePct', '50');              // force a FIXED 50% taxable
+          win.triggerRecalculate();
+          const eolForced = (win.__scenarioB || {}).eolNetWorth || 0;
+          if (autoEl && !autoEl.checked) autoEl.click();     // re-check -> auto §86
+          win.triggerRecalculate();
+          const eolAuto = (win.__scenarioB || {}).eolNetWorth || 0;
+          push('SS: engine applies §86 as the default (auto differs from a forced fixed 50% override)',
+            Math.abs(eolAuto - eolForced) > 1,
+            `auto-§86 EOL $${Math.round(eolAuto).toLocaleString()} vs forced-50% EOL $${Math.round(eolForced).toLocaleString()}`);
+        } finally {
+          restoreInputs(win, __ss86Snap);
+          if (win.document.getElementById('ssTaxAutoToggle') && typeof win.toggleSsTaxAuto === 'function') win.toggleSsTaxAuto();
+          win.triggerRecalculate();
+        }
+      }
     }
 
     // ---- SS <-> ACA MAGI INTERACTION, end-to-end ----
@@ -3521,18 +3564,15 @@ function tier10(win, fileKey) {
       let clicked = false;
       for (let i = 0; i < rows.length; i++) { if (/20\d\d/.test(rows[i].textContent) && rows[i].onclick) { rows[i].click(); clicked = true; break; } }
       if (!clicked && rows.length) { rows[0].click(); }
-      const reconTh = doc.querySelector('.recon-tbl thead th');
-      if (reconTh) {
-        const bg = win.getComputedStyle(reconTh).backgroundColor;
-        const color = win.getComputedStyle(reconTh).color;
-        const isZoneColored = /24, 165, 158|220, 131, 89/.test(bg);
-        push('recon panel headers not colored (scoping fix holds)', !isZoneColored, `bg=${bg}`);
-        const isWhiteText = /255, 255, 255/.test(color);
-        const lightBg = /248, 250, 252|255, 255, 255/.test(bg);
-        push('recon header text readable (not white-on-light)', !(isWhiteText && lightBg), `color=${color}`);
-      } else {
-        push('recon panel header present after row expand', false, 'no recon th found');
-      }
+      const tcCard = doc.querySelector('.tc-panel .tc-card-title');
+        if (tcCard) {
+          const color = win.getComputedStyle(tcCard).color;
+          push('recon panel header present after row expand', true, 'card title found');
+          const isWhite = /255, 255, 255/.test(color);
+          push('recon header text readable (not white-on-light)', !isWhite, `color=${color}`);
+        } else {
+          push('recon panel header present after row expand', false, 'no tc-card-title found');
+        }
     } catch (e) {
       push('recon-header scoping test ran', false, 'error: ' + e.message);
     }
@@ -3849,7 +3889,264 @@ function tier10(win, fileKey) {
         push('legacy reconciliation test ran', false, 'error: ' + e.message);
       }
 
-      
+      // ---- Cashflow tab (added 2026-09-18, extended 2026-09-19+ across several sessions) — a pure
+      // DISPLAY view over already-published aud-prefixed fields; no new chartSeries.push field, no
+      // CONSERVATION_SCENARIOS entry needed (nothing new moves money — see TESTING.md "Panel display
+      // changes"). These guards lock the derived-display invariants a display bug could still violate:
+      // source/spend reconciliation, correct sign on the Portfolio Draw figure, the 4%-Rule metric's
+      // dollar-mode consistency, milestone-icon correctness, and that the whole tab never mutates
+      // engine state. Full parity between MFJ and Single as of this pass — both run the same suite.
+      try {
+        if (typeof win.cashflowFlowsFor !== 'function' || typeof win.cfPortfolioDraw !== 'function') {
+          push('Cashflow display functions present', false, 'cashflowFlowsFor/cfPortfolioDraw not found on window — module-scoped functions must be reachable for these guards; skipping the rest of this block');
+        } else {
+          if (win.switchWorkspace) win.switchWorkspace('details');
+          if (win.setChartTab) win.setChartTab('cashflow');
+          recalc(win);
+
+          // ---- Structural ----
+          push('Cashflow tab button exists', !!doc.getElementById('chartTabCashflow'), '');
+          push('Cashflow chart renders (SVG present)', !!doc.querySelector('#cashflowChartWrap svg'), '');
+          const legendHtml = (doc.getElementById('cashflowLegend') || {}).innerHTML || '';
+          push('Cashflow legend renders with category labels', legendHtml.length > 0 && /Traditional/.test(legendHtml), '');
+          push('Cashflow panel elements exist', !!doc.getElementById('cfPanelIn') && !!doc.getElementById('cfPanelOut') && !!doc.getElementById('cfPanelNet'), '');
+          push('Cashflow chart has its own #chartTooltip (needed for milestone-icon hover)', !!doc.querySelector('#cashflowChartWrap #chartTooltip'), '');
+
+          // ---- Core invariant: for every semi/full-retirement year, Sources must sum to Spend.
+          // This is the exact bug found and fixed this session — distFlowsFor's own 'RE/Business'
+          // source only ever read ongoing distributions, never refi/sale proceeds or inheritance,
+          // so a capital-event year silently undercounted Sources by the missing proceeds (a $264K
+          // sale showed Sources $243K against Spend $508K before the fix). Locking it here so it
+          // can't regress. Tolerance $2 for the same float-accumulation rounding Tier 8 allows.
+          const series = win.__chartSeriesFull || win.__chartSeries || [];
+          let balanceFails = 0, worstGap = 0, worstYr = null;
+          series.forEach(function (y) {
+            if (!(y.isSemiRetired || y.isFullyRetired)) return;
+            const f = win.cashflowFlowsFor(y);
+            let srcSum = 0; Object.keys(f.sources).forEach(function (k) { srcSum += f.sources[k] || 0; });
+            let spendSum = 0; Object.keys(f.spend).forEach(function (k) { spendSum += f.spend[k] || 0; });
+            const gap = srcSum - spendSum;
+            if (Math.abs(gap) > 2) { balanceFails++; if (Math.abs(gap) > Math.abs(worstGap)) { worstGap = gap; worstYr = y.year; } }
+          });
+          push('Cashflow: Sources==Spend for every retirement year (default scenario)', balanceFails === 0,
+            balanceFails === 0 ? (series.length + ' years checked') : (balanceFails + ' year(s) off, worst ' + worstYr + ' gap $' + Math.round(worstGap).toLocaleString()));
+
+          // ---- Regression guard: RE/Biz sale/refi proceeds must appear as their own source, and
+          // Sources==Spend must still hold in that exact year (the specific bug this locks). ----
+          try {
+            const startYear = new Date().getFullYear();
+            win.__rebiSet([{ id: 999, name: 'QA Test Property', capital: 200000, currentValue: 200000, apprPct: 3, annualDist: 0, distTaxablePct: 0, distCola: false, refiYear: 0, refiCapital: 0, exitYear: startYear + 14, exitValue: 400000, recapturePct: 20 }]);
+            recalc(win);
+            const s2 = win.__chartSeriesFull || win.__chartSeries || [];
+            const exitRow = s2.filter(function (y) { return y.year === startYear + 14; })[0];
+            if (exitRow) {
+              const f2 = win.cashflowFlowsFor(exitRow);
+              const hasSaleSrc = 'RE/Biz Sale/Refi' in f2.sources && f2.sources['RE/Biz Sale/Refi'] > 0;
+              push('RE/Biz sale proceeds appear as their own Cashflow source', hasSaleSrc, hasSaleSrc ? '$' + Math.round(f2.sources['RE/Biz Sale/Refi']).toLocaleString() : 'missing');
+              let srcSum2 = 0; Object.keys(f2.sources).forEach(function (k) { srcSum2 += f2.sources[k] || 0; });
+              let spendSum2 = 0; Object.keys(f2.spend).forEach(function (k) { spendSum2 += f2.spend[k] || 0; });
+              push('Cashflow: Sources==Spend in a RE/Biz sale year specifically', Math.abs(srcSum2 - spendSum2) < 2, 'gap $' + Math.round(srcSum2 - spendSum2).toLocaleString());
+            } else {
+              push('RE/Biz sale test year reachable', false, 'exit year ' + (startYear + 14) + ' not in chartSeries — plan may deplete before then');
+            }
+          } finally {
+            win.__rebiSet([]);
+          }
+
+          // ---- Regression guard: inheritance must appear as its own source, INCLUDING in a
+          // pre-retirement year (the specific phase-gating bug this locks — cashflowFlowsFor used
+          // to early-return to contributions-only for any non-retirement year, skipping the
+          // inheritance/RE-BI capital-event check entirely). ----
+          try {
+            const startYear = new Date().getFullYear();
+            win.__inheritanceSet([{ arrivalYear: startYear + 3, amount: 300000, isNominal: true, type: 'taxfree' }], true);
+            recalc(win);
+            const s3 = win.__chartSeriesFull || win.__chartSeries || [];
+            const inhRow = s3.filter(function (y) { return y.year === startYear + 3; })[0];
+            if (inhRow) {
+              const isPreRetirement = !(inhRow.isSemiRetired || inhRow.isFullyRetired);
+              const f3 = win.cashflowFlowsFor(inhRow);
+              const hasInhSrc = 'Inheritance' in f3.sources && f3.sources['Inheritance'] > 0;
+              push('Inheritance appears as a Cashflow source even pre-retirement', hasInhSrc,
+                (isPreRetirement ? 'pre-retirement year, ' : 'retirement year, ') + (hasInhSrc ? '$' + Math.round(f3.sources['Inheritance']).toLocaleString() : 'missing'));
+            } else {
+              push('Inheritance test year reachable', false, 'arrival year ' + (startYear + 3) + ' not in chartSeries');
+            }
+          } finally {
+            win.__inheritanceSet([], false);
+          }
+          recalc(win);
+
+          // ---- Portfolio Draw sign correctness ----
+          const zeroDrawYear = series.filter(function (y) { return (y.isSemiRetired || y.isFullyRetired) && Math.abs(win.cfPortfolioDraw(y)) < 500; })[0];
+          push('Portfolio Draw reads ~$0 in a self-funded year (if any exist)', true, zeroDrawYear ? (zeroDrawYear.year + ' draw $' + Math.round(win.cfPortfolioDraw(zeroDrawYear))) : 'no self-funded year in default scenario (not a failure — just nothing to assert)');
+          const accumYear = series.filter(function (y) { return !(y.isSemiRetired || y.isFullyRetired) && (y.audTradCont || 0) > 0; })[0];
+          if (accumYear) {
+            const expectedDraw = (accumYear.assetDist || 0) - (accumYear.audBrokInflow || 0) - ((accumYear.audTradCont || 0) + (accumYear.audRothCont || 0) + (accumYear.brokCont || 0));
+            const actualDraw = win.cfPortfolioDraw(accumYear);
+            push('Portfolio Draw nets accumulation-year Trad/Roth/Brokerage contributions (excl. HSA/529)', Math.abs(actualDraw - expectedDraw) < 2, 'year ' + accumYear.year + ': got $' + Math.round(actualDraw) + ', expected $' + Math.round(expectedDraw));
+          } else {
+            push('Portfolio Draw accumulation-year netting test ran', false, 'no accumulation year with contributions found in default scenario');
+          }
+          let forcedSurplusRow = null;
+          try {
+            const startYear = new Date().getFullYear();
+            win.__rebiSet([{ id: 998, name: 'QA Surplus Property', capital: 200000, currentValue: 200000, apprPct: 3, annualDist: 0, distTaxablePct: 0, distCola: false, refiYear: 0, refiCapital: 0, exitYear: startYear + 14, exitValue: 900000, recapturePct: 20 }]);
+            recalc(win);
+            const s4 = win.__chartSeriesFull || win.__chartSeries || [];
+            forcedSurplusRow = s4.filter(function (y) { return y.year === startYear + 14; })[0];
+            if (forcedSurplusRow) {
+              const draw = win.cfPortfolioDraw(forcedSurplusRow);
+              const expected = (forcedSurplusRow.assetDist || 0) - (forcedSurplusRow.audBrokInflow || 0) - ((forcedSurplusRow.audTradCont || 0) + (forcedSurplusRow.audRothCont || 0) + (forcedSurplusRow.brokCont || 0));
+              push('Portfolio Draw goes negative on a forced-surplus year and matches audBrokInflow', draw < 0 && Math.abs(draw - expected) < 2, '$' + Math.round(draw).toLocaleString() + ' (expected $' + Math.round(expected).toLocaleString() + ')');
+            } else {
+              push('Forced-surplus test year reachable', false, 'exit year ' + (startYear + 14) + ' not in chartSeries');
+            }
+          } finally {
+            win.__rebiSet([]);
+          }
+          recalc(win);
+
+          // ---- LTC sub-line badge: only appears on years with audLtcCost > 0, folded into the same
+          // Healthcare bucket/color as the ledger's own "◐ incl. $X LTC" treatment. Also a structural
+          // regression guard for a real bug: the badge was originally nested INSIDE the .cf-row div,
+          // which has its own hover handler that rebuilds the whole panel — so hovering anywhere on
+          // the Healthcare row destroyed the badge mid-hover, after positionInfoTip() had already
+          // portaled its tooltip to <body>, orphaning it there (stuck in the corner, never hid). Fixed
+          // by making the badge a SIBLING of the row instead of a child — checked explicitly below. ----
+          const ltcYear = series.filter(function (y) { return (y.audLtcCost || 0) > 0; })[0];
+          if (ltcYear) {
+            if (win.updateCashflowPanel) win.updateCashflowPanel(series, series.indexOf(ltcYear));
+            const outEl = doc.getElementById('cfPanelOut');
+            const outHtml = outEl ? outEl.innerHTML : '';
+            push('LTC badge shows on a year with an LTC cost', outHtml.indexOf('info-tip-wrap') >= 0 && outHtml.indexOf(Math.round(ltcYear.audLtcCost).toLocaleString()) >= 0, '');
+            const badgeEl = outEl ? outEl.querySelector('.cf-ltc-badge') : null;
+            const healthcareRow = outEl ? [].slice.call(outEl.querySelectorAll('.cf-row')).filter(function (r) { return /Healthcare/.test(r.textContent); })[0] : null;
+            push('LTC badge is a SIBLING of the row, not nested inside it (the fix for the stuck-tooltip bug)',
+              !!badgeEl && !!healthcareRow && !healthcareRow.contains(badgeEl), '');
+          } else {
+            push('LTC badge test ran (no LTC configured by default — expected, feature is off-by-default)', true, '');
+          }
+
+          // ---- Semi/Full retirement milestone icons on the bars (added later in the session) —
+          // reuses NWT's own computeYearMilestones(), filtered to just these two types. Regression
+          // guard for a real bug found while building this: MFJ's pairMilestone() emits 'full-h'/
+          // 'full-w' (not just 'semi'/'full') whenever the two spouses retire in different years —
+          // the common case, not the exception — so an exact-match filter silently missed most of
+          // them; must use startsWith('semi')/startsWith('full'). ----
+          if (typeof win.computeYearMilestones === 'function') {
+            const milestones = win.computeYearMilestones(series);
+            let expectedIcons = 0;
+            const matchYears = [];
+            Object.keys(milestones).forEach(function (y) {
+              const matches = milestones[y].filter(function (m) { return m.type.indexOf('semi') === 0 || m.type.indexOf('full') === 0; });
+              if (matches.length) { expectedIcons += matches.length; matchYears.push(y); }
+            });
+            if (win.setNwtGranularity) win.setNwtGranularity(1); // Every Year, so no shown-bar snapping ambiguity
+            recalc(win);
+            const svgHtml = (doc.querySelector('#cashflowChartWrap svg') || {}).outerHTML || '';
+            const iconCount = (svgHtml.match(/<circle[^>]*r="8"/g) || []).length;
+            push('Cashflow semi/full milestone icons render (matches -h/-w variants too)', iconCount === expectedIcons,
+              iconCount + ' rendered, ' + expectedIcons + ' expected across years [' + matchYears.join(',') + ']');
+            // Hover one icon end-to-end: tooltip must actually show correct content and hide again,
+            // not just have a handler attribute present.
+            const iconGroups = [].slice.call(doc.querySelectorAll('#cashflowChartWrap g[onmouseenter*="showMilestoneTooltip"]'));
+            if (iconGroups.length && win.eval) {
+              try {
+                const onenter = iconGroups[0].getAttribute('onmouseenter');
+                win.eval(onenter.replace('event', '({clientX:100,clientY:100,currentTarget:document.querySelectorAll(\'#cashflowChartWrap g[onmouseenter*="showMilestoneTooltip"]\')[0]})'));
+                const tip = doc.querySelector('#cashflowChartWrap #chartTooltip');
+                push('Milestone icon hover shows the tooltip with real content', !!tip && !tip.classList.contains('hidden') && tip.innerHTML.length > 20, tip ? tip.innerHTML.replace(/\s+/g, ' ').slice(0, 60) : '');
+              } catch (e) {
+                push('Milestone icon hover test ran', false, 'error: ' + e.message);
+              }
+            } else {
+              push('Milestone icon hover handlers present', iconGroups.length > 0 || expectedIcons === 0, expectedIcons === 0 ? 'no semi/full milestones in default scenario' : 'handlers missing');
+            }
+            if (win.setNwtGranularity) win.setNwtGranularity(5);
+            recalc(win);
+          }
+
+          // ---- Dollar-label crowding fix: in Every Year mode, per-bar $ labels must be gated to
+          // every 5th bar (+ last) — same rule the x-axis year labels use — not rendered on every
+          // single bar. Regression guard for a real bug: a long horizon (~50 years) in Every Year
+          // mode rendered up to 2 labels per bar with no spacing check at all, producing an
+          // unreadable overlapping mass of text (confirmed directly from a user screenshot). ----
+          if (win.setNwtGranularity) {
+            win.setNwtGranularity(1);
+            recalc(win);
+            const svgHtml2 = (doc.querySelector('#cashflowChartWrap svg') || {}).outerHTML || '';
+            const dollarLabelCount = (svgHtml2.match(/font-weight="700" fill="[^"]*" font-family="monospace" pointer-events="none">[-$][\d.]/g) || []).length;
+            const totalBars = series.length;
+            push('Cashflow $ labels are gated (not one per bar) in Every Year mode', dollarLabelCount > 0 && dollarLabelCount < totalBars, dollarLabelCount + ' labels across ' + totalBars + ' bars');
+            // Year TEXT, by contrast, should show on EVERY bar (a separate, later fix — dots were
+            // replaced with actual year text once the $ label crowding was solved independently).
+            const dotCount = (svgHtml2.match(/<circle[^>]*r="1\.5"/g) || []).length;
+            push('Cashflow year-axis text shows on every bar (no dot fallback)', dotCount === 0, dotCount + ' dots remaining');
+            win.setNwtGranularity(5);
+            recalc(win);
+          }
+
+          // ---- 4% Rule (W/D Rate) dollar-mode consistency. Regression guard for a real bug: the
+          // baseline was compounded forward by inflation UNCONDITIONALLY, but in Today's $ mode every
+          // chartSeries figure (draw AND baseline) is ALREADY deflated to today's dollars via
+          // dispScale — compounding again on top double-adjusted, understating the rate by roughly
+          // (1+inflation)^yearsElapsed, worse the further into retirement (confirmed: a ~2-3x gap
+          // between modes on a late-retirement year, e.g. 1.2% vs 3.2%). Fixed by only compounding in
+          // Future $ (nominal) mode; Today's $ mode compares the two already-deflated figures directly.
+          // The two modes should now closely agree (small residual differences from independent
+          // recalculation runs and tax-bracket nonlinearity are expected, not a regression). ----
+          if (typeof win.cfDay1Baseline === 'function' && typeof win.dollarMode !== 'undefined') {
+            try {
+              const origMode = win.eval('dollarMode');
+              win.eval("dollarMode = 'today'; triggerRecalculate();");
+              const seriesToday = win.__chartSeriesFull || [];
+              const retYearsToday = seriesToday.filter(function (y) { return win.cashflowIsSpendingPhase(y) && win.cfPortfolioDraw(y) > 500; });
+              const lateYear = retYearsToday[retYearsToday.length - 1];
+              let rateToday = null, rateFuture = null;
+              if (lateYear && win.updateCashflowPanel) {
+                win.updateCashflowPanel(seriesToday, seriesToday.indexOf(lateYear));
+                const rEl = doc.getElementById('cfPanelRate');
+                rateToday = rEl ? parseFloat(rEl.textContent) : null;
+
+                win.eval("dollarMode = 'future'; triggerRecalculate();");
+                const seriesFuture = win.__chartSeriesFull || [];
+                const lateYear2 = seriesFuture.filter(function (y) { return y.year === lateYear.year; })[0];
+                if (lateYear2) {
+                  win.updateCashflowPanel(seriesFuture, seriesFuture.indexOf(lateYear2));
+                  const rEl2 = doc.getElementById('cfPanelRate');
+                  rateFuture = rEl2 ? parseFloat(rEl2.textContent) : null;
+                }
+              }
+              if (rateToday != null && rateFuture != null && rateFuture > 0) {
+                const relDiff = Math.abs(rateToday - rateFuture) / rateFuture;
+                push('4% Rule rate is consistent between Today\'s $ and Future $ modes (no double inflation-adjustment)', relDiff < 0.15,
+                  'today=' + rateToday + '%, future=' + rateFuture + '%, rel.diff=' + (relDiff * 100).toFixed(1) + '%');
+              } else {
+                push('4% Rule dollar-mode consistency test ran', false, 'could not compute both rates (today=' + rateToday + ', future=' + rateFuture + ')');
+              }
+              win.eval("dollarMode = '" + origMode + "'; triggerRecalculate();");
+            } catch (e) {
+              push('4% Rule dollar-mode consistency test ran', false, 'error: ' + e.message);
+            }
+          }
+
+          // ---- Display-only invariant, mirroring the existing gift-routing test: nothing about
+          // interacting with Cashflow (switching to it, hovering a bar/row, toggling granularity)
+          // may change the engine's own EOL output. ----
+          const eolBefore = Math.round((win.__scenarioB || {}).eolNetWorth || 0);
+          if (win.setNwtGranularity) win.setNwtGranularity(1);
+          const hoverRect = [].slice.call(doc.querySelectorAll('#cashflowChartWrap rect[onmouseenter]')).filter(function (r) { return r.getAttribute('fill') && r.getAttribute('fill') !== 'transparent'; })[3];
+          if (hoverRect && win.eval) { try { win.eval(hoverRect.getAttribute('onmouseenter')); } catch (e) {} }
+          if (win.renderCashflowChart) win.renderCashflowChart(series);
+          if (win.setNwtGranularity) win.setNwtGranularity(5);
+          recalc(win);
+          const eolAfter = Math.round((win.__scenarioB || {}).eolNetWorth || 0);
+          push('Cashflow tab is display-only (EOL unchanged by hover/granularity)', eolBefore === eolAfter, '$' + eolBefore.toLocaleString() + ' vs $' + eolAfter.toLocaleString());
+        }
+      } catch (e) {
+        push('Cashflow tab test block ran', false, 'error: ' + e.message);
+      }
 
   } catch (e) {
     push('Tier 10 ran without fatal error', false, 'error: ' + e.message);

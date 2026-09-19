@@ -227,12 +227,209 @@
             --recon-drain:#f472b6; --recon-panel-bg:#0d1220; --recon-card-bg:#0f172a;
             --recon-tag-bg:#1e293b; --recon-line:#1e293b; --recon-line-strong:#334155; --recon-header-bg:#334155;
         }
+
+        /* ===== Card-layout tax panel (2026-09) — wired to --recon-* theme vars (light + dark) ===== */
+        .tc-panel { padding:18px 22px; }
+        .tc-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+
+        /* ===== Cashflow tab (ported from MFJ, 2026-09-18) ===== */
+        .cf-layout { display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start; }
+        .cf-chart-col { min-width:0; }
+        @media (max-width: 900px) { .cf-layout { grid-template-columns: 1fr; } }
+        .cf-chart-card { background: var(--recon-panel-bg); border:1px solid var(--recon-line-strong); border-radius:10px; padding:14px; }
+        .cf-legend { display:flex; flex-wrap:wrap; gap:8px 14px; font-size:10.5px; color:var(--text-muted); margin-top:10px; padding-top:10px; border-top:1px solid var(--recon-line); }
+        .cf-legend .sw { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+        .cf-legend .grp { font-weight:800; text-transform:uppercase; letter-spacing:0.04em; font-size:9.5px; margin-right:2px; }
+        .cf-legend .grp.in { color: var(--dist-sources); } .cf-legend .grp.out { color: var(--dist-spend); }
+
+        .cf-panel { background: var(--recon-panel-bg); border:1px solid var(--recon-line-strong); border-radius:10px; padding:14px; position:sticky; top:12px; }
+        .cf-panel-header { display:flex; align-items:baseline; gap:8px; padding-bottom:9px; margin-bottom:9px; border-bottom:1px solid var(--recon-line); }
+        .cf-panel-year { font-size:1.05rem; font-weight:800; color:var(--text-primary); }
+        .cf-panel-ages { font-size:11px; color:var(--text-muted); }
+
+        .cf-io-box { border-radius:8px; padding:11px; margin-top:11px; overflow:hidden; transition: height 0.18s ease; }
+        .cf-io-box.in { background: color-mix(in srgb, var(--dist-sources) 10%, transparent); border:1px solid color-mix(in srgb, var(--dist-sources) 30%, transparent); }
+        .cf-io-box.out { background: color-mix(in srgb, var(--dist-spend) 10%, transparent); border:1px solid color-mix(in srgb, var(--dist-spend) 30%, transparent); }
+        .cf-box-title { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; padding-bottom:6px; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+        .cf-io-box.in .cf-box-title { color: var(--dist-sources); border-bottom:1px solid color-mix(in srgb, var(--dist-sources) 30%, transparent); }
+        .cf-io-box.out .cf-box-title { color: var(--dist-spend); border-bottom:1px solid color-mix(in srgb, var(--dist-spend) 30%, transparent); }
+        .cf-row { display:flex; justify-content:space-between; align-items:center; padding:3px 6px; border-radius:5px; font-size:11.5px; cursor:pointer; border:1px solid transparent; }
+        .cf-io-box.in .cf-row.hl { background: color-mix(in srgb, var(--dist-sources) 22%, transparent); border-color: var(--dist-sources); }
+        .cf-io-box.out .cf-row.hl { background: color-mix(in srgb, var(--dist-spend) 22%, transparent); border-color: var(--dist-spend); }
+        .cf-row.hl .v { font-weight: 800; }
+        .cf-ltc-badge { font-size:9px; margin:-2px 0 4px 14px; }
+        .cf-row .k { display:flex; align-items:center; gap:6px; color:var(--text-secondary); min-width:0; }
+        .cf-row .k .sw { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+        .cf-row .v { font-variant-numeric: tabular-nums; font-weight:600; color:var(--text-primary); white-space:nowrap; }
+        .cf-subtotal { display:flex; justify-content:space-between; padding-top:7px; margin-top:5px; font-weight:700; font-size:11.5px; }
+        .cf-io-box.in .cf-subtotal { color: var(--dist-sources); border-top:1px solid color-mix(in srgb, var(--dist-sources) 35%, transparent); }
+        .cf-io-box.out .cf-subtotal { color: var(--dist-spend); border-top:1px solid color-mix(in srgb, var(--dist-spend) 35%, transparent); }
+        .cf-empty-hint { font-size:10.5px; color:var(--text-muted); font-style:italic; padding:4px 2px; }
+        .cf-net-row { display:flex; justify-content:space-between; align-items:center; margin-top:13px; padding-top:11px; border-top:1px solid var(--recon-line-strong); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); }
+        .cf-net-row span:last-child { font-size:13px; font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:800; letter-spacing:0; text-transform:none; }
+        .cf-rate-row { display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); }
+        .cf-rate-row .v { font-size:12px; font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:700; letter-spacing:0; text-transform:none; color:var(--text-secondary); }
+
+        /* ===== Side drawer (page-level fixed panel — ported from MFJ, see markup near </body>) =====
+           Structural/positioning only — Single's own .recon-tbl/.tc-header/etc. content styles above
+           are untouched; these rules only govern where the panel LIVES, not what it shows. */
+        #pdViewportRow { height:100%; min-height:0; transition: margin-right .18s ease; margin-right:0; }
+        #pdViewportRow #tableScrollWrap { height:100%; }
+        .recon-drag-handle {
+            position:fixed; top:64px; bottom:0; width:16px; cursor:col-resize; z-index:45;
+            transition: right .18s ease, opacity .22s ease;
+            --grip-color: var(--recon-line-strong);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .recon-drag-handle::after {
+            content:""; position:absolute; left:100%; top:50%; width:2.5px; height:2.5px;
+            border-radius:50%; background:transparent; transform:translate(-50%,-50%);
+            box-shadow:
+                -3.5px -7px 0 0 var(--grip-color),
+                 3.5px -7px 0 0 var(--grip-color),
+                -3.5px  0px 0 0 var(--grip-color),
+                 3.5px  0px 0 0 var(--grip-color),
+                -3.5px  7px 0 0 var(--grip-color),
+                 3.5px  7px 0 0 var(--grip-color);
+            opacity:.9; transition: opacity .15s ease;
+        }
+        .recon-drag-handle:hover, .recon-drag-handle.dragging { --grip-color: var(--recon-cash); }
+        .recon-drag-handle:hover::after, .recon-drag-handle.dragging::after { opacity:1; }
+        .recon-drag-handle.hidden { opacity: 0; pointer-events: none; }
+        .recon-drag-handle.dragging { transition:none; }
+        .recon-drawer {
+            position:fixed; top:64px; right:0; bottom:0; z-index:45;
+            width:580px; min-width:0; display:flex; flex-direction:column;
+            background:var(--recon-panel-bg); border-left:1px solid var(--recon-line-strong);
+            box-shadow:-10px 0 28px rgba(0,0,0,.35);
+            transition: width .18s ease, transform .22s ease;
+            transform: translateX(0);
+            pointer-events: auto;
+            container-type: inline-size;
+            container-name: recon-drawer;
+        }
+        .recon-drawer.dragging { transition: width 0s, transform .22s ease; }
+        [data-theme="light"] .recon-drawer { background:#ffffff; }
+        [data-theme="light"] .recon-drawer .tc-header { background:#ffffff; }
+        [data-theme="light"] .recon-drawer .recon-exp { background:#ffffff; }
+        .recon-drawer.hidden { transform: translateX(100%); pointer-events: none; }
+        .recon-drawer-header {
+            position: absolute; top: 0; right: 0; z-index: 10;
+            padding: 12px 16px 0 0;
+        }
+        .recon-drawer-close {
+            background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;
+            line-height:1; padding:2px 9px; border-radius:6px;
+        }
+        .recon-drawer-close:hover { color:var(--text-primary); background:var(--recon-tag-bg); }
+        .recon-drawer-scroll { overflow-y:auto; flex:1 1 auto; min-height:0; }
+        .recon-drawer .recon-inner { position:static; left:auto; width:auto; max-width:none; padding:16px 20px; }
+        .recon-drawer .tc-header {
+            position: sticky; top: 0; z-index: 5;
+            margin: -16px -20px 18px -20px;
+            padding: 14px 52px 14px 20px;
+            background: var(--recon-panel-bg);
+            border-bottom: 1px solid var(--recon-line-strong);
+        }
+        @media (max-width:980px) {
+            .recon-drag-handle { display:none !important; }
+            #pdViewportRow { margin-right:0 !important; }
+            .recon-drawer {
+                width:92vw !important; max-width:480px;
+                box-shadow:-8px 0 30px rgba(0,0,0,.4);
+            }
+        }
+        .tc-header-left { display:flex; align-items:center; gap:12px; }
+        .tc-year { font-size:22px; font-weight:700; letter-spacing:-.02em; color:var(--text-primary); line-height:1; }
+        .tc-header-rates { display:flex; gap:8px; align-items:center; }
+        .tc-pill { font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; background:var(--recon-card-bg); border:1px solid var(--recon-line); color:var(--text-secondary); line-height:1.3; }
+        .tc-pill strong { color:var(--text-primary); }
+        .tc-pill-wd strong { color:var(--recon-drain); font-family:'IBM Plex Mono',ui-monospace,monospace; }
+        .tc-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        @media(max-width:820px){ .tc-grid{ grid-template-columns:1fr; } }
+        /* Stacks the panel's two-column card layout to one column unless the DRAWER itself is dragged
+           meaningfully wide — independent of the browser viewport's width. 860px required dragging
+           nearly to the drawer's own max-width clamp before two columns ever appeared in practice —
+           lowered to 700px, matching MFJ, so it's reachable well within the normal drag range. Must
+           come after the base .tc-grid rule above (equal specificity, source order decides). */
+        @container recon-drawer (max-width: 700px) {
+            .tc-grid { grid-template-columns: 1fr; }
+        }
+        .tc-col { display:flex; flex-direction:column; gap:14px; }
+        .tc-card { background:var(--recon-card-bg); border:1px solid var(--recon-line); border-radius:12px; padding:16px 18px; }
+        .tc-card-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:11px; }
+        .tc-card-title.bordered { padding-bottom:6px; border-bottom:1px solid var(--recon-line); margin-bottom:9px; }
+        .tc-table { width:100%; border-collapse:collapse; font-size:13px; }
+        .tc-table th { text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--text-muted); padding:0 6px 8px 0; }
+        .tc-table th:not(:first-child) { text-align:right; }
+        .tc-table td { padding:5px 6px 5px 0; border-top:1px solid var(--recon-line); }
+        .tc-table td:not(:first-child) { text-align:right; font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:500; color:var(--text-primary); }
+        .tc-table td.tc-cat { color:var(--recon-cost); font-weight:500; }
+        .tc-zero { color:var(--text-muted); }
+        .tc-table tr.tc-tot td { border-top:1px solid var(--recon-line-strong); font-weight:700; padding-top:8px; color:var(--text-primary); }
+        .tc-src-list { display:flex; flex-direction:column; gap:6px; }
+        .tc-src { display:flex; justify-content:space-between; padding:7px 12px; background:var(--recon-panel-bg); border-radius:8px; font-size:13px; }
+        .tc-src-k { color:var(--text-secondary); }
+        .tc-src-v { font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:600; color:var(--text-primary); }
+        .tc-src.tc-src-total { background:var(--recon-tag-bg); font-weight:700; margin-top:4px; }
+        .tc-src.tc-src-total .tc-src-k { color:var(--text-primary); }
+        .tc-src.tc-src-total .tc-src-v { color:var(--recon-drain); }
+        .tc-recon-list { display:flex; flex-direction:column; gap:5px; }
+        .tc-recon { display:flex; justify-content:space-between; font-size:13px; padding:2px 0; }
+        .tc-recon .tc-line-k { color:var(--text-secondary); }
+        .tc-recon .tc-line-v { font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:500; color:var(--text-primary); }
+        .tc-recon .tc-line-v.add { color:var(--recon-adds); } .tc-recon .tc-line-v.sub { color:var(--recon-drain); }
+        .tc-recon.tc-recon-total { margin-top:5px; padding-top:8px; border-top:1px solid var(--recon-line-strong); font-weight:700; }
+        .tc-note { display:flex; justify-content:space-between; font-size:13.5px; padding:2px 0; }
+        .tc-note-k { font-weight:500; color:var(--text-primary); } .tc-note-k.accent { color:var(--recon-cost); }
+        .tc-note-v { font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:600; color:#c084fc; }
+        .tc-callout { margin-top:12px; padding:9px 12px; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.35); border-radius:8px; font-size:12px; color:var(--text-secondary); }
+        .tc-callout strong { color:#f59e0b; }
+        .tc-bucket { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin:10px 0 4px; }
+        .tc-bucket.ord { color:var(--recon-cash); } .tc-bucket.pref { color:#a78bfa; }
+        .tc-line { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; gap:12px; }
+        .tc-line-k { color:var(--text-secondary); } .tc-line-v { font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:500; color:var(--text-primary); white-space:nowrap; }
+        .tc-line.tc-sub { margin-top:2px; padding:6px 0; font-weight:700; border-top:1px solid var(--recon-line); }
+        .tc-line.tc-sub.ord .tc-line-k { color:var(--recon-cash); } .tc-line.tc-sub.pref .tc-line-k { color:#a78bfa; }
+        .tc-line.tc-taxable { margin-top:10px; }
+        .tc-line.tc-total { margin-top:8px; padding-top:8px; border-top:1px solid var(--recon-line-strong); font-weight:700; }
+        .tc-line.tc-total .tc-line-v { color:var(--recon-cost); }
+        .tc-empty { font-size:12px; color:var(--text-muted); font-style:italic; }
+        .tc-line-v.tc-bold { font-weight:800; color:var(--text-primary); }
+        .tc-line.tc-dedline { color:var(--text-secondary); }
+        .tc-line.tc-grand { margin-top:6px; padding-top:8px; border-top:2px solid var(--recon-line-strong); }
+        .tc-line.tc-grand .tc-line-k { font-weight:800; color:var(--text-primary); }
+        .tc-line.tc-substub { font-size:11.5px; color:var(--text-muted); padding:1px 0; }
+        .tc-line.tc-substub .tc-line-k { color:var(--text-muted); }
+        .tc-taxgrp-h { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin:9px 0 3px; }
+        .tc-taxgrp-h:first-child { margin-top:0; }
+        .tc-taxgrp-h.fed { color:var(--recon-adds); } .tc-taxgrp-h.state { color:#f59e0b; } .tc-taxgrp-h.other { color:var(--text-muted); }
+        .tc-line.tc-subtot { margin-top:2px; padding-top:5px; border-top:1px solid var(--recon-line); }
+        .tc-line.tc-subtot.fed .tc-line-k { color:var(--recon-adds); }
+        .tc-line.tc-subtot.state .tc-line-k { color:#f59e0b; }
+        .tc-rates { display:flex; gap:8px; margin-top:12px; }
+        .tc-rate { flex:1; display:flex; flex-direction:column; align-items:center; padding:7px 4px; background:var(--recon-panel-bg); border-radius:8px; }
+        .tc-rate .rv { font-size:14px; font-weight:800; font-family:'IBM Plex Mono',ui-monospace,monospace; color:var(--text-primary); }
+        .tc-rate .rl { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; margin-top:2px; }
+        .tc-src-note { font-size:11px; color:var(--text-muted); font-style:italic; margin-top:6px; line-height:1.4; }
         [data-theme="light"] {
             --recon-adds:#1da29b; --recon-cash:#3b7bb0; --recon-cost:#d9825a;
             --recon-drain:#be185d; --recon-panel-bg:#f8fafc; --recon-card-bg:#ffffff;
             --recon-tag-bg:#dde5ee; --recon-line:#e2e8f0; --recon-line-strong:#cbd5e1; --recon-header-bg:#64748b;
         }
         .recon-row { cursor:pointer; }
+        #ledgerTableBody .recon-row.selected > td,
+        #ledgerTableBody .recon-row.selected > td[class*="sticky"] {
+            background: rgba(56,189,248,0.18) !important;
+        }
+        #ledgerTableBody .recon-row.selected > td:first-child {
+            box-shadow: inset 3px 0 0 var(--recon-cash);
+        }
+        [data-theme="light"] #ledgerTableBody .recon-row.selected > td,
+        [data-theme="light"] #ledgerTableBody .recon-row.selected > td[class*="sticky"] {
+            background: rgba(2,132,199,0.14) !important;
+        }
         .recon-inner { padding:16px 24px 16px 120px; display:flex; flex-direction:column; gap:9px;
             /* Pin the panel content to the left of the visible scroll area so it stays readable when the
                table is scrolled horizontally. Width is sized to hold the two cards side by side, capped to
@@ -431,12 +628,20 @@
         .reference-hidden .ref-col { display: none !important; }
         .reference-hidden #zoneReference { display: none !important; }
     
-        /* Light-mode ledger table backgrounds (white with zebra striping) — ported from MFJ for parity */
+        /* Light-mode ledger table backgrounds — ported from MFJ for parity */
         [data-theme="light"] #tableScrollWrap { background:#ffffff; }
         [data-theme="light"] #ledgerTableBody .recon-row > td { background:#ffffff; }
-        [data-theme="light"] #ledgerTableBody .recon-row:nth-child(even) > td { background:#f7f9fc; }
+        /* Zebra striping disabled by product decision (2026-09), matching MFJ: this rule pre-dates the
+           side-drawer work and used to be dead code (recon-exp rows interleaved in the table meant every
+           recon-row sat at an odd child index, so :nth-child(even) never matched anything). Moving
+           recon-exp panels out of the table (this session's drawer port) made it start matching for the
+           first time — removed rather than restored, since it wasn't a look anyone had signed off on.
+           Row hover highlighting is the intended way to visually track a row instead — see below.
+        [data-theme="light"] #ledgerTableBody .recon-row:nth-child(even) > td { background:#f7f9fc; } */
         [data-theme="light"] #ledgerTableBody .recon-row > td[class*="sticky"] { background:#ffffff !important; }
-        [data-theme="light"] #ledgerTableBody .recon-row:nth-child(even) > td[class*="sticky"] { background:#f7f9fc !important; }
+        /* Same zebra-striping removal as above, for the sticky Year column specifically.
+        [data-theme="light"] #ledgerTableBody .recon-row:nth-child(even) > td[class*="sticky"] { background:#f7f9fc !important; } */
+        [data-theme="light"] #planDetailsView tbody tr.recon-row:hover td { background: #f7f9fc !important; }
     
         /* ===== Ported Plan Timeline widget CSS (from MFJ) ===== */
         .es-timeline { position: relative; height: 300px; margin: 4px 8px 0 62px; z-index: 1; }
@@ -577,6 +782,7 @@
         /* Left panel groups — mockup .section border/bg/shadow */
         [data-theme="light"] aside.w-88 { background: #ffffff !important; border-right: 1px solid var(--border-strong) !important; }
         [data-theme="light"] aside.w-88 [class*="bg-slate-900"], [data-theme="light"] aside.w-88 [class*="bg-slate-800"] { background: #f8fafc !important; }
+        [data-theme="light"] #planDetailsView [class*="bg-slate-900"]:not(thead *) { background: #f8fafc !important; }
         [data-theme="light"] aside.w-88 .input-group { border: 1px solid var(--border-strong) !important; border-radius: 10px !important; background: #fff !important; box-shadow: 0 1px 3px rgba(20,35,55,.03) !important; margin-bottom: 10px !important; }
         [data-theme="light"] aside.w-88 .input-group > summary, [data-theme="light"] aside.w-88 .input-group .input-group-head { padding: 12px 11px !important; font-weight: 800 !important; }
 
@@ -1221,7 +1427,12 @@
                         </div>
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-0.5">% of SS Taxed</label>
-                            <input type="number" id="ssTaxablePct" value="85" class="mini-input">
+                            <label class="flex items-center gap-1.5 text-[10px] text-slate-400 mb-1 cursor-pointer">
+                                <input type="checkbox" id="ssTaxAutoToggle" checked onchange="toggleSsTaxAuto()"> Auto (IRS §86)
+                            </label>
+                            <span id="ssTaxAutoDisplay" class="mini-input block text-slate-400" style="opacity:.6">Auto</span>
+                            <input type="number" id="ssTaxablePct" value="85" class="mini-input" style="display:none">
+                            <div class="text-[9px] text-slate-500 mt-0.5">Auto computes each year via the IRS §86 phase-in. Uncheck to force a fixed taxable %.</div>
                         </div>
                     </div>
                 </div>
@@ -1591,11 +1802,15 @@
                         <button id="chartTabTrajectory" onclick="setChartTab('trajectory')" class="px-3 py-1.5 text-[11px] font-semibold text-blue-400 border-b-2 border-blue-400 -mb-px transition cursor-pointer">
                             <i class="fa-solid fa-chart-area mr-1.5"></i>Net Worth Trajectory
                         </button>
+                        <button id="chartTabCashflow" onclick="setChartTab('cashflow')" class="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b-2 border-transparent -mb-px transition cursor-pointer hover:text-slate-200">
+                            <i class="fa-solid fa-money-bill-transfer mr-1.5"></i>Cashflow
+                        </button>
                         <button id="chartTabDistribution" onclick="setChartTab('distribution')" class="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b-2 border-transparent -mb-px transition cursor-pointer hover:text-slate-200">
                             <i class="fa-solid fa-shuffle mr-1.5"></i>Distribution Mix
                         </button>
                     </div>
-                    <div class="flex items-center gap-4 pb-1.5" id="chartBucketToggles">
+                    <div class="flex items-center gap-4 pb-1.5">
+                        <span class="flex items-center gap-4" id="chartBucketToggles">
                         <label class="flex items-center gap-1.5 cursor-pointer select-none">
                             <input type="checkbox" id="chartIncludeHsa" checked onchange="triggerRecalculate()" class="accent-cyan-500 cursor-pointer">
                             <span class="text-[11px] text-slate-400">Include HSA <span class="text-slate-600">(healthcare $)</span></span>
@@ -1604,12 +1819,43 @@
                             <input type="checkbox" id="chartInclude529" onchange="triggerRecalculate()" class="accent-amber-500 cursor-pointer">
                             <span class="text-[11px] text-slate-400">Include 529 <span class="text-slate-600">(education $)</span></span>
                         </label>
+                        </span>
+                    <span class="inline-flex items-center rounded-md overflow-hidden border border-slate-700 ml-1" id="nwtGranToggle"><button type="button" data-g="5" onclick="setNwtGranularity(5)" class="px-2 py-0.5 text-[11px] font-semibold bg-blue-600 text-white">Every 5 Yrs</button><button type="button" data-g="1" onclick="setNwtGranularity(1)" class="px-2 py-0.5 text-[11px] font-semibold text-slate-400">Every Year</button></span>
                     </div>
                 </div>
                 <div id="chartCollapseBody">
                     <div id="tabPaneTrajectory">
                         <div id="netWorthChartWrap" class="w-full"></div>
                         <p class="text-[10px] text-slate-500 mt-2">By default, 529 is excluded since those funds aren't generally usable for living expenses without tax/penalty; HSA is included since it directly funds healthcare costs, which is a living expense.</p>
+                    </div>
+                    <div id="tabPaneCashflow" style="display:none;">
+                        <div class="cf-layout">
+                            <div class="cf-chart-col">
+                                <div class="cf-chart-card"><div id="cashflowChartWrap" class="w-full"></div></div>
+                                <div class="cf-legend" id="cashflowLegend"></div>
+                            </div>
+                            <div class="cf-panel" id="cashflowPanel">
+                                <div class="cf-panel-header">
+                                    <span class="cf-panel-year" id="cfPanelYear">&mdash;</span>
+                                    <span class="cf-panel-ages" id="cfPanelAges"></span>
+                                </div>
+                                <div class="cf-io-box in" id="cfInBox">
+                                    <div class="cf-box-title"><i class="fa-solid fa-arrow-down-left"></i> Inflows</div>
+                                    <div id="cfPanelIn"></div>
+                                    <div class="cf-subtotal"><span>Total Inflows</span><span id="cfPanelInTotal"></span></div>
+                                </div>
+                                <div class="cf-io-box out" id="cfOutBox">
+                                    <div class="cf-box-title"><i class="fa-solid fa-arrow-up-right"></i> Outflows</div>
+                                    <div id="cfPanelOut"></div>
+                                    <div class="cf-subtotal"><span>Total Outflows</span><span id="cfPanelOutTotal"></span></div>
+                                </div>
+                                <div class="cf-net-row"><span id="cfPanelNetLabel">Portfolio Draw (excl. HSA, 529)</span><span id="cfPanelNet"></span></div>
+                                <div class="cf-rate-row" id="cfRateRow" style="display:none;">
+                                    <span class="relative info-tip-wrap cursor-help" onmouseenter="positionInfoTip(this)">W/D Rate (4% Rule)<span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" id="cfRateTip" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)"></span></span>
+                                    <span class="v" id="cfPanelRate"></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div id="tabPaneDistribution" style="display:none;">
                         <p class="text-[11px] text-slate-500 mb-2">Where each year's money comes from (<span style="color:var(--dist-sources);font-weight:600">Sources</span>) and what it pays for (<span style="color:var(--dist-spend);font-weight:600">Spend</span>). Each panel defaults to a life-phase milestone — change any year to inspect it. Hover any ribbon for the exact amount. Responds to the Today's $ / Future $ toggle above.</p>
@@ -1660,6 +1906,7 @@
 
             <!-- Master Data Table View -->
             <div id="viewProjections" class="flex flex-col flex-shrink-0 bg-slate-950 rounded-xl border border-slate-800 shadow-2xl overflow-hidden" style="height: calc(100vh - 190px); min-height: 600px;">
+              <div id="pdViewportRow">
                 <div id="tableScrollWrap" class="overflow-x-auto overflow-y-auto flex-1 max-w-full">
                     <table class="w-full text-left border-collapse text-[11px]">
                         <thead>
@@ -1740,7 +1987,13 @@
                         </tbody>
                     </table>
                 </div>
+              </div>
             </div>
+
+            <!-- Off-screen store for recon drawer panels — ported from MFJ (2026-09-18 port).
+                 openReconDrawer() moves (not clones) a year's panel node into #reconDrawerBody, and
+                 closeReconDrawer()/switching years moves it back here. -->
+            <div id="reconPanelStore" style="display:none"></div>
 
             <!-- View Canvas 2: Editable Tax & System Params -->
             <div id="viewSystemMetrics" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
@@ -1886,14 +2139,14 @@
             fplAddlPerson: 5500,
             // --- Self-employment tax (Social Security 12.4% + Medicare 2.9% = 15.3% on 92.35% of net) ---
             // --- Social Security taxation (IRC §86) ---
-            // The engine models the taxable share as a FLAT user-editable percentage (default 85%,
-            // see the "% of SS Taxed" input) rather than the statutory phase-in — a deliberate
-            // simplification documented in Help §20. These thresholds are the REFERENCE values the
-            // 85% default is derived from: once provisional income (AGI ex-SS + tax-exempt interest
-            // + half the benefit) clears the upper threshold, the statutory formula returns exactly
-            // 85%, which this household does permanently (~$375k vs $44k in its first SS year).
-            // They live here so the documented facts resolve against a real engine constant rather
-            // than a number echoed back by the test file. Frozen in law since 1993; NOT indexed.
+            // The engine computes taxable Social Security using the statutory IRC §86 provisional-
+            // income phase-in (IRS Pub 915 Worksheet 1), recomputed each year from that year's
+            // income, so the taxable share slides between 0% and 85% as income changes. The
+            // "% of SS Taxed" input is an OPTIONAL OVERRIDE: 85 = use automatic §86; any other value
+            // forces a fixed %. Formula verified to the dollar against IRS Pub 915 worked examples.
+            // Thresholds below are the statutory provisional breakpoints — frozen since 1983/1993,
+            // NOT inflation-indexed (why more retirees become taxable over time). Review annually
+            // with the rest of IRS_2026 in case the statute changes.
             ssProvisionalMfjLower: 32000,
             ssProvisionalMfjUpper: 44000,
             ssProvisionalSingleLower: 25000,
@@ -2082,7 +2335,7 @@
             'withdrawalSeq', 'netDistribution', 'pctDistribution', 'distModel', 'healthcareCost', 'medicareCost',
             'acaToggle', 'acaBenchmarkPremium', 'acaHouseholdSize', 'acaPreserveSubsidy', 'irmaaToggle', 'heirTaxRate', 'heirHsaTaxRate',
             'rmdAge', 'rothConvToggle', 'rothConvStartAge', 'rothConvMethod', 'rothConvBracketCap', 'rothConvFixedAmt',
-            'ssToggle', 'hSsAge', 'wSsAge', 'hSsAmount', 'wSsAmount', 'ssCola', 'ssTaxablePct',
+            'ssToggle', 'hSsAge', 'wSsAge', 'hSsAmount', 'wSsAmount', 'ssCola', 'ssTaxAutoToggle', 'ssTaxablePct',
             'roiNominal', 'inflationRate', 'healthcareInflation', 'ltcToggle', 'ltcHAge', 'ltcHCost', 'ltcHYears', 'stateRate', 'countyRate', 'stateExemptsSS',
             'survivorToggle', 'survivorFirstToDie', 'survivorDeathAge', 'survivorSpendPct',
             'chartIncludeHsa', 'chartInclude529', 'growthConvention'
@@ -2658,7 +2911,7 @@
             // Each expense row: [label, cost, fromHSA, from529, fromPortfolio].
               // Cost = fromHSA + from529 + fromPortfolio for every row (self-proving split).
               const rows = [];
-              rows.push(['Living (Planned Dist)', d.living, 0, 0, d.living]);
+              rows.push(['Living', d.living, 0, 0, d.living]);
               if (nz(d.gift)) rows.push(['Gifting', d.gift, 0, 0, d.gift]);
               if (nz(d.hcCost)) {
                   rows.push(['Healthcare', d.hcCost, d.hsaPaid || 0, 0, d.hcFromPortfolio]);
@@ -2676,12 +2929,12 @@
               const show529 = total529 > 0.5;
             // cash-in sources
             const cashSources = [];
-            if (nz(d.income)) cashSources.push(['Income', d.income]);
+            if (nz(d.income)) cashSources.push(['1099 Income', d.income]);
             if (nz(d.ss)) cashSources.push(['Soc Sec', d.ss]);
             if (nz(d.inheritance)) cashSources.push(['Inheritance', d.inheritance]);
-      if (nz(d.rebiDist)) cashSources.push(['RE/Business income', d.rebiDist]);
-      if (nz(d.rebiRefi)) cashSources.push(['RE/Business refinance', d.rebiRefi]);
-      if (nz(d.rebiExit)) cashSources.push(['RE/Business sale proceeds', d.rebiExit]);
+      if (nz(d.rebiDist)) cashSources.push(['RE/Business Income', d.rebiDist]);
+      if (nz(d.rebiRefi)) cashSources.push(['RE/Business Refinance', d.rebiRefi]);
+      if (nz(d.rebiExit)) cashSources.push(['RE/Business Sale Proceeds', d.rebiExit]);
             const totalCash = cashSources.reduce((s, r) => s + r[1], 0);
             const cashDetail = cashSources.length ? cashSources.map(([k, v]) => `${k} ${cR(v)}`).join(' + ') : 'none';
             const isSurplus = totalCash > totalFromP + 0.5;
@@ -2722,7 +2975,7 @@
                   notableItems.push(['Inheritance', cR(nn.inheritance), itag]);
               }
               if (nz(nn.rebiSale)) notableItems.push(['RE/Business Sale', cR(nn.rebiSale), 'proceeds']);
-              if (nz(nn.rmd)) notableItems.push(['RMD (forced)', cR(nn.rmd), '']);
+              if (nz(nn.rmd)) notableItems.push(['RMD (Forced)', cR(nn.rmd), '']);
               if (nz(nn.surplusBanked)) notableItems.push(['Surplus &rarr; Brokerage', cR(nn.surplusBanked), 'banked']);
               if (nz(nn.ltc)) notableItems.push(['Long-Term Care', cR(nn.ltc), 'event']);
               if (nz(nn.tuitionShortfall)) notableItems.push(['529 Shortfall', cR(nn.tuitionShortfall), 'Brokerage covered']);
@@ -2730,36 +2983,151 @@
                   ? `<table class="recon-tbl recon-tbl-notable"><thead><tr><th>Notable this year</th><th></th></tr></thead><tbody>${notableItems.map(([label, val, tag]) => `<tr><td class="recon-notable-lab">${label}${tag ? ` <span class="recon-notable-tag">${tag}</span>` : ''}</td><td class="recon-notable-val">${val}</td></tr>`).join('')}</tbody></table>`
                   : '';
 
-              return `<tr class="recon-exp" data-recon-for="${d.year}" style="display:none">
-                <td colspan="${window.__reconColspan || 48}" style="padding:0;background:var(--recon-panel-bg)">
-                  <div class="recon-inner">
-                    <div class="recon-title">Portfolio W/D ${d.year} = ${cR(d.pwd)}</div>
-                    <div class="recon-columns">
-                      <div class="recon-col-left">
-                        <table class="recon-tbl">
-                          <thead><tr><th>Expenses this year</th><th>cost</th>${showHSA ? '<th>from HSA</th>' : ''}${show529 ? '<th>from 529</th>' : ''}<th>from portfolio</th></tr></thead>
-                          <tbody>${expRowsHtml}</tbody>
-                          <tfoot>
-                            <tr class="recon-total"><td>Total</td><td class="recon-cost-total">${cR(totalCost)}</td>${showHSA ? `<td class="recon-from-total"><span class="recon-num">${cR(totalHSA)}</span></td>` : ''}${show529 ? `<td class="recon-from-total"><span class="recon-num">${cR(total529)}</span></td>` : ''}<td class="recon-from-total"><span class="recon-num">${cR(totalFromP)}</span></td></tr>
-                            ${totalCash > 0.5 ? `<tr class="recon-calc"><td colspan="${2 + (showHSA?1:0) + (show529?1:0)}" class="recon-sublab recon-cash"><span class="recon-cashdetail">${cashDetail}</span></td><td class="recon-cash"><span class="recon-num">&minus; ${cR(totalCash)}</span></td></tr>` : ''}
-                            <tr class="recon-calc recon-last"><td colspan="${2 + (showHSA?1:0) + (show529?1:0)}" class="recon-sublab recon-drain">Withdrawn</td><td class="recon-drain"><span class="recon-num">= ${wResult}</span></td></tr>
-                          </tfoot>
-                        </table>
+
+
+
+
+            const _td = d.taxDetail || {};
+            // ===================== CARD-LAYOUT PANEL (2026-09) =====================
+            // Baseline card design. Data-driven: every engine field that can appear gets a home;
+            // zero/absent rows simply don't render. Sources = Uses reconciles by construction
+            // (funding sources = all cash in; expenses incl. taxes = all uses; surplus balances).
+            const tc_m = (v) => cR(v);
+            const tc_nz = (v) => Math.abs(v) > 0.5;
+            const tc_pct = (v) => (v != null ? (v * 100).toFixed(1) : '0.0');
+                const tcTip = (txt) => txt ? ` <span class="relative info-tip-wrap inline-flex items-center justify-center align-middle ml-1" style="width:14px;height:14px" onmouseenter="positionInfoTip(this)"><i class="fa-solid fa-circle-info cursor-help" style="color:var(--text-muted);font-size:10px"></i><span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">${txt}</span></span>` : '';
+                const _brokGainPart = Math.max(0, (_td.ltcgRealized || 0) - (_td.rebiExitGain || 0));
+                const _divTotal = (_td.divOrd || 0) + (_td.divQual || 0);
+                const _provIncome = (_td.ordinaryTotal || 0) - (_td.taxableSS || 0) + (_td.prefTotal || 0) + 0.5 * (d.ss || 0);
+                const TIP = {
+                    ltcg: `Long-term capital gain realized on brokerage holdings sold this year (sale proceeds minus cost basis). Taxed at preferential rates (0/15/20%), not as ordinary income.`,
+                    rebiGain: `The long-term capital-gain portion of your real-estate/business sale this year. Taxed at preferential rates (0/15/20%), same as other long-term gains.`,
+                    divOrd: `Non-qualified dividends — the ordinary-rate share of your ${tc_m(_divTotal)} total brokerage dividends this year. Split is driven by the "% of dividends qualified" input; the remainder (${tc_m(_td.divQual)}) is qualified and taxed at preferential rates.`,
+                    divQual: `Qualified dividends — the preferential-rate share of your ${tc_m(_divTotal)} total brokerage dividends this year. Taxed at the same 0/15/20% rates as long-term gains.`,
+                    taxableSS: `Taxable portion of Social Security under the IRC §86 phase-in. Based on this year's provisional income of about ${tc_m(_provIncome)} (other income + half your benefit) measured against the statutory thresholds — so between 0% and 85% of the benefit is taxable.`,
+                    se1099: `Self-employment income reported on 1099. Its full amount is shown here; half of the self-employment tax it generates is deducted below (see "SE Tax") before it's taxed, per IRS rules.`,
+                    seDed: `Deduction for one-half of your self-employment tax (${tc_m((_td.se||0))} SE tax ÷ 2). The IRS lets you subtract this from income before ordinary tax is figured, so your taxable ordinary income is lower than gross 1099.`,
+                    convCost: `The extra tax this year caused specifically by the Roth conversion — computed by re-running this year's full tax with the conversion removed and taking the difference (captures bracket, capital-gains, and IRMAA spillover).`,
+                    surplus: `Cash coming in this year (Social Security, distributions, forced RMD, etc.) exceeded your spending, so the excess was deployed into the Brokerage account rather than withdrawn.`
+                };
+
+            // ---- Expenses table (Category / Cost / HSA / 529 / Other) ----
+            const tcExpHead = `<tr><th>Category</th><th>Cost</th>${showHSA ? '<th>HSA</th>' : ''}${show529 ? '<th>529</th>' : ''}<th>Other</th></tr>`;
+            const tcCell = (v) => tc_nz(v) ? tc_m(v) : '<span class="tc-zero">&ndash;</span>';
+            const tcExpRows = rows.map(([label, cost, fHSA, f529, fromP]) =>
+                `<tr><td class="tc-cat">${label}</td><td>${tc_m(cost)}</td>${showHSA ? `<td>${tcCell(fHSA)}</td>` : ''}${show529 ? `<td>${tcCell(f529)}</td>` : ''}<td>${tcCell(fromP)}</td></tr>`
+            ).join('');
+            const tcExpTot = `<tr class="tc-tot"><td>Total</td><td>${tc_m(totalCost)}</td>${showHSA ? `<td>${tc_m(totalHSA)}</td>` : ''}${show529 ? `<td>${tc_m(total529)}</td>` : ''}<td>${tc_m(totalFromP)}</td></tr>`;
+
+            // ---- Funding sources (ALL cash in: earmarked HSA/529 + SS/income/RE-BI/inheritance + account draws) ----
+            const tcSources = [];
+            if (nz(d.hsaDraw)) tcSources.push(['HSA', d.hsaDraw]);
+            if (nz(total529)) tcSources.push(['529 (Tuition)', total529]);
+            cashSources.forEach(([k, v]) => tcSources.push([k === 'Soc Sec' ? 'Social Security' : k, v]));
+            [['Traditional', d.drawTrad], ['Roth', d.drawRoth], ['Brokerage', d.drawBrok]].forEach(([k, v]) => { if (nz(v)) tcSources.push([k, v]); });
+            const tcFundTotal = tcSources.reduce((s, r) => s + r[1], 0);
+            const tcSrcRows = tcSources.map(([k, v]) => `<div class="tc-src"><span class="tc-src-k">${k}</span><span class="tc-src-v">${tc_m(v)}</span></div>`).join('');
+
+            // ---- Notable (reuse notableItems already built above) ----
+            const tcNotable = notableItems.map((it) => `<div class="tc-note"><span class="tc-note-k${it[2] === '' ? '' : ' accent'}">${it[0]}</span><span class="tc-note-v">${it[1]}</span></div>`).join('');
+            const tcConvCallout = tc_nz(_td.convCost)
+                ? `<div class="tc-callout">Roth Conversion${tcTip(TIP.convCost)} &middot; converted <strong>${tc_m(_td.rothConv)}</strong> &middot; incremental tax <strong>${tc_m(_td.convCost)}</strong> &middot; blended cost <strong>${_td.rothConv > 0 ? (100 * _td.convCost / _td.rothConv).toFixed(1) : '0'}%</strong></div>`
+                : '';
+
+            // ---- Income recognized (Ordinary / Preferential buckets) ----
+            const tcOrd = [['RMD', _td.rmd], ['Roth Conversion', _td.rothConv], ['Taxable SS (&sect;86)', _td.taxableSS, TIP.taxableSS],
+                           ['Traditional W/D', _td.elecTrad], ['1099 Income', _td.gross1099, TIP.se1099], ['\u2212 SE Tax', _td.se ? -(_td.se / 2) : 0, TIP.seDed], ['RE/Business Distribution', _td.rebiDistTaxable], ['Taxable Inheritance', _td.inheritanceTaxable], ['Ord. Div.', _td.divOrd, TIP.divOrd]]
+                .filter(r => tc_nz(r[1]));
+            const tcPref = [['LTCG Realized', _td.ltcgRealized, TIP.ltcg], ['RE/Business Sale Gain', _td.rebiExitGain, TIP.rebiGain], ['Qual. Div.', _td.divQual, TIP.divQual]].filter(r => tc_nz(r[1]));
+            const tcIncRow = (r) => `<div class="tc-line"><span class="tc-line-k">${r[0]}${r[2] ? tcTip(r[2]) : ''}</span><span class="tc-line-v">${r[1] < 0 ? '\u2212' + tc_m(-r[1]) : tc_m(r[1])}</span></div>`;
+            const _taxOrd = Math.max(0, (_td.ordinaryTotal||0) - (_td.stdDed||0));
+            const _dedLeft = Math.max(0, (_td.stdDed||0) - (_td.ordinaryTotal||0));
+            const _taxPref = Math.max(0, (_td.prefTotal||0) - _dedLeft);
+            const _totalTaxable = _taxOrd + _taxPref;
+            const tcIncomeHtml = (tcOrd.length || tcPref.length) ? `
+                ${tcOrd.length ? `<div class="tc-bucket ord">Ordinary</div>${tcOrd.map(tcIncRow).join('')}<div class="tc-line tc-sub ord"><span class="tc-line-k">Ordinary Subtotal</span><span class="tc-line-v tc-bold">${tc_m(_td.ordinaryTotal)}</span></div>` : ''}
+                ${tcPref.length ? `<div class="tc-bucket pref">Preferential</div>${tcPref.map(tcIncRow).join('')}<div class="tc-line tc-sub pref"><span class="tc-line-k">Preferential Subtotal</span><span class="tc-line-v tc-bold">${tc_m(_td.prefTotal)}</span></div>` : ''}
+                <div class="tc-line tc-dedline"><span class="tc-line-k">− Std Deduction</span><span class="tc-line-v tc-bold">−${tc_m(_td.stdDed)}</span></div>
+                <div class="tc-line tc-grand"><span class="tc-line-k">Total Taxable Income</span><span class="tc-line-v tc-bold">${tc_m(_totalTaxable)}</span></div>
+                <div class="tc-line tc-substub"><span class="tc-line-k">↳ Taxable Ordinary</span><span class="tc-line-v">${tc_m(_taxOrd)}</span></div>
+                <div class="tc-line tc-substub"><span class="tc-line-k">↳ Taxable Preferential</span><span class="tc-line-v">${tc_m(_taxPref)}</span></div>` : '<div class="tc-empty">No taxable income this year.</div>';
+
+            // ---- Taxes: Federal (Ordinary + Preferential) + State, with effective rates ----
+            // Federal = ordinary + preferential (LTCG bracket) + these federal extras:
+            //   depreciation recapture (25% flat), self-employment tax, early-withdrawal penalty.
+            const _fedOrd = _td.fedOrd||0, _fedPref = _td.fedLtcg||0, _stateAll = _td.stLocal||0;
+            const _fedExtras = [['Depreciation Recapture Tax', _td.rebiRecapture], ['Self-Employment Tax', _td.se], ['Early-Withdrawal Penalty', _td.penalty]].filter(r => tc_nz(r[1]));
+            const _fedTotal = _fedOrd + _fedPref + _fedExtras.reduce((s,r)=>s+r[1],0);
+            const tcTaxHtml = `
+                <div class="tc-taxgrp-h fed">Federal</div>
+                <div class="tc-line"><span class="tc-line-k">Ordinary Tax</span><span class="tc-line-v">${tc_m(_fedOrd)}</span></div>
+                <div class="tc-line"><span class="tc-line-k">Preferential Tax</span><span class="tc-line-v">${tc_m(_fedPref)}</span></div>
+                ${_fedExtras.map(r=>`<div class="tc-line"><span class="tc-line-k">${r[0]}</span><span class="tc-line-v">${tc_m(r[1])}</span></div>`).join('')}
+                <div class="tc-line tc-subtot fed"><span class="tc-line-k">Total Federal</span><span class="tc-line-v tc-bold">${tc_m(_fedTotal)}</span></div>
+                <div class="tc-taxgrp-h state">State + Local</div>
+                <div class="tc-line tc-subtot state"><span class="tc-line-k">Total State + Local</span><span class="tc-line-v tc-bold">${tc_m(_stateAll)}</span></div>
+                <div class="tc-line tc-total"><span class="tc-line-k">Total Tax</span><span class="tc-line-v tc-bold">${tc_m(_td.total)}</span></div>`;
+
+            // ---- Header rate pills (effective = total tax / total income recognized) ----
+            const tcIncBase = (_td.ordinaryTotal || 0) + (_td.prefTotal || 0);
+            const tcEff = tcIncBase > 0 ? (100 * (_td.total || 0) / tcIncBase).toFixed(1) : '0.0';
+
+              return `<div class="recon-exp" data-recon-for="${d.year}" style="display:none">
+                  <div class="recon-inner tc-panel">
+                    <div class="tc-header">
+                      <div class="tc-header-left">
+                        <span class="tc-year">${d.year}</span>
+                        <span class="tc-pill tc-pill-wd">Portfolio W/D <strong>${cR(d.pwd)}</strong></span>
                       </div>
-                      <div class="recon-col-right">${notablesHtml}</div>
+                      <div class="tc-header-rates">
+                        <span class="tc-pill">Marginal Tax <strong>${(_td.marginal != null ? _td.marginal : 0).toFixed(1)}%</strong></span>
+                        <span class="tc-pill">Effective Tax <strong>${tcEff}%</strong></span>
+                      </div>
                     </div>
-                    ${surplusLine}
-                    <div class="recon-line"><span class="recon-k">Came from</span> ${fromChips}</div>
-                    <div class="recon-line"><span class="recon-k">Year reconciles</span> <span class="recon-box">Starting <b>${cR(d.combStart)}</b> <span class="recon-op">+</span> Contribs <b class="recon-adds">${cR(d.combCont)}</b> <span class="recon-op">+</span> Growth <b class="recon-adds">${cR(d.combGrow)}</b> <span class="recon-op">&minus;</span> W/D <b class="recon-drain">${cR(d.pwd)}</b>${hsaTerm}${surplusTerm} <span class="recon-op">=</span> Ending <b>${cR(d.ending)}</b></span></div>
+                    <div class="tc-grid">
+                      <div class="tc-col">
+                        <div class="tc-card">
+                          <div class="tc-card-title">Expenses This Year (Cost &amp; Source)</div>
+                          <table class="tc-table"><thead>${tcExpHead}</thead><tbody>${tcExpRows}${tcExpTot}</tbody></table>
+                        </div>
+                        <div class="tc-card">
+                          <div class="tc-card-title">Funding Sources</div>
+                          <div class="tc-src-list">${tcSrcRows}<div class="tc-src tc-src-total"><span class="tc-src-k">Total Funded</span><span class="tc-src-v">${tc_m(tcFundTotal)}</span></div>${tc_nz(d.notables && d.notables.surplusBanked) ? `<div class="tc-src-note">Cash in exceeds spending &mdash; ${tc_m(d.notables.surplusBanked)} redeployed to Brokerage (see Year Reconciles).</div>` : ''}</div>
+                        </div>
+                        <div class="tc-card">
+                          <div class="tc-card-title">Year Reconciles</div>
+                          <div class="tc-recon-list">
+                            <div class="tc-recon"><span class="tc-line-k">Starting Balance</span><span class="tc-line-v">${cR(d.combStart)}</span></div>
+                            ${nz(d.combCont) ? `<div class="tc-recon"><span class="tc-line-k">+ Contributions</span><span class="tc-line-v add">${cR(d.combCont)}</span></div>` : ''}
+                            <div class="tc-recon"><span class="tc-line-k">+ Growth</span><span class="tc-line-v add">${cR(d.combGrow)}</span></div>
+                            <div class="tc-recon"><span class="tc-line-k">&minus; Withdrawal</span><span class="tc-line-v sub">${cR(d.pwd)}</span></div>
+                            ${nz(d.hsaDraw) ? `<div class="tc-recon"><span class="tc-line-k">&minus; HSA Draw</span><span class="tc-line-v sub">${cR(d.hsaDraw)}</span></div>` : ''}
+                            ${tc_nz(d.notables && d.notables.surplusBanked) ? `<div class="tc-recon"><span class="tc-line-k">+ Surplus Banked${tcTip(TIP.surplus)}</span><span class="tc-line-v add">${cR(d.notables.surplusBanked)}</span></div>` : ''}
+                            <div class="tc-recon tc-recon-total"><span class="tc-line-k">Ending Balance</span><span class="tc-line-v">${cR(d.ending)}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="tc-col">
+                        <div class="tc-card">
+                          <div class="tc-card-title bordered">Taxable Income Recognized</div>
+                          ${tcIncomeHtml}
+                        </div>
+                        <div class="tc-card">
+                          <div class="tc-card-title bordered">Taxes</div>
+                          ${tcTaxHtml}
+                        </div>
+                        <div class="tc-card">
+                          <div class="tc-card-title">Notable This Year</div>
+                          ${tcNotable || '<div class="tc-empty">Nothing notable this year.</div>'}${tcConvCallout}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </td>
-              </tr>`;
+              </div>`;
         }
 
         // Compute the live full-table column count and wire click-to-expand on each ledger row.
         function wireReconExpandRows() {
-            const head2 = document.getElementById('ledgerHeaderRow2');
-            if (head2) window.__reconColspan = head2.querySelectorAll('th').length;
             const body = document.getElementById('ledgerTableBody');
             if (!body) return;
             body.querySelectorAll('.recon-row').forEach(tr => {
@@ -2767,14 +3135,107 @@
                     // ignore clicks on interactive children (info tips, links)
                     if (e.target.closest('a, .info-tip-wrap')) return;
                     const yr = tr.getAttribute('data-recon-year');
-                    const exp = body.querySelector(`.recon-exp[data-recon-for="${yr}"]`);
-                    if (!exp) return;
-                    const open = exp.style.display !== 'none';
-                    body.querySelectorAll('.recon-exp').forEach(x => x.style.display = 'none');
-                    exp.style.display = open ? 'none' : 'table-row';
+                    openReconDrawer(yr);
                 });
             });
         }
+
+        function openReconDrawer(yr) {
+            const store = document.getElementById('reconPanelStore');
+            const drawer = document.getElementById('reconDrawer');
+            const handle = document.getElementById('reconDragHandle');
+            const drawerBody = document.getElementById('reconDrawerBody');
+            const tableBody = document.getElementById('ledgerTableBody');
+            if (!store || !drawer || !handle || !drawerBody || !tableBody) return;
+            const panel = store.querySelector(`.recon-exp[data-recon-for="${yr}"]`);
+            if (!panel) return;
+
+            const currentlyOpen = drawerBody.querySelector('.recon-exp');
+            if (currentlyOpen) store.appendChild(currentlyOpen);
+
+            panel.style.display = '';
+            drawerBody.appendChild(panel);
+            drawerBody.scrollTop = 0;
+
+            const row = tableBody.querySelector(`.recon-row[data-recon-year="${yr}"]`);
+
+            drawer.classList.remove('hidden');
+            handle.classList.remove('hidden');
+            syncReconDrawerLayout(__reconDrawerWidth);
+
+            tableBody.querySelectorAll('.recon-row.selected').forEach(r => r.classList.remove('selected'));
+            if (row) row.classList.add('selected');
+            if (typeof resyncNetWorthChart === 'function') resyncNetWorthChart();
+        }
+
+        function closeReconDrawer() {
+            const store = document.getElementById('reconPanelStore');
+            const drawer = document.getElementById('reconDrawer');
+            const handle = document.getElementById('reconDragHandle');
+            const drawerBody = document.getElementById('reconDrawerBody');
+            const tableBody = document.getElementById('ledgerTableBody');
+            if (!store || !drawer || !handle || !drawerBody) return;
+            const open = drawerBody.querySelector('.recon-exp');
+            if (open) { open.style.display = 'none'; store.appendChild(open); }
+            drawer.classList.add('hidden');
+            handle.classList.add('hidden');
+            const row = document.getElementById('pdViewportRow');
+            if (row) row.style.marginRight = '0';
+            if (tableBody) tableBody.querySelectorAll('.recon-row.selected').forEach(r => r.classList.remove('selected'));
+            if (typeof resyncNetWorthChart === 'function') resyncNetWorthChart();
+        }
+
+        const RECON_DEFAULT_WIDTH = 580, RECON_MIN_WIDTH = 420;
+        let __reconDrawerWidth = RECON_DEFAULT_WIDTH;
+        function syncReconDrawerLayout(width) {
+            const drawer = document.getElementById('reconDrawer');
+            const handle = document.getElementById('reconDragHandle');
+            const row = document.getElementById('pdViewportRow');
+            if (drawer) drawer.style.width = width + 'px';
+            if (handle) handle.style.right = width + 'px';
+            if (row && window.innerWidth > 980) row.style.marginRight = width + 'px';
+        }
+
+        (function initReconDrawerResize() {
+            let dragging = false, startX = 0, startW = RECON_DEFAULT_WIDTH;
+            document.addEventListener('mousedown', (e) => {
+                const handle = e.target.closest('#reconDragHandle');
+                if (!handle) return;
+                const drawer = document.getElementById('reconDrawer');
+                dragging = true;
+                startX = e.clientX;
+                startW = drawer.getBoundingClientRect().width || RECON_DEFAULT_WIDTH;
+                handle.classList.add('dragging');
+                drawer.classList.add('dragging');
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                const delta = startX - e.clientX;
+                let w = startW + delta;
+                const maxW = Math.round(window.innerWidth * 0.6);
+                w = Math.max(RECON_MIN_WIDTH, Math.min(maxW, w));
+                __reconDrawerWidth = w;
+                syncReconDrawerLayout(w);
+            });
+            window.addEventListener('mouseup', () => {
+                if (!dragging) return;
+                dragging = false;
+                const handle = document.getElementById('reconDragHandle');
+                const drawer = document.getElementById('reconDrawer');
+                if (handle) handle.classList.remove('dragging');
+                if (drawer) drawer.classList.remove('dragging');
+                document.body.style.userSelect = '';
+            });
+            window.addEventListener('resize', () => {
+                const drawer = document.getElementById('reconDrawer');
+                if (!drawer || drawer.classList.contains('hidden')) return;
+                const maxW = Math.round(window.innerWidth * 0.6);
+                __reconDrawerWidth = Math.max(RECON_MIN_WIDTH, Math.min(maxW, __reconDrawerWidth));
+                syncReconDrawerLayout(__reconDrawerWidth);
+            });
+        })();
 
         function forceTableReflow() {
             // The stale paint is only cleared by the SIDEBAR's display toggle, because #sidebarPanel and
@@ -3181,6 +3642,15 @@
         function toggleSsInputs() {
             const active = document.getElementById('ssToggle').checked;
             document.getElementById('ssInputsWrapper').style.display = active ? 'block' : 'none';
+            triggerRecalculate();
+        }
+
+        function toggleSsTaxAuto() {
+            const auto = document.getElementById('ssTaxAutoToggle').checked;
+            const disp = document.getElementById('ssTaxAutoDisplay');
+            const inp = document.getElementById('ssTaxablePct');
+            if (disp) disp.style.display = auto ? 'block' : 'none';
+            if (inp) inp.style.display = auto ? 'none' : 'block';
             triggerRecalculate();
         }
 
@@ -3731,6 +4201,8 @@
                     let html = src.innerHTML;
                     html = html.replace(/id="(nwg\d+)"/g, 'id="$1-ex"').replace(/url\(#(nwg\d+)\)/g, 'url(#$1-ex)');
                     dst.innerHTML = html;
+                    const execSvg = dst.querySelector('#netWorthSvg');
+                    if (execSvg && typeof wireNwtChartHover === 'function') wireNwtChartHover(execSvg);
                 }
             } catch (e) { /* view-only */ }
         }
@@ -3928,6 +4400,8 @@
             'Brokerage':'#1da29b',
             'Social Security':'#22b5c0',
             'RE/Business':'#3e36dc',
+            'RE/Biz Sale/Refi':'#a855f7', // Cashflow-only category (see cashflowFlowsFor) — matches the NWT milestone icon's own RE/Business-sale color for consistency
+            'Inheritance':'#10b981', // Cashflow-only category (see cashflowFlowsFor) — matches the NWT milestone icon's own inheritance color
             '1099 Income':'#34c4db',
             'HSA':'#44dec0',
             '529':'#7b92e8',
@@ -3938,7 +4412,7 @@
             'Gifting':'#df4a78',
             'Tuition':'#e28a58'
         };
-        const DIST_SHORT = {'1099 Income':'1099','Social Security':'Soc Sec','RE/Business':'RE/Biz'};
+        const DIST_SHORT = {'1099 Income':'1099','Social Security':'Soc Sec','RE/Business':'RE/Biz','RE/Biz Sale/Refi':'RE/Biz Sale'};
         let distActiveYears = {}; // per-panel chosen year (keyed by phase index)
         let distUserSet = {};     // per-panel: true once the user manually picks a year.
         // A panel in "track" mode (userSet false) follows its life-phase milestone, so changing a
@@ -3961,6 +4435,43 @@
                 'Healthcare': (y.audHcFromPortfolio||0)+(y.audHsaDist||0),
                 'Taxes': y.audSolvedTax||0, 'Gifting': y.audGift||0, 'Tuition': y.audTuitionBurn||0
             };
+            return { sources, spend };
+        }
+
+        // Cashflow tab, working years: no portfolio spending yet, so the only "inflow" is money going
+        // INTO the five buckets. Reuses the exact same DIST_COLORS keys distFlowsFor uses for money
+        // coming OUT of those same buckets in retirement — same color, mirrored direction.
+        function cashflowContribFor(y) {
+            if (!y) return null;
+            return {
+                'Traditional': y.audTradCont||0, 'Roth': y.audRothCont||0, 'Brokerage': y.brokCont||0,
+                'HSA': y.audHsaCont||0, '529': y.audF529Cont||0
+            };
+        }
+        function cashflowIsSpendingPhase(y) { return !!(y && (y.isSemiRetired || y.isFullyRetired)); }
+        function cashflowFlowsFor(y) {
+            if (!y) return null;
+            // distFlowsFor's own 'RE/Business' source only reads ongoing distributions, never
+            // refi/sale proceeds or inheritance (both already correctly reduce the withdrawal upstream
+            // — this just labels where that reduction came from). Both computed unconditionally since
+            // a sale/refi/inheritance can happen in any year, not just retirement. Distribution Mix's
+            // own distFlowsFor is left untouched — see Help §4b for the documented gap this leaves there.
+            const rebiCapital = (y.rebiRefi||0) + (y.rebiExit||0);
+            const inheritance = y.audInheritanceGross||0;
+            let sources, spend;
+            if (cashflowIsSpendingPhase(y)) {
+                const f = distFlowsFor(y);
+                sources = Object.assign({}, f.sources);
+                spend = f.spend;
+            } else {
+                sources = Object.assign({}, cashflowContribFor(y));
+                // Tax on brokerage dividends is real and owed every year regardless of phase (confirmed
+                // numerically in the MFJ session: audSolvedTax tracks assetDist almost exactly in these
+                // years), so it belongs here even though Living/Healthcare/Gifting/Tuition don't.
+                spend = (y.audSolvedTax > 0) ? { 'Taxes': y.audSolvedTax } : {};
+            }
+            if (rebiCapital > 0) sources['RE/Biz Sale/Refi'] = rebiCapital;
+            if (inheritance > 0) sources['Inheritance'] = inheritance;
             return { sources, spend };
         }
 
@@ -4202,19 +4713,24 @@
         let currentChartTab = 'trajectory';
         function setChartTab(tab){
             currentChartTab = tab;
-            const isT = tab==='trajectory';
-            document.getElementById('tabPaneTrajectory').style.display = isT ? '' : 'none';
-            document.getElementById('tabPaneDistribution').style.display = isT ? 'none' : '';
-            const tb=document.getElementById('chartTabTrajectory'), db=document.getElementById('chartTabDistribution');
-            tb.className = 'px-3 py-1.5 text-[11px] font-semibold -mb-px transition cursor-pointer ' + (isT?'text-blue-400 border-b-2 border-blue-400':'text-slate-400 border-b-2 border-transparent hover:text-slate-200');
-            db.className = 'px-3 py-1.5 text-[11px] font-semibold -mb-px transition cursor-pointer ' + (!isT?'text-blue-400 border-b-2 border-blue-400':'text-slate-400 border-b-2 border-transparent hover:text-slate-200');
-            // Include HSA / Include 529 pick which BALANCES stack in the trajectory chart. The
-            // Distribution Mix shows FLOWS, not balances, so they have no meaning there -- hide them
-            // rather than grey them out, since the control genuinely doesn't apply to this view.
-            // State is preserved; they reappear on switching back.
+            const isTraj = tab==='trajectory', isCf = tab==='cashflow', isDist = tab==='distribution';
+            document.getElementById('tabPaneTrajectory').style.display = isTraj ? '' : 'none';
+            document.getElementById('tabPaneCashflow').style.display = isCf ? '' : 'none';
+            document.getElementById('tabPaneDistribution').style.display = isDist ? '' : 'none';
+            const activeCls = 'text-blue-400 border-b-2 border-blue-400', inactiveCls = 'text-slate-400 border-b-2 border-transparent hover:text-slate-200';
+            const baseCls = 'px-3 py-1.5 text-[11px] font-semibold -mb-px transition cursor-pointer ';
+            document.getElementById('chartTabTrajectory').className = baseCls + (isTraj ? activeCls : inactiveCls);
+            document.getElementById('chartTabCashflow').className = baseCls + (isCf ? activeCls : inactiveCls);
+            document.getElementById('chartTabDistribution').className = baseCls + (isDist ? activeCls : inactiveCls);
             const bt = document.getElementById('chartBucketToggles');
-            if (bt) bt.style.display = isT ? '' : 'none';
-            if (!isT) renderDistribution();
+            if (bt) bt.style.display = isTraj ? '' : 'none';
+            const gt = document.getElementById('nwtGranToggle');
+            if (gt) gt.style.display = isDist ? 'none' : '';
+            if (isDist) { renderDistribution(); return; }
+            if (window.__chartSeriesFull) {
+                if (isCf) renderCashflowChart(window.__chartSeriesFull);
+                else renderNetWorthChart(window.__chartSeriesFull, window.__runwayDepletedYear || null);
+            }
         }
 
         function setDollarMode(mode) {
@@ -4390,6 +4906,9 @@
             const wSsAmount = parseFloat(cleanNum(document.getElementById('wSsAmount').value)) || 0;
             const ssCola = (parseFloat(cleanNum(document.getElementById('ssCola').value)) || 0) / 100;
             const ssTaxablePct = (parseFloat(cleanNum(document.getElementById('ssTaxablePct').value)) || 85) / 100;
+            const _ssPctRaw = cleanNum(document.getElementById('ssTaxablePct').value);
+            const _ssAutoEl = document.getElementById('ssTaxAutoToggle');
+            const ssPctOverridden = _ssAutoEl ? !_ssAutoEl.checked : false;
 
             const roiFlat = (parseFloat(cleanNum(document.getElementById('roiNominal').value)) || 6) / 100;
             const infFlat = (parseFloat(cleanNum(document.getElementById('inflationRate').value)) || 3) / 100;
@@ -4470,6 +4989,7 @@
             let totalLifetimeAcaSubsidy = 0;
             let totalLifetimeTax = 0;
             let html = "";
+            let expHtml = ""; // accumulates recon drawer panels separately from the table row HTML
             let runwayDepletedYear = null;
             let brokDepletedYear = null;
             let kpi529Underfunded = false;
@@ -4873,7 +5393,19 @@
 
                 // Helper: given a withdrawal amount, simulate which accounts are tapped and
                 // compute the full tax liability including Trad ordinary income and LTCG
-                function computeTaxForWithdrawal(withdrawalAmt, tradAvail, rothAvail, brokAvail) {
+                function taxableSocialSecurity(ss, otherAgi, lower, upper) {
+                    if (ss <= 0) return 0;
+                    const half = ss * 0.5;
+                    const prov = otherAgi + half;
+                    if (prov <= lower) return 0;
+                    const excess = prov - lower, band = upper - lower;
+                    const l14 = Math.min(half, Math.min(excess, band) * 0.5);
+                    const l15 = Math.max(0, excess - band);
+                    return Math.min(l15 * 0.85 + l14, ss * 0.85);
+                }
+                function computeTaxForWithdrawal(withdrawalAmt, tradAvail, rothAvail, brokAvail, ordinaryOverride) {
+                    const _suppressConv = (ordinaryOverride != null);   // conversion counterfactual (display-only)
+                    const _pwo = _suppressConv ? ordinaryOverride : preWithdrawOrdinary;
                     let elecTradDrawn = 0, elecBrokDrawn = 0, elecRothDrawn = 0;
                     let remaining = withdrawalAmt;
 
@@ -4906,8 +5438,8 @@
                     // so combined ordinary income lands at the bracket cap — never over it — and
                     // the conversion can never consume Traditional balance that spending needs.
                     let dynConv = 0;
-                    if (bracketConvActive) {
-                        let ordinaryExConv = preWithdrawOrdinary + elecTradDrawn;
+                    if (bracketConvActive && !_suppressConv) {
+                        let ordinaryExConv = _pwo + elecTradDrawn;
                         let taxableExConv = Math.max(0, ordinaryExConv - standardDeduction);
                         let room = roomToBracketCap(taxableExConv, rothConvBracketCap, ordinaryBrackets, infScale * filingScale);
                         dynConv = Math.max(0, Math.min(room, tradAvail - elecTradDrawn));
@@ -4916,7 +5448,7 @@
                         // MAGI lands AT the cliff, never over it. If spending alone already blew
                         // the cliff, the subsidy is lost anyway — convert per the bracket cap.
                         if (acaOn && acaPreserve && hcMarketplacePremium > 0) {
-                            const magiExConv = preWithdrawOrdinary + elecTradDrawn + brokGain + rebiExitGainLtcg
+                            const magiExConv = _pwo + elecTradDrawn + brokGain + rebiExitGainLtcg
                                 + (currentSsPayout * (1 - ssTaxablePct));
                             if (magiExConv <= cliffMagi) {
                                 dynConv = Math.min(dynConv, Math.max(0, cliffMagi - magiExConv));
@@ -4925,14 +5457,23 @@
                     }
 
                     // Trad elective draws (and any conversion) add to ordinary income
-                    let totalOrdinary = preWithdrawOrdinary + elecTradDrawn + dynConv;
+                    const _ssFlat = currentSsPayout * ssTaxablePct;
+                    const _otherAgi = (_pwo - _ssFlat) + elecTradDrawn + dynConv
+                                    + brokGain + rebiExitGainLtcg + brokDivQualified;
+                    // Single app files Single or HoH — both use the §86 Single thresholds (never MFJ).
+                    const _ssLo = IRS_2026.ssProvisionalSingleLower;
+                    const _ssUp = IRS_2026.ssProvisionalSingleUpper;
+                    const taxableSS = ssPctOverridden
+                        ? _ssFlat
+                        : taxableSocialSecurity(currentSsPayout, _otherAgi, _ssLo, _ssUp);
+                    let totalOrdinary = _pwo + elecTradDrawn + dynConv - _ssFlat + taxableSS;
                     let taxableOrd = Math.max(0, totalOrdinary - standardDeduction);
                     let fedTax = marginalTax(taxableOrd, ordinaryBrackets, infScale * filingScale);
-                    let stLocalBase = Math.max(0, totalOrdinary - (stateExemptsSS ? (currentSsPayout * ssTaxablePct) : 0));
+                    let stLocalBase = Math.max(0, totalOrdinary - (stateExemptsSS ? taxableSS : 0));
                     let stLocalTax = stLocalBase * (stateRate + countyRate);
 
                     // ---- ACA subsidy from THIS iteration's MAGI (full SS counts for ACA MAGI) ----
-                    let acaMagi = totalOrdinary + brokGain + rebiExitGainLtcg + brokDivQualified + (currentSsPayout * (1 - ssTaxablePct));
+                    let acaMagi = totalOrdinary + brokGain + rebiExitGainLtcg + brokDivQualified + (currentSsPayout - taxableSS);
                     let acaSubsidy = 0;
                     if (acaOn && hcMarketplacePremium > 0 && !forceNoSubsidy && acaMagi <= cliffMagi) {
                         // Medicaid-floor simplification: contribution is computed as if income were
@@ -4971,6 +5512,16 @@
                         auditLtcgTax: ltcgTax, auditTaxableOrd: taxableOrd, auditPrefGains: preferentialGains,
                         auditPenaltyTax: penaltyTax,
                         auditAcaMagi: acaMagi,
+                    // --- per-year tax/income detail (display-only; none of this feeds the projection) ---
+                    auditFedOrdTax: fedTax,
+                    auditStLocalTax: stLocalTax + ltcgStateTax,
+                    auditSeTax: seTax,
+                    auditTaxableSS: taxableSS,
+                    auditBrokDivOrd: brokDivOrdinary,
+                    auditBrokDivQual: brokDivQualified,
+                    auditMarginalRate: (function () { let r = ordinaryBrackets[0].rate; for (const br of ordinaryBrackets) if (taxableOrd >= br.from * infScale * filingScale) r = br.rate; return r; })(),
+                    auditStdDed: standardDeduction,
+                    auditRebiRecapture: rebiRecaptureTax,
                         taxableOrd, totalOrdinary
                     };
                 }
@@ -5008,6 +5559,38 @@
                 }
 
                 // Final converged values
+
+                // Roth conversion TRUE cost (display-only): re-solve the WHOLE year with the conversion removed
+
+                // (fixed conv out of ordinary via ordinaryOverride; bracket-fill suppressed). Re-running the full
+
+                // withdrawal solve captures the complete cascade (smaller tax -> sell less brokerage -> fewer
+
+                // gains), so the difference is the conversion's true cost. Never affects the projection.
+
+                let audConvIncrementalTax = 0;
+
+                if (rothConvAmt > 0 || (solvedResult.dynConv || 0) > 0) {
+
+                    const _pwoNoConv = Math.max(0, preWithdrawOrdinary - rothConvAmt);
+
+                    let _elecNo = elecWithdrawal, _resNo = null, _prevNo = -1;
+
+                    for (let _it = 0; _it < 14; _it++) {
+
+                        _resNo = computeTaxForWithdrawal(_elecNo, tradAvailForElec, rothAvailForElec, brokAvailForElec, _pwoNoConv);
+
+                        let _newNo = Math.max(0, baseNeedFixed + _resNo.hcFromPortfolio + _resNo.totalTax - cashSources);
+
+                        if (Math.abs(_newNo - _elecNo) < 1) { _elecNo = _newNo; break; }
+
+                        _prevNo = _elecNo; _elecNo = _newNo;
+
+                    }
+
+                    audConvIncrementalTax = solvedResult.totalTax - _resNo.totalTax;
+
+                }
                 let currentYearTaxDrag = solvedTax;
                 // Execute the converged HSA healthcare draw and define display values
                 let hsaDist = solvedResult.hsaCover;
@@ -5174,6 +5757,7 @@
                     audInheritanceGross: inheritanceCashIn * dispScale,
                     rebiEndValue: rebiEndValue * dispScale,
                     isSemiRetired, isFullyRetired, isCovered,
+                    audBrokInflow: surplusCash * dispScale, // matches MFJ's own field name/pattern — surplusCash is already fully settled by this point (computed, used, banked at line ~5375); this just exposes the same final number other display code (Cashflow) can read
                     // ---- Conservation-audit flows (Tier 8) ----------------------------------
                     // These are already computed by the engine; publishing them lets the test
                     // suite verify that every dollar is CONSERVED, which is the one question the
@@ -5220,7 +5804,17 @@
                     // cashSources uses gross; the SE tax is accounted separately inside solvedTax.
                     // Using net here would double-deduct the SE tax and make the audit report
                     // phantom CREATED money.
-                    audGross1099: gross1099 * dispScale
+                    audGross1099: gross1099 * dispScale,
+                    // --- per-year tax/income detail (display-only) ---
+                    audFedOrdTax: solvedResult.auditFedOrdTax * dispScale,
+                    audStLocalTax: solvedResult.auditStLocalTax * dispScale,
+                    audSeTax: solvedResult.auditSeTax * dispScale,
+                    audIrmaa: irmaaSurcharge * dispScale,
+                    audTaxableSS: solvedResult.auditTaxableSS * dispScale,
+                    audBrokDivOrd: solvedResult.auditBrokDivOrd * dispScale,
+                    audBrokDivQual: solvedResult.auditBrokDivQual * dispScale,
+                    audMarginalRate: solvedResult.auditMarginalRate,
+                    audRothConvCost: audConvIncrementalTax * dispScale
                 });
 
                 let ageLabel = 'Age: ' + hAge;
@@ -5296,7 +5890,7 @@
                         <td class="p-2 text-purple-300 font-mono" data-group="grpRebi">${cf(rebiExitProceedsGross)}</td>
                         <td class="p-2 text-purple-400 font-mono" data-group="grpRebi">${c(rebiEndValue)}</td>
                     </tr>`;
-                    html += buildReconExpandRow({
+                    expHtml += buildReconExpandRow({
                         year: currentYear,
                         living: plannedTargetDraw, gift: childGiftAmt,
                         hcCost: (hsaDist + solvedResult.hcFromPortfolio), hcFromPortfolio: solvedResult.hcFromPortfolio, hsaPaid: hsaDist,
@@ -5307,6 +5901,27 @@
                         pwd: portfolioWithdrawalActual,
                         drawTrad: solvedResult.elecTradDrawn + (forcedRmd||0), drawRoth: solvedResult.elecRothDrawn, drawBrok: solvedResult.elecBrokDrawn,
                         combStart, combCont, combGrow, hsaDraw: hsaDist, ending: spendableNetWorth,
+                        taxDetail: {
+                            rmd: forcedRmd, rothConv: rothConvAmt, taxableSS: solvedResult.auditTaxableSS,
+                            divOrd: solvedResult.auditBrokDivOrd, divQual: solvedResult.auditBrokDivQual,
+                            elecTrad: solvedResult.elecTradDrawn, gross1099: gross1099,
+                            ltcgRealized: solvedResult.brokGain,
+                            ordinaryTotal: solvedResult.totalOrdinary,
+                            prefTotal: solvedResult.auditPrefGains,
+                            taxableOrd: solvedResult.auditTaxableOrd,
+                            stdDed: solvedResult.auditStdDed,
+                            fedOrd: solvedResult.auditFedOrdTax, stLocal: solvedResult.auditStLocalTax,
+                            fedLtcg: solvedResult.auditLtcgTax, se: solvedResult.auditSeTax,
+                            penalty: solvedResult.auditPenaltyTax, irmaa: irmaaSurcharge,
+                            rebiRecapture: solvedResult.auditRebiRecapture,
+                            total: solvedTax,
+                            marginal: solvedResult.auditMarginalRate,
+                            convCost: audConvIncrementalTax,
+                            seDeduction: seDeduction,
+                            rebiExitGain: rebiExitGainLtcg,
+                            rebiDistTaxable: rebiDistTaxable,
+                            inheritanceTaxable: inheritanceTaxable
+                        },
                         notables: {
                             rothConv: rothConvAmt,
                             inheritance: inheritanceCashIn, inheritanceTaxable: inheritanceTaxable,
@@ -5322,6 +5937,8 @@
             }
 
             document.getElementById('ledgerTableBody').innerHTML = html;
+            const reconStoreEl = document.getElementById('reconPanelStore');
+            if (reconStoreEl) reconStoreEl.innerHTML = expHtml;
             wireReconExpandRows();
             document.getElementById('kpiTaxDrag').innerHTML = kpiNum(totalLifetimeTax);
             document.getElementById('kpiAcaSubsidy').innerHTML = kpiNum(totalLifetimeAcaSubsidy);
@@ -5503,23 +6120,109 @@
         }
 
         // ---------- Net Worth Trajectory Chart (inline SVG, stacked area by bucket) ----------
+
+        function resyncNetWorthChart() {
+            if (!window.__chartSeriesFull) return;
+            if (typeof currentChartTab !== 'undefined' && currentChartTab === 'cashflow' && typeof renderCashflowChart === 'function') {
+                renderCashflowChart(window.__chartSeriesFull);
+            } else {
+                renderNetWorthChart(window.__chartSeriesFull, window.__runwayDepletedYear || null);
+                if (typeof syncExecChart === 'function') syncExecChart();
+            }
+        }
+
+        function setNwtGranularity(g) {
+            window.__nwtGranularity = g;
+            document.querySelectorAll('#nwtGranToggle button').forEach(b => {
+                const on = (+b.dataset.g === g);
+                b.classList.toggle('bg-blue-600', on); b.classList.toggle('text-white', on);
+                b.classList.toggle('text-slate-400', !on);
+            });
+            resyncNetWorthChart();
+        }
+
+        // Life-event markers for the Net Worth chart — single-person version (no H/W pairing; MFJ's
+        // pairMilestone produces "H "/"W "/"Both " variants for two people, Single has just the one
+        // person, using the same "h"-prefixed field IDs MFJ uses for the first spouse). Pure
+        // display-layer computation — reads existing inputs/data, writes nothing.
+        function computeYearMilestones(fullSeries) {
+            const val = id => { const e = document.getElementById(id); return e ? (parseFloat(e.value) || 0) : 0; };
+            const validYears = new Set(fullSeries.map(s => s.year));
+            const byYear = {};
+            const add = (year, m) => { if (!validYears.has(year)) return; if (!byYear[year]) byYear[year] = []; byYear[year].push(m); };
+
+            const hBirth = val('hBirthYear');
+            const hSemi = val('hSemiAge'), hFull = val('hFullAge');
+            if (hBirth && hSemi) add(hBirth + hSemi, { type: 'semi', icon: '\ud83c\udfd6\ufe0f', color: '#38bdf8', label: 'Semi-Retired', detail: 'Semi-Retired' });
+            if (hBirth && hFull) add(hBirth + hFull, { type: 'full', icon: '\ud83c\udfc1', color: '#2563eb', label: 'Fully Retired', detail: 'Fully Retired' });
+            const ssOn = document.getElementById('ssToggle') ? document.getElementById('ssToggle').checked : false;
+            if (ssOn) {
+                const hSs = val('hSsAge');
+                if (hBirth && hSs) add(hBirth + hSs, { type: 'ss', icon: '\ud83c\udfdb\ufe0f', color: '#6366f1', label: 'Claimed Social Security', detail: 'Claimed Social Security' });
+            }
+
+            const giftRecipientLabel = code => {
+                if (!code) return '';
+                if (code === 'donation') return 'Donation';
+                if (code === 'other') return 'Gift';
+                const m = /^child(\d+)$/.exec(code);
+                return m ? ('Child ' + m[1]) : 'Gift';
+            };
+            const giftReasonLabel = { home: 'Buying a Home', business: 'Starting a Business', wedding: 'Wedding' };
+            const money = v => '$' + Math.round(v || 0).toLocaleString('en-US');
+
+            fullSeries.forEach(s => {
+                if (s.tuitionByChild && s.tuitionByChild.length) {
+                    const detail = s.tuitionByChild.map(c => c.label + ': ' + money(c.amt)).join(' \u00b7 ');
+                    add(s.year, { type: 'tuition', icon: '\ud83c\udf93', color: '#14b8a6', label: 'College Tuition', detail });
+                }
+                if (s.giftRecipient) {
+                    const who = giftRecipientLabel(s.giftRecipient);
+                    const reason = giftReasonLabel[s.giftReason] || '';
+                    const detail = who + (reason ? ' \u2014 ' + reason : '') + ': ' + money(s.audGift);
+                    add(s.year, { type: 'gift', icon: '\ud83c\udf81', color: '#f59e0b', label: 'Gifting', detail });
+                }
+                if (s.ltcByPerson && s.ltcByPerson.length) {
+                    const detail = s.ltcByPerson.map(p => p.who + ': ' + money(p.amt)).join(' \u00b7 ');
+                    add(s.year, { type: 'ltc', icon: '\ud83c\udfe5', color: '#ef4444', label: 'Long-Term Care', detail });
+                }
+                if (s.audInheritanceGross > 0) {
+                    add(s.year, { type: 'inheritance', icon: '\ud83d\udcb0', color: '#10b981', label: 'Inheritance', detail: money(s.audInheritanceGross) });
+                }
+                if (s.rebiExit > 0) {
+                    add(s.year, { type: 'rebi', icon: '\ud83c\udfe2', color: '#a855f7', label: 'RE / Business Sale', detail: money(s.rebiExit) });
+                }
+            });
+            return byYear;
+        }
+
         function renderNetWorthChart(series, runwayDepletedYear) {
             const wrap = document.getElementById('netWorthChartWrap');
             if (!series || series.length === 0) { wrap.innerHTML = ''; return; }
-
-            const W = 1100, H = 360, padL = 60, padR = 20, padT = 16, padB = 28;
+            window.__chartSeriesFull = series;
+            const gran = (window.__nwtGranularity === 1) ? 1 : 5;
+            const fullSeries = series;
+            const shown = gran === 1 ? series.slice() : series.filter((s, i) => i % 5 === 0 || i === series.length - 1);
+            const H = 380, padL = 60, padR = 20, padT = 66, padB = 28;
+            // Width: fill the actual available container width (measured in real pixels) instead of a
+            // fixed viewBox — see MFJ session notes. Falls back to a wider-than-container viewBox (with
+            // horizontal scroll) only if the measured width can't give every bar a legible minimum.
+            const n0 = shown.length;
+            const MIN_BAR_SLOT = 16;
+            let containerW = wrap.getBoundingClientRect().width;
+            if (!containerW || containerW < 200) containerW = (wrap.parentElement && wrap.parentElement.getBoundingClientRect().width) || 1100;
+            const neededW = padL + padR + n0 * MIN_BAR_SLOT;
+            const needsScroll = neededW > containerW;
+            const W = Math.max(1, Math.round(needsScroll ? neededW : containerW));
+            wrap.style.overflowX = needsScroll ? 'auto' : '';
             const plotW = W - padL - padR, plotH = H - padT - padB;
-
-            // Pull current theme colors so the chart adapts to light/dark mode
             const rootStyles = getComputedStyle(document.documentElement);
             const gridColor = rootStyles.getPropertyValue('--border-strong').trim() || '#1e293b';
             const axisTextColor = rootStyles.getPropertyValue('--text-muted').trim() || '#64748b';
             const axisLineColor = rootStyles.getPropertyValue('--border-strong').trim() || '#334155';
-
+            const textPrimary = rootStyles.getPropertyValue('--text-primary').trim() || '#e2e8f0';
             const includeHsa = document.getElementById('chartIncludeHsa') ? document.getElementById('chartIncludeHsa').checked : true;
             const include529 = document.getElementById('chartInclude529') ? document.getElementById('chartInclude529').checked : false;
-
-            // Stacked layers, bottom to top: Trad, Roth, Brok, [HSA], [529] -- HSA/529 conditionally included per toggle
             const layers = [
                 { key: 'trad', color: '#4f8bf0', label: 'Traditional' },
                 { key: 'roth', color: '#9d7cf0', label: 'Roth' },
@@ -5527,97 +6230,111 @@
             ];
             if (includeHsa) layers.push({ key: 'hsa', color: '#2bbfd4', label: 'HSA' });
             if (include529) layers.push({ key: 'f529', color: '#f0b429', label: '529' });
-
-            // Recompute each year's displayed total to match exactly what's stacked (excludes toggled-off buckets)
             const displayTotal = s => layers.reduce((sum, l) => sum + Math.max(0, s[l.key] || 0), 0);
-            const maxTotal = Math.max(1, ...series.map(displayTotal));
-            const n = series.length;
-            const xFor = i => padL + (i / Math.max(1, n - 1)) * plotW;
+            const maxTotal = Math.max(1, ...fullSeries.map(displayTotal));
+            const n = shown.length;
+            const slotW = plotW / n;
+            const barW = Math.max(4, Math.min(34, slotW * 0.64));
+            const xCenter = i => padL + i * slotW + slotW / 2;
             const yFor = v => padT + plotH - (Math.max(0, v) / maxTotal) * plotH;
 
-            // compute cumulative stack per year
-            let cumByYear = series.map(() => 0);
-            const smoothLine = (pts, cmd) => {
-                if (pts.length < 2) return pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
-                let d = (cmd||'M') + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
-                const t = 0.5;
-                for (let i = 0; i < pts.length - 1; i++) {
-                    const p0 = pts[i-1] || pts[i], p1 = pts[i], p2 = pts[i+1], p3 = pts[i+2] || pts[i+1];
-                    const c1x = p1[0] + (p2[0]-p0[0])/6*t*2, c1y = p1[1] + (p2[1]-p0[1])/6*t*2;
-                    const c2x = p2[0] - (p3[0]-p1[0])/6*t*2, c2y = p2[1] - (p3[1]-p1[1])/6*t*2;
-                    d += ' C' + c1x.toFixed(1)+','+c1y.toFixed(1)+' '+c2x.toFixed(1)+','+c2y.toFixed(1)+' '+p2[0].toFixed(1)+','+p2[1].toFixed(1);
-                }
-                return d;
-            };
-            let paths = layers.map(layer => {
-                let topPts = [], bottomPts = [];
-                series.forEach((s, i) => {
-                    let base = cumByYear[i];
-                    let val = Math.max(0, s[layer.key] || 0);
-                    let top = base + val;
-                    cumByYear[i] = top;
-                    topPts.push([xFor(i), yFor(top)]);
-                    bottomPts.push([xFor(i), yFor(base)]);
-                });
-                let fill = smoothLine(topPts, 'M');
-                let botRev = bottomPts.slice().reverse();
-                fill += ' L' + botRev[0][0].toFixed(1) + ',' + botRev[0][1].toFixed(1);
-                fill += ' ' + smoothLine(botRev, 'L').slice(smoothLine(botRev,'L').indexOf(' ')+1);
-                fill += ' Z';
-                let stroke = smoothLine(topPts, 'M');
-                return { d: fill, stroke, color: layer.color, label: layer.label, key: layer.key };
-            });
-
-            // X axis ticks: every ~10 years
-            let tickEvery = Math.max(1, Math.round(n / 8));
-            let xTicks = series.filter((s, i) => i % tickEvery === 0 || i === n - 1);
-
-            // Y axis ticks: 4 gridlines
             let yTicks = [0, 0.25, 0.5, 0.75, 1.0].map(f => f * maxTotal);
+            let gridLines = yTicks.map(v => `<line x1="${padL}" y1="${yFor(v).toFixed(1)}" x2="${W - padR}" y2="${yFor(v).toFixed(1)}" stroke="${gridColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+                <text x="${padL - 8}" y="${(yFor(v) + 3).toFixed(1)}" text-anchor="end" font-size="12" fill="${axisTextColor}" font-family="monospace">$${(v/1e6).toFixed(2)}M</text>`).join('');
 
-            let gridLines = yTicks.map(v => `<line x1="${padL}" y1="${yFor(v).toFixed(1)}" x2="${W - padR}" y2="${yFor(v).toFixed(1)}" stroke="${gridColor}" stroke-width="1"/>
-                <text x="${padL - 8}" y="${(yFor(v) + 3).toFixed(1)}" text-anchor="end" font-size="12" fill="${axisTextColor}" font-family="monospace">${(v >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? '$' + Math.round(v / 1e3) + 'K' : '$' + Math.round(v))}</text>`).join('');
-
-            let xLabels = xTicks.map(s => {
-                let idx = series.indexOf(s);
-                return `<text x="${xFor(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="12" fill="${axisTextColor}" font-family="monospace">${s.year}</text>`;
+            let bars = shown.map((s) => {
+                const fullIdx = fullSeries.indexOf(s);
+                const cx = xCenter(shown.indexOf(s));
+                const x = cx - barW / 2;
+                let cumTop = padT + plotH;
+                let segs = '';
+                layers.forEach(l => {
+                    const val = Math.max(0, s[l.key] || 0);
+                    const hh = (val / maxTotal) * plotH;
+                    if (hh <= 0) return;
+                    cumTop -= hh;
+                    segs += `<rect data-idx="${fullIdx}" data-key="${l.key}" x="${x.toFixed(1)}" y="${cumTop.toFixed(1)}" width="${barW.toFixed(1)}" height="${hh.toFixed(1)}" fill="${l.color}" rx="1"/>`;
+                });
+                const tot = displayTotal(s);
+                const topY = yFor(tot);
+                const label = (gran === 5) ? `<text data-toplabel="${fullIdx}" x="${cx.toFixed(1)}" y="${(topY - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="bold" fill="${textPrimary}" pointer-events="none">$${(tot/1e6).toFixed(2)}M</text>` : '';
+                // hit area painted FIRST (underneath) so individual colored segments sit on top and win
+                // hit-testing for per-segment tooltip/highlight — this ordering was the fix for a bug
+                // where the hit-rect painted last swallowed all hover events.
+                const hit = `<rect class="nwt-hit" data-idx="${fullIdx}" x="${(x-4).toFixed(1)}" y="${padT}" width="${(barW+8).toFixed(1)}" height="${plotH}" fill="transparent" style="cursor:crosshair"/>`;
+                const yr = `<text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="${gran===1?'9':'12'}" fill="${axisTextColor}" font-family="monospace" pointer-events="none" ${gran===1?`transform="rotate(45 ${cx.toFixed(1)} ${H-8})"`:''}>${s.year}</text>`;
+                return `<g>${hit}${segs}${label}${yr}</g>`;
             }).join('');
 
-            // Depletion marker line, if applicable
+            // Life-event milestone icons: only drawn on a year that has its own visible bar — no
+            // nearest-shown-bar snapping (see MFJ session notes: a missing icon is more honest than a
+            // misplaced one, and matches how the bars themselves behave in condensed mode).
+            const milestonesByYear = computeYearMilestones(fullSeries);
+            window.__nwtMilestones = {};
+            let milestoneIcons = '';
+            Object.keys(milestonesByYear).forEach(yrKey => {
+                const yr = parseInt(yrKey, 10);
+                const shownIdx = shown.findIndex(s => s.year === yr);
+                if (shownIdx < 0) return;
+                const s = shown[shownIdx];
+                const cx = xCenter(shownIdx);
+                const topY = yFor(displayTotal(s));
+                const yrData = fullSeries.find(x => x.year === yr) || s;
+                milestonesByYear[yrKey].forEach((m, mi) => {
+                    const iconBaseOffset = (gran === 5) ? 30 : 16;
+                    const iconY = topY - iconBaseOffset - mi * 24;
+                    const key = 'y' + yr + '_' + mi;
+                    window.__nwtMilestones[key] = Object.assign({ year: yr, hAge: yrData.hAge }, m);
+                    milestoneIcons += `<g data-milestone="${key}" style="cursor:pointer">
+                        <circle cx="${cx.toFixed(1)}" cy="${iconY.toFixed(1)}" r="11" fill="${m.color}" stroke="var(--recon-panel-bg,#0d1220)" stroke-width="1.5"/>
+                        <text x="${cx.toFixed(1)}" y="${(iconY + 4).toFixed(1)}" text-anchor="middle" font-size="11" style="pointer-events:none">${m.icon}</text>
+                    </g>`;
+                });
+            });
+
             let depletionMarker = '';
             if (runwayDepletedYear) {
-                let depIdx = series.findIndex(s => s.year === runwayDepletedYear);
-                if (depIdx >= 0) {
-                    let dx = xFor(depIdx);
+                let depS = fullSeries.find(s => s.year === runwayDepletedYear);
+                let depShownIdx = shown.indexOf(depS);
+                if (depShownIdx < 0 && depS) { let best=0,bd=1e9; shown.forEach((s,i)=>{const d=Math.abs(s.year-runwayDepletedYear);if(d<bd){bd=d;best=i;}}); depShownIdx=best; }
+                if (depShownIdx >= 0) {
+                    let dx = xCenter(depShownIdx);
                     const depLabel = 'Depleted ' + runwayDepletedYear + (window.__depletionAgeLabel ? ' \u00b7 ' + window.__depletionAgeLabel : '');
                     const halfLabelW = depLabel.length * 7.2 / 2;
                     const labelX = Math.min(Math.max(dx, padL + halfLabelW), W - padR - halfLabelW);
                     depletionMarker = `<line x1="${dx.toFixed(1)}" y1="${padT}" x2="${dx.toFixed(1)}" y2="${padT + plotH}" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3"/>
-                        <text x="${labelX.toFixed(1)}" y="${padT - 4}" text-anchor="middle" font-size="12" fill="#ef4444" font-family="monospace" font-weight="bold">${depLabel}</text>`;
+                        <text x="${labelX.toFixed(1)}" y="${padT - 4}" text-anchor="middle" font-size="12" fill="#ef4444" font-family="monospace">${depLabel}</text>`;
                 }
             }
 
-            // Hover interaction: invisible vertical bands + a synced readout box
-            let hoverBands = series.map((s, i) => {
-                let bx = padL + (i / n) * plotW;
-                let bw = plotW / n;
-                return `<rect x="${bx.toFixed(1)}" y="${padT}" width="${(bw+0.5).toFixed(1)}" height="${plotH}" fill="transparent"
-                    onmousemove="showChartTooltip(event, ${i})" onmouseleave="hideChartTooltip(event)" style="cursor:crosshair"/>`;
-            }).join('');
+            let compareOverlay = '';
+            if (typeof scenarioA !== 'undefined' && scenarioA && scenarioA.results && scenarioA.results.series) {
+                const aByYear = {}; scenarioA.results.series.forEach(s => { aByYear[s.year] = s; });
+                const pts = [];
+                shown.forEach((s, i) => { const a = aByYear[s.year]; if (a) pts.push([xCenter(i), yFor(Math.max(0, a.spendableTotal))]); });
+                if (pts.length > 1) {
+                    const dd = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+                    const aLabel = (document.getElementById('scenarioAName') && document.getElementById('scenarioAName').value) || 'Scenario A';
+                    compareOverlay = `<path d="${dd}" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-dasharray="5,4" opacity="0.9"/>
+                        <text x="${(pts[0][0] + 4).toFixed(1)}" y="${(pts[0][1] - 5).toFixed(1)}" font-size="11" fill="var(--text-muted)" font-family="monospace">${aLabel}</text>`;
+                }
+            }
 
             let legend = layers.map(l => `<span class="inline-flex items-center gap-1.5 mr-4">
                 <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:${l.color}"></span>
-                <span class="text-[10px] text-slate-400 font-mono">${l.label}</span>
-            </span>`).join('');
+                <span class="text-[10px] text-slate-400 font-mono">${l.label}</span></span>`).join('');
 
-            window.__chartSeries = series; // stash for tooltip lookup
-            // Plan Details context strip (mirrors the KPI cards that show). Ported from MFJ.
+            window.__chartSeries = fullSeries;
+
+            // Plan Details stats strip (Horizon/Peak/End/Legacy/Taxes/Brokerage) — ported from MFJ,
+            // where this same population code had been separately lost and restored earlier in that
+            // session; adding it here directly rather than porting a "lost" state.
             try {
                 const _B = window.__scenarioB || {};
                 const _fmt = v => { v = Math.round(v || 0); if (Math.abs(v) >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M'; if (Math.abs(v) >= 1e3) return '$' + Math.round(v/1e3) + 'K'; return '$' + v.toLocaleString(); };
                 let _peak = 0, _peakYr = null;
-                series.forEach(y => { const t = y.spendableTotal || 0; if (t > _peak) { _peak = t; _peakYr = y.year; } });
-                const _end = _B.eolNetWorth || (series.length ? series[series.length-1].spendableTotal : 0);
+                fullSeries.forEach(y => { const t = y.spendableTotal || 0; if (t > _peak) { _peak = t; _peakYr = y.year; } });
+                const _end = _B.eolNetWorth || (fullSeries.length ? fullSeries[fullSeries.length-1].spendableTotal : 0);
                 const _endAge = (window.__targetEolAge || 95);
                 const _rebi = _B.rebiEndValue || 0;
                 const _aca = (typeof totalLifetimeAcaSubsidy !== 'undefined') ? totalLifetimeAcaSubsidy : (_B.lifetimeAcaSubsidy || 0);
@@ -5628,60 +6345,94 @@
                 const strip = document.getElementById('pdContextStrip');
                 if (strip) {
                     const item = (label, val) => `<span>${label} <b>${val}</b></span>`;
-                    let html = item('Horizon', _endAge + '+')
+                    let stripHtml = item('Horizon', _endAge + '+')
                         + item('Peak', _fmt(_peak) + (_peakYr ? ` ${_peakYr}` : ''))
                         + item('End', _fmt(_end))
                         + item('Legacy', _fmt(_B.legacyValue || 0))
                         + item('Taxes', _fmt(_B.lifetimeTax || 0))
                         + item('Brokerage', _cross);
-                    if (_rebi > 0) html += item('Real Estate', _fmt(_rebi));
-                    if (_aca > 0) html += item('ACA Subsidy', _fmt(_aca));
-                    strip.innerHTML = html;
+                    if (_rebi > 0) stripHtml += item('Real Estate', _fmt(_rebi));
+                    if (_aca > 0) stripHtml += item('ACA Subsidy', _fmt(_aca));
+                    strip.innerHTML = stripHtml;
                 }
             } catch (e) { /* view-only */ }
-            // Keep the Distribution Mix tab in sync. It reads the same published series, so it
-            // refreshes on every recalc — including when the Today's $ / Future $ toggle fires
-            // (setDollarMode ends with triggerRecalculate). Only redraw when that tab is showing.
-            if (typeof currentChartTab !== 'undefined' && currentChartTab === 'distribution') {
-                try { renderDistribution(); } catch (e) { /* view-only; never break the engine path */ }
-            }
-
-            // A/B compare: overlay scenario A's spendable-total trajectory as a dashed line,
-            // aligned to B's years and scaled to B's current y-axis (maxTotal).
-            let compareOverlay = '';
-            if (typeof scenarioA !== 'undefined' && scenarioA && scenarioA.results && scenarioA.results.series) {
-                const aSeries = scenarioA.results.series;
-                const aByYear = {}; aSeries.forEach(s => { aByYear[s.year] = s; });
-                const pts = [];
-                series.forEach((s, i) => {
-                    const a = aByYear[s.year];
-                    if (a) pts.push([xFor(i), yFor(Math.max(0, a.spendableTotal))]);
-                });
-                if (pts.length > 1) {
-                    const dd = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
-                    const aLabel = (document.getElementById('scenarioAName') && document.getElementById('scenarioAName').value) || 'A';
-                    compareOverlay = `<path d="${dd}" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-dasharray="5,4" opacity="0.85"/>
-                        <text x="${(pts[0][0] + 4).toFixed(1)}" y="${(pts[0][1] - 5).toFixed(1)}" font-size="11" fill="var(--text-muted)" font-family="monospace" font-weight="bold">${aLabel} (A)</text>`;
-                }
-            }
 
             wrap.innerHTML = `
-                <svg viewBox="0 0 ${W} ${H}" class="w-full h-auto" id="netWorthSvg" style="max-height:420px">
-                      <defs>${paths.map((p,gi)=>`<linearGradient id="nwg${gi}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.color}" stop-opacity="0.55"/><stop offset="1" stop-color="${p.color}" stop-opacity="0.12"/></linearGradient>`).join("")}</defs>
+                <svg viewBox="0 0 ${W} ${H}" id="netWorthSvg" style="width:${W}px;height:${H}px;display:block;max-width:none;">
                     ${gridLines}
-                    ${paths.map((p,gi) => `<path d="${p.d}" fill="url(#nwg${gi})" stroke="none"/><path d="${p.stroke}" fill="none" stroke="${p.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`).join("")}
+                    ${bars}
                     ${compareOverlay}
                     ${depletionMarker}
-                    ${hoverBands}
-                    ${xLabels}
                     <line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" stroke="${axisLineColor}" stroke-width="1"/>
+                    ${milestoneIcons}
                 </svg>
                 <div class="flex items-center flex-wrap mt-1 px-1">${legend}</div>
-                <div id="chartTooltip" class="hidden absolute bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] font-mono text-slate-300 shadow-2xl pointer-events-none z-50"></div>
-            `;
+                <div id="chartTooltip" class="hidden absolute bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[11px] font-mono pointer-events-none z-50" style="min-width:180px"></div>`;
+
+            const svg = wrap.querySelector('#netWorthSvg');
+            wireNwtChartHover(svg);
+
+            if (typeof currentChartTab !== 'undefined' && currentChartTab === 'cashflow' && typeof renderCashflowChart === 'function') {
+                renderCashflowChart(series);
+            }
         }
 
-        function showChartTooltip(evt, idx) {
+        // Wires bar/icon hover onto any Net Worth chart SVG — the primary chart calls this directly;
+        // the Exec Summary tab's cloned copy (a static innerHTML copy with no listeners of its own)
+        // also calls this after cloning, which is what makes hover work there too.
+        function wireNwtChartHover(svg) {
+            if (!svg || svg.__nwtHoverWired) return;
+            svg.__nwtHoverWired = true;
+            function highlightSegs(idx, key) {
+                svg.querySelectorAll('rect[data-key]').forEach(r => {
+                    const ri = +r.getAttribute('data-idx');
+                    if (idx === null) { r.setAttribute('opacity','1'); r.removeAttribute('stroke'); return; }
+                    if (ri === idx && key && r.getAttribute('data-key') === key) { r.setAttribute('stroke','#ffffff'); r.setAttribute('stroke-width','1.5'); r.setAttribute('opacity','1'); }
+                    else if (ri === idx && key) { r.setAttribute('opacity','0.55'); r.removeAttribute('stroke'); }
+                    else { r.setAttribute('opacity','1'); r.removeAttribute('stroke'); }
+                });
+            }
+            const onMove = (evt) => {
+                const el = document.elementFromPoint(evt.clientX, evt.clientY);
+                const mEl = el && el.closest ? el.closest('[data-milestone]') : null;
+                if (mEl) {
+                    hideChartTooltip({ currentTarget: svg }); window.__nwtHoverKey = null; highlightSegs(null, null);
+                    showMilestoneTooltip({ clientX: evt.clientX, clientY: evt.clientY, currentTarget: svg }, mEl.getAttribute('data-milestone'));
+                    return;
+                }
+                const target = el && el.closest ? (el.closest('rect[data-idx]')) : null;
+                if (!target) { hideChartTooltip({ currentTarget: svg }); window.__nwtHoverKey = null; highlightSegs(null,null); return; }
+                const idx = +target.getAttribute('data-idx');
+                const segKey = target.getAttribute('data-key');
+                window.__nwtHoverKey = segKey;
+                highlightSegs(idx, segKey);
+                showChartTooltip({ clientX: evt.clientX, clientY: evt.clientY, currentTarget: svg }, idx, segKey);
+            };
+            svg.addEventListener('mousemove', onMove);
+            svg.addEventListener('mouseleave', (e) => { hideChartTooltip(e); window.__nwtHoverKey=null; highlightSegs(null,null); });
+        }
+
+        function showMilestoneTooltip(evt, key) {
+            const m = window.__nwtMilestones && window.__nwtMilestones[key];
+            if (!m) return;
+            const host = (evt.currentTarget && evt.currentTarget.closest('#netWorthChartWrap, #execChartWrap, #cashflowChartWrap')) || document.getElementById('netWorthChartWrap');
+            const wrap = host || document.getElementById('netWorthChartWrap');
+            const tip = (wrap && wrap.querySelector('#chartTooltip')) || document.getElementById('chartTooltip');
+            if (!tip || !wrap) return;
+            const ageStr = (m.hAge != null) ? `Age ${m.hAge}` : '';
+            tip.innerHTML = `<div class="text-white font-bold mb-1">${m.year != null ? m.year : ''}${ageStr ? ` <span class="text-slate-500 font-normal">(${ageStr})</span>` : ''}</div>
+                <div class="flex items-center gap-2 text-white font-bold mb-1"><span>${m.icon}</span><span>${m.label}</span></div>
+                <div class="text-slate-300">${m.detail}</div>`;
+            tip.classList.remove('hidden');
+            const rect = wrap.getBoundingClientRect();
+            let left = evt.clientX - rect.left + 14;
+            let top = evt.clientY - rect.top - 10;
+            if (left + 200 > rect.width) left = evt.clientX - rect.left - 214;
+            tip.style.left = left + 'px';
+            tip.style.top = top + 'px';
+            wrap.style.position = 'relative';
+        }
+        function showChartTooltip(evt, idx, segKey) {
             const series = window.__chartSeries;
             if (!series || !series[idx]) return;
             const s = series[idx];
@@ -5695,13 +6446,18 @@
             const chartTotal = s.trad + s.roth + s.brok + (includeHsa ? s.hsa : 0) + (include529 ? s.f529 : 0);
             let stage = s.isFullyRetired ? 'Full Retirement' : (s.isSemiRetired ? 'Semi-Retirement' : (s.isCovered ? 'Covered (One Working)' : 'Accumulation'));
             const dim = (excluded) => excluded ? 'opacity:0.45' : '';
+            // Highlights whichever row matches the specific stacked segment under the cursor (segKey is
+            // null when hovering the full-bar hit-rect rather than a particular segment) — new capability
+            // added during this port; Single's tooltip previously had no per-segment bolding at all.
+            const rowClass = (key) => 'flex justify-between gap-4' + (segKey === key ? ' font-bold' : '');
+            const rowStyle = (key, extra) => (segKey === key ? 'background:rgba(255,255,255,0.12);border-radius:4px;margin:0 -4px;padding:1px 4px;' : '') + (extra || '');
             tip.innerHTML = `<div class="text-white font-bold mb-1">${s.year} <span class="text-slate-500 font-normal">(Age ${s.hAge})</span></div>
                 <div class="text-slate-500 mb-1">${stage}</div>
-                <div class="flex justify-between gap-4"><span style="color:#3b82f6">Traditional</span><span>${currency(s.trad)}</span></div>
-                <div class="flex justify-between gap-4"><span style="color:#a855f7">Roth</span><span>${currency(s.roth)}</span></div>
-                <div class="flex justify-between gap-4"><span style="color:#10b981">Brokerage</span><span>${currency(s.brok)}</span></div>
-                <div class="flex justify-between gap-4" style="${dim(!includeHsa)}"><span style="color:#06b6d4">HSA${!includeHsa ? ' (excl.)' : ''}</span><span>${currency(s.hsa)}</span></div>
-                <div class="flex justify-between gap-4" style="${dim(!include529)}"><span style="color:#f59e0b">529${!include529 ? ' (excl.)' : ''}</span><span>${currency(s.f529)}</span></div>
+                <div class="${rowClass('trad')}" style="${rowStyle('trad')}"><span style="color:#3b82f6">Traditional</span><span>${currency(s.trad)}</span></div>
+                <div class="${rowClass('roth')}" style="${rowStyle('roth')}"><span style="color:#a855f7">Roth</span><span>${currency(s.roth)}</span></div>
+                <div class="${rowClass('brok')}" style="${rowStyle('brok')}"><span style="color:#10b981">Brokerage</span><span>${currency(s.brok)}</span></div>
+                <div class="${rowClass('hsa')}" style="${rowStyle('hsa', dim(!includeHsa))}"><span style="color:#06b6d4">HSA${!includeHsa ? ' (excl.)' : ''}</span><span>${currency(s.hsa)}</span></div>
+                <div class="${rowClass('f529')}" style="${rowStyle('f529', dim(!include529))}"><span style="color:#f59e0b">529${!include529 ? ' (excl.)' : ''}</span><span>${currency(s.f529)}</span></div>
                 <div class="flex justify-between gap-4 border-t border-slate-800 mt-1 pt-1 font-bold text-white"><span>Chart Total</span><span>${currency(chartTotal)}</span></div>`;
             tip.classList.remove('hidden');
             const rect = wrap.getBoundingClientRect();
@@ -5713,9 +6469,246 @@
             wrap.style.position = 'relative';
         }
         function hideChartTooltip(evt) {
-            const host = evt && evt.currentTarget && evt.currentTarget.closest('#netWorthChartWrap, #execChartWrap');
+            const host = evt && evt.currentTarget && evt.currentTarget.closest('#netWorthChartWrap, #execChartWrap, #cashflowChartWrap');
             if (host) { const t = host.querySelector('#chartTooltip'); if (t) t.classList.add('hidden'); return; }
             document.querySelectorAll('#chartTooltip').forEach(t => t.classList.add('hidden'));
+        }
+
+        // ---------- Cashflow Chart (diverging bar: sources up, spend down, from a $0 baseline) ----------
+        // Ported from MFJ (2026-09-18). Entirely person-agnostic except the panel header's age display.
+        let cfHoverIdx = 0, cfHoverKey = null;
+        let __cfLastSeriesRef = null;
+
+        function cfTotals(y) {
+            const f = cashflowFlowsFor(y);
+            if (!f) return { inflow: 0, outflow: 0 };
+            let inflow = 0, outflow = 0;
+            Object.values(f.sources).forEach(v => inflow += (v || 0));
+            Object.values(f.spend).forEach(v => outflow += (v || 0));
+            return { inflow, outflow };
+        }
+        function cfPortfolioDraw(y) {
+            if (!y) return 0;
+            const portfolioContributions = (y.audTradCont||0) + (y.audRothCont||0) + (y.brokCont||0);
+            return (y.assetDist||0) - (y.audBrokInflow||0) - portfolioContributions;
+        }
+        function cfDay1Baseline(series) {
+            const day1Idx = series.findIndex(y => cashflowIsSpendingPhase(y));
+            if (day1Idx <= 0) return null;
+            const prevRow = series[day1Idx - 1];
+            const startBal = (prevRow.trad||0) + (prevRow.roth||0) + (prevRow.brok||0);
+            if (startBal <= 0) return null;
+            return { year: series[day1Idx].year, startBal };
+        }
+        function cfMoney(v) { v = Math.round(v||0); if (Math.abs(v)>=1e6) return '$'+(v/1e6).toFixed(2)+'M'; if (Math.abs(v)>=1e3) return '$'+Math.round(v/1e3)+'K'; return '$'+v; }
+        function cfMoneyFull(v) { return (v<0?'-':'') + '$'+Math.round(Math.abs(v||0)).toLocaleString(); }
+
+        function renderCashflowChart(series) {
+            const wrap = document.getElementById('cashflowChartWrap');
+            if (!wrap) return;
+            if (!series || series.length === 0) { wrap.innerHTML = ''; return; }
+            if (series !== __cfLastSeriesRef) {
+                cfHoverIdx = 0; cfHoverKey = null;
+                __cfLastSeriesRef = series;
+            }
+            window.__chartSeriesFull = series;
+            const gran = (window.__nwtGranularity === 1) ? 1 : 5;
+            const shown = gran === 1 ? series.slice() : series.filter((s,i) => i % 5 === 0 || i === series.length - 1);
+
+            const H = 380, padL = 60, padR = 20, padT = 50, padB = 30;
+            const n0 = shown.length;
+            const MIN_BAR_SLOT = 16;
+            let containerW = wrap.getBoundingClientRect().width;
+            if (!containerW || containerW < 200) containerW = (wrap.parentElement && wrap.parentElement.getBoundingClientRect().width) || 1100;
+            const neededW = padL + padR + n0 * MIN_BAR_SLOT;
+            const needsScroll = neededW > containerW;
+            const W = Math.max(1, Math.round(needsScroll ? neededW : containerW));
+            wrap.style.overflowX = needsScroll ? 'auto' : '';
+            const plotW = W - padL - padR, plotH = H - padT - padB;
+
+            const rootStyles = getComputedStyle(document.documentElement);
+            const gridColor = rootStyles.getPropertyValue('--border-strong').trim() || '#334155';
+            const axisTextColor = rootStyles.getPropertyValue('--text-muted').trim() || '#64748b';
+            const zeroTextColor = rootStyles.getPropertyValue('--recon-cash').trim() || '#38bdf8';
+            const inTotalColor = rootStyles.getPropertyValue('--dist-sources').trim() || '#34d399';
+            const outTotalColor = rootStyles.getPropertyValue('--dist-spend').trim() || '#f87171';
+
+            const maxIn = Math.max(...shown.map(s => cfTotals(s).inflow), 1);
+            const maxOut = Math.max(...shown.map(s => cfTotals(s).outflow), 1);
+            const total = maxIn + maxOut || 1;
+            const zeroY = padT + (maxIn/total)*plotH;
+            const n = shown.length;
+            const slotW = plotW/n;
+            const barW = Math.max(4, Math.min(32, slotW*0.62));
+            const xCenter = i => padL + i*slotW + slotW/2;
+            const inflowScale = maxIn>0 ? (plotH*(maxIn/total))/maxIn : 0;
+            const outflowScale = maxOut>0 ? (plotH*(maxOut/total))/maxOut : 0;
+
+            let grid = '';
+            [0, 0.5, 1].forEach(f => {
+                const yUp = zeroY - f*(zeroY-padT);
+                grid += `<line x1="${padL}" y1="${yUp.toFixed(1)}" x2="${W-padR}" y2="${yUp.toFixed(1)}" stroke="${gridColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>`;
+            });
+            grid += `<line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${W-padR}" y2="${zeroY.toFixed(1)}" stroke="${gridColor}" stroke-width="1.25"/>`;
+            grid += `<text x="${padL-8}" y="${(zeroY+4).toFixed(1)}" text-anchor="end" font-size="10" fill="${zeroTextColor}" font-family="monospace" font-weight="700">$0</text>`;
+            grid += `<text x="${padL-8}" y="${padT+8}" text-anchor="end" font-size="10" fill="${axisTextColor}" font-family="monospace">${cfMoney(maxIn)}</text>`;
+            grid += `<text x="${padL-8}" y="${H-padB+2}" text-anchor="end" font-size="10" fill="${axisTextColor}" font-family="monospace">-${cfMoney(maxOut)}</text>`;
+
+            let bars = '', netPoints = [];
+            const usedKeys = new Set();
+            const cfMilestonesByYear = computeYearMilestones(series);
+            shown.forEach((s, i) => {
+                const cx = xCenter(i), x = cx - barW/2;
+                const flows = cashflowFlowsFor(s);
+                let cum = zeroY;
+                const segs = [];
+                Object.keys(flows.sources).forEach(k => {
+                    const v = flows.sources[k]; if (!v || v <= 0) return;
+                    usedKeys.add('in:'+k);
+                    const h = v*inflowScale; cum -= h;
+                    segs.push({ y: cum, h, color: DIST_COLORS[k] || 'var(--text-muted)', key: k });
+                });
+                let cumOut = zeroY;
+                Object.keys(flows.spend).forEach(k => {
+                    const v = flows.spend[k]; if (!v || v <= 0) return;
+                    usedKeys.add('out:'+k);
+                    const h = v*outflowScale;
+                    segs.push({ y: cumOut, h, color: DIST_COLORS[k] || 'var(--text-muted)', key: k });
+                    cumOut += h;
+                });
+                const t = cfTotals(s);
+                const draw = cfPortfolioDraw(s);
+                const netY = draw >= 0 ? (zeroY + draw*outflowScale) : (zeroY - Math.abs(draw)*inflowScale);
+                netPoints.push({ x: cx, y: netY });
+                const isActive = s === series[cfHoverIdx];
+                const outline = isActive ? `<rect x="${(x-3).toFixed(1)}" y="${padT}" width="${(barW+6).toFixed(1)}" height="${plotH}" fill="none" stroke="${zeroTextColor}" stroke-width="2" rx="4"/>` : '';
+                const idxAttr = series.indexOf(s);
+                const colHit = `<rect x="${(x-slotW*0.35).toFixed(1)}" y="${padT}" width="${(slotW*0.7).toFixed(1)}" height="${plotH}" fill="transparent"
+                    onmouseenter="cfHoverIdx=${idxAttr}; cfHoverKey=null; renderCashflowChart(window.__chartSeriesFull);"
+                    onmouseleave="cfHoverKey=null; renderCashflowChart(window.__chartSeriesFull);"/>`;
+                const rects = segs.map(sg => {
+                    const isSegHl = isActive && cfHoverKey === sg.key;
+                    const isSegDim = isActive && cfHoverKey !== null && !isSegHl;
+                    const strokeAttr = isSegHl ? `stroke="#ffffff" stroke-width="1.5"` : '';
+                    return `<rect x="${x.toFixed(1)}" y="${sg.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${sg.h.toFixed(1)}" fill="${sg.color}" opacity="${isSegDim?0.35:1}" ${strokeAttr} rx="1"
+                        onmouseenter="cfHoverIdx=${idxAttr}; cfHoverKey='${sg.key}'; renderCashflowChart(window.__chartSeriesFull);"
+                        onmouseleave="cfHoverKey=null; renderCashflowChart(window.__chartSeriesFull);"/>`;
+                }).join('');
+                const showDollarLabel = gran !== 1 || i % 5 === 0 || i === n - 1;
+                const yr = `<text x="${cx.toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="${gran===1?'9':'11'}" fill="${axisTextColor}" font-family="monospace" ${gran===1?`transform="rotate(45 ${cx.toFixed(1)} ${H-10})"`:''}>${s.year}</text>`;
+                const totalLabels = !showDollarLabel ? '' : (t.inflow > 0 ? `<text x="${cx.toFixed(1)}" y="${(cum-5).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="${inTotalColor}" font-family="monospace" pointer-events="none">${cfMoney(t.inflow)}</text>` : '')
+                    + (!showDollarLabel ? '' : (t.outflow > 0 ? `<text x="${cx.toFixed(1)}" y="${(cumOut+12).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="${outTotalColor}" font-family="monospace" pointer-events="none">-${cfMoney(t.outflow)}</text>` : ''));
+                const cfMs = (cfMilestonesByYear[s.year] || []).filter(m => m.type.startsWith('semi') || m.type.startsWith('full'));
+                window.__nwtMilestones = window.__nwtMilestones || {};
+                const milestoneIcons = cfMs.map((m, mi) => {
+                    const iy = cum - 18 - mi * 20;
+                    const key = 'cf-y' + s.year + '_' + mi;
+                    window.__nwtMilestones[key] = Object.assign({ year: s.year, hAge: s.hAge }, m);
+                    return `<g style="cursor:pointer" onmouseenter="showMilestoneTooltip(event, '${key}')" onmouseleave="hideChartTooltip(event)">
+                        <circle cx="${cx.toFixed(1)}" cy="${iy.toFixed(1)}" r="8" fill="${m.color}" stroke="var(--recon-panel-bg,#0d1220)" stroke-width="1.25"/>
+                        <text x="${cx.toFixed(1)}" y="${(iy+3).toFixed(1)}" text-anchor="middle" font-size="9" style="pointer-events:none">${m.icon}</text>
+                        </g>`;
+                }).join('');
+                bars += `<g>${colHit}${rects}${outline}${totalLabels}${milestoneIcons}${yr}</g>`;
+            });
+
+            const lineD = netPoints.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+            let netLine = `<path d="${lineD}" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" opacity="0.9" pointer-events="none"/>`;
+            netPoints.forEach((p, i) => {
+                const r = (series.indexOf(shown[i]) === cfHoverIdx) ? 4.5 : 3;
+                netLine += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="#fbbf24" stroke="var(--recon-panel-bg,#0d1220)" stroke-width="1.25" pointer-events="none"/>`;
+            });
+
+            wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:${W}px;height:${H}px;display:block;max-width:none;">${grid}${bars}${netLine}</svg>
+                <div id="chartTooltip" class="hidden absolute bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[11px] font-mono pointer-events-none z-50" style="min-width:180px"></div>`;
+
+            const legendWrap = document.getElementById('cashflowLegend');
+            if (legendWrap) {
+                let items = `<span class="grp in">Inflows</span>`;
+                Object.keys(DIST_COLORS).forEach(k => { if (usedKeys.has('in:'+k)) items += `<span><span class="sw" style="background:${DIST_COLORS[k]}"></span>${DIST_SHORT[k]||k}</span>`; });
+                items += `<span class="grp out" style="margin-left:8px">Outflows</span>`;
+                Object.keys(DIST_COLORS).forEach(k => { if (usedKeys.has('out:'+k)) items += `<span><span class="sw" style="background:${DIST_COLORS[k]}"></span>${DIST_SHORT[k]||k}</span>`; });
+                items += `<span><span class="sw" style="background:#fbbf24;border-radius:50%"></span>Portfolio Draw (excl. HSA, 529)</span>`;
+                legendWrap.innerHTML = items;
+            }
+
+            updateCashflowPanel(series, cfHoverIdx);
+        }
+
+        function updateCashflowPanel(series, idx) {
+            const s = series[idx]; if (!s) return;
+            document.getElementById('cfPanelYear').textContent = s.year;
+            // Single-person: "Age X" (matching the format already used in showChartTooltip) rather
+            // than MFJ's "(H:X / W:Y)" pairing.
+            document.getElementById('cfPanelAges').textContent = `(Age ${s.hAge})`;
+
+            const inBox = document.getElementById('cfInBox');
+            const outBox = document.getElementById('cfOutBox');
+            const inStartH = inBox.offsetHeight;
+            const outStartH = outBox.offsetHeight;
+
+            const flows = cashflowFlowsFor(s);
+            const t = cfTotals(s);
+            const rowHtml = (k, v) => {
+                const hl = (cfHoverKey === k) ? ' hl' : '';
+                const row = `<div class="cf-row${hl}" onmouseenter="cfHoverIdx=${idx}; cfHoverKey='${k}'; renderCashflowChart(window.__chartSeriesFull);" onmouseleave="cfHoverKey=null; renderCashflowChart(window.__chartSeriesFull);">
+                    <span class="k"><span class="sw" style="background:${DIST_COLORS[k]||'var(--text-muted)'}"></span>${DIST_SHORT[k]||k}</span>
+                    <span class="v">${cfMoneyFull(v)}</span></div>`;
+                if (k === 'Healthcare' && (s.audLtcCost||0) > 0) {
+                    return row + `<div class="cf-ltc-badge relative info-tip-wrap cursor-help" style="color:#c084fc" onmouseenter="positionInfoTip(this)">\u25d0 incl. ${cfMoneyFull(s.audLtcCost)} LTC<span class="info-tip w-64 p-3 rounded-lg text-[11px] font-normal normal-case leading-snug shadow-2xl border" style="position:fixed;z-index:9999;background:var(--bg-elevated,#0f172a);border-color:var(--border-strong,#334155);color:var(--text-secondary,#cbd5e1)">This year includes a long-term care cost. You entered it in today's dollars (e.g. $110,000/yr by default); the figure shown here is that amount escalated to this year and then converted back to today's purchasing power, so it reads somewhat higher than the amount entered. <a onclick="openHelp('sec-ltc')" class="text-blue-400 hover:underline cursor-pointer font-semibold">See Help \u00a714c \u2192</a></span></div>`;
+                }
+                return row;
+            };
+            let inHtml = '', outHtml = '';
+            Object.keys(flows.sources).forEach(k => { const v = flows.sources[k]; if (v>0) inHtml += rowHtml(k, v, 'in'); });
+            Object.keys(flows.spend).forEach(k => { const v = flows.spend[k]; if (v>0) outHtml += rowHtml(k, v, 'out'); });
+            document.getElementById('cfPanelIn').innerHTML = inHtml || '<div class="cf-empty-hint">No inflows this year</div>';
+            document.getElementById('cfPanelOut').innerHTML = outHtml || (cashflowIsSpendingPhase(s) ? '<div class="cf-empty-hint">No spending this year</div>' : '<div class="cf-empty-hint">No living expenses yet — still working</div>');
+            document.getElementById('cfPanelInTotal').textContent = cfMoneyFull(t.inflow);
+            document.getElementById('cfPanelOutTotal').textContent = cfMoneyFull(t.outflow);
+
+            inBox.style.height = 'auto'; outBox.style.height = 'auto';
+            const inEndH = inBox.offsetHeight, outEndH = outBox.offsetHeight;
+            inBox.style.height = inStartH + 'px'; outBox.style.height = outStartH + 'px';
+            void inBox.offsetHeight; void outBox.offsetHeight;
+            inBox.style.height = inEndH + 'px'; outBox.style.height = outEndH + 'px';
+
+            const draw = cfPortfolioDraw(s);
+            const netEl = document.getElementById('cfPanelNet');
+            const netLabelEl = document.getElementById('cfPanelNetLabel');
+            const rateRow = document.getElementById('cfRateRow');
+            if (netLabelEl) netLabelEl.textContent = 'Portfolio Draw (excl. HSA, 529)';
+            if (rateRow) rateRow.style.display = 'none';
+            if (Math.abs(draw) < 500) {
+                netEl.textContent = '$0 (self-funded)';
+                netEl.style.color = '#4ade80';
+            } else if (draw < 0) {
+                netEl.textContent = '\u2212' + cfMoneyFull(Math.abs(draw)) + ' (added to portfolio)';
+                netEl.style.color = '#4ade80';
+            } else {
+                netEl.textContent = cfMoneyFull(draw);
+                const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+                netEl.style.color = isLight ? '#b45309' : '#fbbf24';
+
+                const rateEl = document.getElementById('cfPanelRate');
+                const tipEl = document.getElementById('cfRateTip');
+                const day1 = cashflowIsSpendingPhase(s) ? cfDay1Baseline(series) : null;
+                if (day1 && rateRow && rateEl && tipEl) {
+                    const yearsElapsed = s.year - day1.year;
+                    const inflEl = document.getElementById('inflationRate');
+                    const inflationRate = (parseFloat(inflEl && inflEl.value) || 3) / 100;
+                    const isToday = (typeof dollarMode !== 'undefined') && dollarMode === 'today';
+                    const adjustedBaseline = isToday ? day1.startBal : day1.startBal * Math.pow(1 + inflationRate, yearsElapsed);
+                    if (adjustedBaseline > 0) {
+                        const rate4 = (draw / adjustedBaseline) * 100;
+                        rateEl.textContent = rate4.toFixed(1) + '%';
+                        tipEl.innerHTML = isToday
+                            ? `This year's draw as a % of your starting Traditional/Roth/Brokerage balance the year you began drawing from the portfolio (${cfMoneyFull(day1.startBal)} in ${day1.year}). Both figures are already shown in today's dollars (per the Today's $ toggle), so no further inflation adjustment is applied here \u2014 it's already an apples-to-apples real-purchasing-power comparison. This is <strong>not</strong> a % of your current balance \u2014 it stays roughly flat over time in a plan that's tracking its own original trajectory, rather than climbing as the portfolio naturally draws down late in retirement.`
+                            : `This year's draw as a % of your starting Traditional/Roth/Brokerage balance the year you began drawing from the portfolio (${cfMoneyFull(day1.startBal)} in ${day1.year}), compounded forward at ${(inflationRate*100).toFixed(1)}% inflation to this year's (nominal) dollars. This is <strong>not</strong> a % of your current balance \u2014 it stays roughly flat over time in a plan that's tracking its own original trajectory, rather than climbing as the portfolio naturally draws down late in retirement.`;
+                        rateRow.style.display = 'flex';
+                    }
+                }
+            }
         }
 
         // First-visit Help coach-mark (persists dismissal in localStorage).
@@ -7012,6 +8005,7 @@
             // from the profile — they always come from IRS_2026 constants (see exportConfig note).
             document.querySelectorAll('input[data-money="true"]').forEach(el => formatMoneyInput(el));
             if (typeof toggleSsInputs === 'function') toggleSsInputs();
+            if (typeof toggleSsTaxAuto === 'function') toggleSsTaxAuto();
             if (typeof toggleRothConvInputs === 'function') toggleRothConvInputs();
             if (typeof toggleSurvivorInputs === 'function') toggleSurvivorInputs();
         }
@@ -7199,6 +8193,8 @@
                 document.querySelectorAll('input[data-money="true"]').forEach(el => formatMoneyInput(el));
                 toggleDistInputs();
                 toggleSsInputs();
+            toggleSsTaxAuto();
+                toggleSsTaxAuto();
                 toggleRothConvInputs();
                 triggerRecalculate();
                 applyColumnGroupVisibility();
@@ -7491,6 +8487,7 @@
                         <a href="#sec-dollars" class="hover:underline cursor-pointer">2. Dollar Display Modes (Today's $ vs Future $)</a>
                         <a href="#sec-inputs" class="hover:underline cursor-pointer">3. Input Parameters Explained</a>
                         <a href="#sec-kpis" class="hover:underline cursor-pointer">4. KPI Cards Explained</a>
+                        <a href="#sec-cashflow" class="hover:underline cursor-pointer">4a. Cashflow (the multi-year trend)</a>
                         <a href="#sec-distribution" class="hover:underline cursor-pointer">4b. Distribution Mix</a>
                         <a href="#sec-columns" class="hover:underline cursor-pointer">5. Combined Table Columns</a>
                         <a href="#sec-coldetail" class="hover:underline cursor-pointer">5c. Column Details Menu &amp; Reference Columns</a>
@@ -7738,15 +8735,29 @@
                 </section>
 
                 <!-- 4b. Distribution Mix -->
+                <!-- 4a. Cashflow -->
+                <section id="sec-cashflow">
+                    <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-money-bill-transfer mr-2"></i>4a. Cashflow (the multi-year trend)</h2>
+                    <p class="mb-3">The chart area at the top has three tabs. <strong style="color:var(--text-primary)">Cashflow</strong> asks the same question Distribution Mix does &mdash; <em>what funded this year's spending, and what did it pay for?</em> &mdash; but as a trend across the <strong style="color:var(--text-primary)">whole plan</strong>, one bar per year (or every 5th year), instead of three fixed milestone snapshots. Working years show only <strong style="color:var(--text-primary)">Contributions</strong> above the $0 line, since the model doesn't simulate a paycheck during accumulation (it assumes salary invisibly covers living costs); semi/full-retirement years switch to the full Sources-vs-Spend breakdown below.</p>
+                    <ul class="list-disc ml-6 mb-3 space-y-1" style="color:var(--text-secondary)">
+                        <li><strong style="color:var(--text-primary)">Sources (retirement years)</strong>: the same categories Distribution Mix uses &mdash; Traditional, Roth, and Brokerage withdrawals; RMDs; Social Security; RE/Business distributions; 1099/part-time income; HSA; the 529 &mdash; <strong style="color:var(--text-primary)">plus two Cashflow adds Distribution Mix does not yet break out</strong>: a RE/Business <strong>sale or refinance</strong> shows as its own "RE/Biz Sale/Refi" line, and an <strong>inheritance</strong> shows as its own "Inheritance" line. Both already reduce the portfolio withdrawal in Distribution Mix's own numbers (they always have); Cashflow just labels where that reduction came from instead of leaving it implicit. See the note in &sect;4b below.</li>
+                        <li><strong style="color:var(--text-primary)">Spend</strong>: Living, Healthcare (folded together with any Long-Term-Care cost that year &mdash; a small purple "&#9680; incl. $X LTC" note appears when one applies, same treatment as the projection table), Taxes, Gifting, Tuition. A working year with no living expenses can still show a small Taxes line &mdash; that's real: a taxable brokerage throws off dividends every year whether or not you sell, and the portfolio quietly sells a sliver of itself to cover that tax even while you're still working (the projection table flags this the same way, with a "&#9678; tax only" note).</li>
+                        <li><strong style="color:var(--text-primary)">Portfolio Draw</strong> (the gold line and the panel's bottom row) is <em>not</em> Total Inflows minus Total Outflows &mdash; it specifically measures how much came out of Traditional/Roth/Brokerage net of whatever went back in that same year, whether that's ordinary contributions (working years) or a surplus banked to Brokerage because a sale or windfall exceeded the year's need (retirement years). Positive means the portfolio was drawn down that year; a meaningfully negative figure means it grew net, labeled "added to portfolio." It deliberately excludes HSA and 529 (matching the same scope the projection table's own "Portfolio W/D" figure uses), so the label says so. In a real draw year, a second row shows <strong style="color:var(--text-primary)">W/D Rate (4% Rule)</strong> &mdash; that year's draw as a % of your starting Traditional/Roth/Brokerage balance the year you began drawing from the portfolio, not a % of your current (shrinking) balance, so it stays roughly flat over a healthy plan's lifetime instead of climbing into alarming double digits late in retirement. Honors the Today's&nbsp;$ / Future&nbsp;$ toggle correctly on both sides of that ratio.</li>
+                        <li><strong style="color:var(--text-primary)">Semi-Retirement and Full-Retirement</strong> are marked with the same icons Net Worth Trajectory uses, above the bar for the year each happens &mdash; hover an icon for the year and age. No other life-event icons (tuition, gifting, LTC, etc.) are shown here; see Net Worth Trajectory for those.</li>
+                        <li>Hover any bar to preview that year in the side panel &mdash; it stays on whatever you last hovered even after your mouse leaves the chart, until you hover a different bar. The view honors the Today's&nbsp;$ / Future&nbsp;$ toggle and shares its 5-year / every-year granularity toggle with Net Worth Trajectory. The Include&nbsp;HSA / Include&nbsp;529 controls apply only to the trajectory chart's balances, so they're hidden on this tab, same as on Distribution Mix.</li>
+                    </ul>
+                </section>
+
+                <!-- 4b. Distribution Mix -->
                 <section id="sec-distribution">
                     <h2 class="font-bold text-lg border-b border-slate-300 pb-2 mb-4 text-blue-600"><i class="fa-solid fa-shuffle mr-2"></i>4b. Distribution Mix (where each year's money moves)</h2>
-                    <p class="mb-3">The chart area at the top has two tabs. <strong style="color:var(--text-primary)">Net Worth Trajectory</strong> shows balances growing and drawing down over the whole plan; <strong style="color:var(--text-primary)">Distribution Mix</strong> answers a different question for a single year &mdash; <em>where did the money come from, and what did it pay for?</em> It is a cash-flow (Sankey) view, not a balance view.</p>
+                    <p class="mb-3">The chart area at the top has three tabs. <strong style="color:var(--text-primary)">Net Worth Trajectory</strong> shows balances growing and drawing down over the whole plan; <strong style="color:var(--text-primary)">Cashflow</strong> (previous section) shows the same funding-sources question as a year-by-year trend; <strong style="color:var(--text-primary)">Distribution Mix</strong> answers it for a single year in more visual, ribbon-flow detail &mdash; <em>where did the money come from, and what did it pay for?</em> It is a cash-flow (Sankey) view, not a balance view.</p>
                     <p class="mb-3">Three panels default to life-phase milestones (semi-retirement, full retirement, and Social&nbsp;Security claim age). Each panel tracks its milestone automatically &mdash; change a birth year or a semi/full-retirement age and the panels follow to the new years. Pick a specific year from a panel&rsquo;s dropdown to pin it there instead; a pinned panel keeps your year even as other inputs change, and a <span aria-hidden="true">&#8634;</span> reset button appears to hand it back to automatic tracking. Each panel shows <span style="color:var(--dist-sources);font-weight:600">Sources</span> on the left flowing into <span style="color:var(--dist-spend);font-weight:600">Spend</span> on the right, with a running total for each side.</p>
                     <ul class="list-disc ml-6 mb-3 space-y-1" style="color:var(--text-secondary)">
                         <li><strong style="color:var(--text-primary)">Sources</strong>: Traditional, Roth, and Brokerage withdrawals; RMDs; Social Security; RE/Business distributions; 1099 / part-time income (gross); HSA; and the 529 (the portion of tuition it funds).</li>
                         <li><strong style="color:var(--text-primary)">Spend</strong>: Living, Healthcare, Taxes (the year's full tax, including any capital-gains tax), Gifting, and Tuition.</li>
                         <li>Ribbon thickness is proportional to each flow's share, with a small minimum so tiny slices stay visible. Labels show the rounded figure and share; <strong style="color:var(--text-primary)">hover any ribbon</strong> for the exact dollar amount and precise percent.</li>
-                        <li>The numbers reconcile to the projection table for the same year, and each panel's Sources and Spend totals balance to the dollar. The view honors the Today's&nbsp;$ / Future&nbsp;$ toggle. The Include&nbsp;HSA / Include&nbsp;529 controls apply only to the trajectory chart's balances, so they are hidden on this tab.</li>
+                        <li>The numbers reconcile to the projection table for the same year. <strong style="color:var(--text-primary)">Known gap:</strong> in a year with a RE/Business sale, refinance, or inheritance, this panel's own Sources total can undercount Spend by roughly the missing proceeds &mdash; those two events aren't broken out as Sources categories here the way they are on the Cashflow tab (previous section). The withdrawal itself is unaffected (both events already correctly reduce it); only this panel's own labeled breakdown is incomplete in that specific year. Outside a sale/refi/inheritance year, Sources and Spend still balance to the dollar. The view honors the Today's&nbsp;$ / Future&nbsp;$ toggle. The Include&nbsp;HSA / Include&nbsp;529 controls apply only to the trajectory chart's balances, so they are hidden on this tab.</li>
                     </ul>
                 </section>
 
@@ -8283,7 +9294,7 @@
                         <li><strong style="color:var(--text-primary)">Early-withdrawal penalty.</strong> The 10% pre-59&frac12; penalty applies to Traditional/Roth draws taken before the filer reaches 59&frac12;. Because a single filer owns every account, the age test is unambiguous here (unlike the MFJ version, which must pick one spouse's age for a pooled balance). Roth withdrawal ordering is still not modeled, so the penalty may be overstated on Roth draws &mdash; see below.</li>
                         <li>Roth 5-year seasoning rules (for conversions and earnings) are not enforced — early Roth access is modeled as available with only the 10% penalty pre-59&frac12;.</li>
                         <li>Roth withdrawal ordering (contributions &rarr; conversions &rarr; earnings) is not modeled; penalties may be overstated for Roth draws.</li>
-                        <li>Social Security taxability is modeled as a <strong style="color:var(--text-primary)">flat, user-editable percentage</strong> (default <strong style="color:var(--text-primary)">85%</strong>) rather than the statutory phase-in. In law the taxable share depends on <em>provisional income</em> (AGI excluding SS + tax-exempt interest + half the benefit): nothing is taxed below $32,000 (MFJ) / $25,000 (Single), up to 50% applies through $44,000 / $34,000, and up to 85% above that &mdash; thresholds frozen since 1993 and never inflation-indexed. The 85% default is <em>exact</em> for any plan whose provisional income clears the top threshold, which most retirees with meaningful portfolio income do permanently; it <em>overstates</em> the taxable share only for low-income retirees still inside the phase-in, so the simplification is conservative. Adjust the &ldquo;% of SS Taxed&rdquo; input if your plan sits in the phase-in band. Spousal/survivor benefits and claiming-age adjustments are likewise simplified to flat inputs.</li>
+                        <li>Social Security taxability uses the <strong style="color:var(--text-primary)">statutory IRC §86 provisional-income phase-in</strong> (IRS Pub 915 Worksheet 1), recomputed each year from that year’s income. The taxable share of your benefit rises from 0% toward a maximum of 85% as your other income grows &mdash; based on <em>provisional income</em> (AGI excluding SS + tax-exempt interest + half the benefit): nothing is taxed below $32,000 (MFJ) / $25,000 (Single), up to 50% applies through $44,000 / $34,000, and up to 85% above that. These thresholds are frozen in law since 1983/1993 and are not inflation-indexed. A <strong style="color:var(--text-primary)">“Auto (IRS §86)”</strong> toggle controls this: checked (the default) computes the taxable share automatically each year; uncheck it to type a fixed taxable percentage of your own. The §86 formula is verified to the dollar against IRS Pub 915’s own worked examples.</li>
                         <li>ACA subsidies (pre-65) and IRMAA (post-65) are modeled as optional toggles (Section 14); when they are on, Roth-conversion sizing can additionally respect the ACA subsidy cliff. Both carry their own simplifications, listed below.</li>
                         <li>Fixed-amount Roth conversions are sized without regard to bracket position or same-year spending draws (by design); only bracket-fill mode is spending-aware.</li>
                         <li>Filing status is Single, or Head of Household when dependents are present, using the true IRS 2026 tables for each. Head-of-household eligibility is inferred simply from having one or more dependents; the qualifying-surviving-spouse status is not modeled (this is the single-filer build).</li>
@@ -8339,5 +9350,12 @@
         </div>
     </div>
 <div id="printDoc" aria-hidden="true"></div>
+<div id="reconDragHandle" class="recon-drag-handle hidden"></div>
+<div id="reconDrawer" class="recon-drawer hidden">
+    <div class="recon-drawer-header">
+        <button class="recon-drawer-close" onclick="closeReconDrawer()" title="Close" aria-label="Close">&times;</button>
+    </div>
+    <div class="recon-drawer-scroll" id="reconDrawerBody"></div>
+</div>
 </body>
 </html>
