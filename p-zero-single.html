@@ -952,7 +952,7 @@
             #printDoc .pd-timeline text { color: #334155 !important; fill: #334155 !important; }
             #printDoc .pd-timeline .tl-ev-tip { display: none !important; }
             #printDoc .pd-chart { margin: 6px 0 14px; width: 100%; }
-            #printDoc .pd-chart svg { width: 100%; height: auto; max-height: 340px; }
+            #printDoc .pd-chart svg { width: 100% !important; height: auto !important; max-height: 340px !important; max-width: 100% !important; }
             /* Force legible axis text/lines on white paper (baked-in dark-theme values can be too faint). */
             #printDoc .pd-chart svg text { fill: #334155 !important; }
 /* ===== Print KPI cards (mirror the app exec-summary 6-card design; static colors) ===== */
@@ -4410,9 +4410,10 @@
             'Healthcare':'#db3736',
             'Taxes':'#e2a159',
             'Gifting':'#df4a78',
-            'Tuition':'#e28a58'
+            'Tuition':'#e28a58',
+            'Surplus Banked':'#64748b' // Cashflow-only category (see cashflowFlowsFor) — neutral gray, distinct from the warm spend colors: this isn't really an expense, it's cash in excess of that year's need going back into Brokerage
         };
-        const DIST_SHORT = {'1099 Income':'1099','Social Security':'Soc Sec','RE/Business':'RE/Biz','RE/Biz Sale/Refi':'RE/Biz Sale'};
+        const DIST_SHORT = {'1099 Income':'1099','Social Security':'Soc Sec','RE/Business':'RE/Biz','RE/Biz Sale/Refi':'RE/Biz Sale','Surplus Banked':'Surplus'};
         let distActiveYears = {}; // per-panel chosen year (keyed by phase index)
         let distUserSet = {};     // per-panel: true once the user manually picks a year.
         // A panel in "track" mode (userSet false) follows its life-phase milestone, so changing a
@@ -4472,6 +4473,12 @@
             }
             if (rebiCapital > 0) sources['RE/Biz Sale/Refi'] = rebiCapital;
             if (inheritance > 0) sources['Inheritance'] = inheritance;
+            // Real bug found via the actual test-suite.html run: whenever Sources meaningfully exceed
+            // the year's actual funding need, the excess gets banked back to Brokerage (audBrokInflow,
+            // already correctly netted by cfPortfolioDraw) — but this breakdown never had a matching
+            // Spend-side entry for that excess, so Sources==Spend silently broke by exactly
+            // audBrokInflow in that year. Added unconditionally, same as the two lines above.
+            if ((y.audBrokInflow||0) > 0) spend['Surplus Banked'] = y.audBrokInflow;
             return { sources, spend };
         }
 
