@@ -7665,6 +7665,12 @@
                 if (src && src.innerHTML.trim()) {
                     // Suffix gradient ids with -pr so the print SVG's <defs> don't collide with the live one.
                     let svg = src.innerHTML.replace(/id="(nwg\d+)"/g, 'id="$1-pr"').replace(/url\(#(nwg\d+)\)/g, 'url(#$1-pr)');
+                    // Strip the live SVG's own inline style (an explicit on-screen pixel width/height,
+                    // set for the interactive chart's own width-measurement fix) — cloned verbatim it
+                    // fought #printDoc .pd-chart svg's width:100% reset, since inline styles beat
+                    // non-!important CSS rules regardless of selector specificity. Removing it here is
+                    // more robust than trying to out-specificity it: nothing left to conflict with.
+                    svg = svg.replace(/^\s*(<svg\b[^>]*?)\s+style="[^"]*"/, '$1');
                     chartBlock = `
                         <h2 class="pd-h">Net Worth Trajectory <span class="pd-h-note">${(typeof dollarMode !== 'undefined' && dollarMode === 'today') ? "today\u2019s dollars" : 'nominal dollars'}</span></h2>
                         <div class="pd-chart">${svg}</div>`;
