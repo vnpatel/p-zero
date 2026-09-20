@@ -1030,6 +1030,13 @@
             }
             @page { margin: 14mm 14mm 16mm 14mm; }
             html, body { background: #ffffff !important; }
+            /* The app's base layout clamps html/body to height:100% with overflow:hidden on body (so the
+               interactive UI fits the viewport without scrolling, panels scroll internally instead) —
+               never reset for print before. #printDoc becoming visible and full of content didn't matter
+               if its own parent stayed clipped to viewport height: Firefox's print pagination respects
+               that clip, Chrome largely doesn't, which is the actual reason this was Chrome-only. */
+            html, body { height: auto !important; overflow: visible !important; }
+            body { display: block !important; }
             #printDoc .pd-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
 
             /* Force browsers to preserve background colors in print (they strip them by default). */
@@ -1088,6 +1095,7 @@
             #printDoc .pd-2col { display: flex; gap: 18px; }
             #printDoc .pd-2col > div { flex: 1; }
             #printDoc .pd-timeline { margin: 6px 0 16px; position: relative; }
+            #printDoc .pd-timeline svg { width: 100% !important; height: auto !important; }
             /* Force legible timeline text on white paper (baked dark-theme values can be too faint). */
             #printDoc .pd-timeline .tl-mainline-label,
             #printDoc .pd-timeline .tl-kidlane-label,
@@ -7802,7 +7810,7 @@
                     </g>`;
                     timelineBlock = `
                         <h2 class="pd-h">Plan Timeline</h2>
-                        <div class="pd-timeline"><svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">${grid}${axis}${milEls}${evEls}${eduEls}${legend}</svg></div>`;
+                        <div class="pd-timeline"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet">${grid}${axis}${milEls}${evEls}${eduEls}${legend}</svg></div>`;
                 }
             } catch (e) { /* timeline optional */ }
 
@@ -7873,7 +7881,17 @@
                 <div class="pd-disclaimer"><strong>For illustration and educational purposes only — not financial, tax, or legal advice.</strong> This is a personal planning sandbox built on simplified assumptions; real outcomes will differ, potentially materially. Do not make financial decisions based on it. Consult a qualified financial advisor, tax professional, or attorney about your individual situation.</div>
                 <div class="pd-foot">P-ZERO Financial Engine &middot; all figures reflect the inputs listed above and this tool's simplified model.</div>
             `;
-            window.print();
+            // Defer print by two animation frames rather than calling it synchronously right after this
+            // large innerHTML build. Chrome tends to tolerate printing content that was just inserted;
+            // Firefox can snapshot the page for print before it's finished laying out a big synchronous
+            // DOM update, capturing an incomplete render — a well-documented category of Chrome/Firefox
+            // divergence, distinct from (and not fixed by) the SVG intrinsic-sizing issue addressed
+            // earlier. Two nested rAF calls guarantee at least one full paint cycle has completed first.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.print();
+                });
+            });
         }
 
         function exportConfig() {
