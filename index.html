@@ -7668,9 +7668,20 @@
                     // Strip the live SVG's own inline style (an explicit on-screen pixel width/height,
                     // set for the interactive chart's own width-measurement fix) — cloned verbatim it
                     // fought #printDoc .pd-chart svg's width:100% reset, since inline styles beat
-                    // non-!important CSS rules regardless of selector specificity. Removing it here is
-                    // more robust than trying to out-specificity it: nothing left to conflict with.
+                    // non-!important CSS rules regardless of selector specificity.
                     svg = svg.replace(/^\s*(<svg\b[^>]*?)\s+style="[^"]*"/, '$1');
+                    // Add back explicit width/height HTML ATTRIBUTES (not inline style) derived from the
+                    // SVG's own viewBox. Stripping the style left NO sizing information at all except the
+                    // print CSS's width:100% rule — Chrome tolerates that, but Firefox needs the SVG to
+                    // have a well-defined intrinsic size (which width/height attributes establish,
+                    // distinct from inline style) to reliably size it in print specifically; without one,
+                    // Firefox's print output only ever showed the first page. CSS width:100% on top of
+                    // these attributes still fully controls the actual rendered size in both browsers —
+                    // attributes only seed the intrinsic size used for that scaling, they don't fix it.
+                    const vbMatch = svg.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
+                    if (vbMatch) {
+                        svg = svg.replace(/^(\s*<svg\b)/, `$1 width="${vbMatch[1]}" height="${vbMatch[2]}"`);
+                    }
                     chartBlock = `
                         <h2 class="pd-h">Net Worth Trajectory <span class="pd-h-note">${(typeof dollarMode !== 'undefined' && dollarMode === 'today') ? "today\u2019s dollars" : 'nominal dollars'}</span></h2>
                         <div class="pd-chart">${svg}</div>`;
